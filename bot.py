@@ -294,31 +294,34 @@ def run():
                 if not r:
                     continue
 
-                symbol,p,direction,score,conf,sl,tp1,tp2,tp3,sess,news = r
+                symbol, p, direction, score, conf, sl, tp1, tp2, tp3, sess, news = r
 
+                # 🔥 فلتر الثقة
                 if conf < 45:
                     continue
 
+                # 🔥 منع تكرار نفس الإشارة
                 if last_signal.get(s) == direction:
                     continue
 
+                # 📩 الرسالة الكاملة
                 msg = f"""
-👑 روبوت الإشارات الذكي
+👑 MASTER BOT FINAL
 
-📊 الزوج: {symbol}
-💰 سعر الدخول: {round(p, 2)}
+📊 {symbol}
+💰 Entry: {round(p, 2)}
 
-🎯 الاتجاه: {direction}
-🔥 قوة الإشارة: {round(score, 2)}
-🧠 نسبة الثقة: {round(conf, 2)}%
+🎯 {direction}
+🔥 Score: {round(score, 2)}
+🧠 Confidence: {round(conf, 2)}%
 
-💼 الجلسة: {sess}
-📰 الأخبار: {news}
+💼 Session: {sess}
+📰 News: {news}
 
-🛑 وقف الخسارة: {round(sl, 2)}
-🎯 الهدف الأول: {round(tp1, 2)}
-🎯 الهدف الثاني: {round(tp2, 2)}
-🎯 الهدف الثالث: {round(tp3, 2)}
+🛑 SL: {round(sl, 2)}
+🎯 TP1: {round(tp1, 2)}
+🎯 TP2: {round(tp2, 2)}
+🎯 TP3: {round(tp3, 2)}
 """
 
                 bot.sendMessage(ADMIN_CHAT_ID, msg)
