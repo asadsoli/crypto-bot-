@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 import os
 
 # ==========================
-# 🔥 KEEP ALIVE (RENDER FIX)
+# 🔥 KEEP ALIVE
 # ==========================
 from flask import Flask
 from threading import Thread
@@ -22,13 +22,11 @@ def run_web():
     app.run(host='0.0.0.0', port=10000)
 
 def keep_alive():
-    t = Thread(target=run_web)
-    t.start()
+    Thread(target=run_web).start()
 
 # ==========================
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 ADMIN_CHAT_ID = int(os.getenv("ADMIN_CHAT_ID"))
-
 bot = telepot.Bot(TOKEN)
 
 # ==========================
@@ -151,16 +149,29 @@ def analyse(symbol):
     r = rsi(c)
     a = atr(h,l,c)
 
+    # 🔥 فلتر السوق الضعيف
+    if a < (p * 0.001):
+        return None
+
+    # 🔥 فلتر التذبذب
+    if 40 < r < 60:
+        return None
+
     buy_liq, sell_liq = liquidity(h,l)
 
     score = 0
     score += 2 if ema20 > ema50 else -2
-    score += 2 if r < 30 else -2 if r > 70 else 0
-    score += 1 if buy_liq and p > buy_liq else -1 if sell_liq and p < sell_liq else 0
 
+    if r < 35:
+        score += 2
+    elif r > 65:
+        score -= 2
+
+    score += 1 if buy_liq and p > buy_liq else -1 if sell_liq and p < sell_liq else 0
     score += fvg(h,l)
     score += order_block(c)
 
+    # Multi TF
     c15,_,_ = klines_tf(symbol,"15m")
     if len(c15) > 50:
         score += 2 if ema(c15,20) > ema(c15,50) else -2
@@ -181,7 +192,8 @@ def analyse(symbol):
     news, nw = news_engine()
     score *= nw
 
-    if abs(score) < 2:
+    # 🔥 فلتر القوة
+    if abs(score) < 4:
         return None
 
     if score > 0:
@@ -215,7 +227,8 @@ def run():
 
                 symbol,p,direction,score,conf,sl,tp1,tp2,tp3,sess,news = r
 
-                if conf < 40:
+                # 🔥 فلتر الثقة
+                if conf < 50:
                     continue
 
                 if last_signal.get(s) == direction:
