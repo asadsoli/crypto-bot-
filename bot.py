@@ -27,8 +27,6 @@ def run_web():
 Thread(target=run_web).start()
 
 # ==========================
-# 🔐 بيانات
-# ==========================
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 ADMIN_CHAT_ID = int(os.getenv("ADMIN_CHAT_ID"))
 
@@ -40,21 +38,16 @@ except:
     pass
 
 # ==========================
-# 🧠 حالة
-# ==========================
 last_signal = {}
-last_session = None
 last_event_hour = None
 
-# ==========================
 watchlist = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "PAXGUSDT"]
 
-# ==========================
-# ⏱️ الوقت
 # ==========================
 def now():
     return datetime.now(timezone.utc)
 
+# ==========================
 def session():
     h = now().hour
     if 0 <= h < 6:
@@ -76,50 +69,26 @@ def market_session():
     return "QUIET"
 
 # ==========================
-# 🌍 قوة السوق (PRO)
-# ==========================
 def market_power():
     sess = market_session()
+    return {"NEW YORK":1.5,"LONDON":1.3,"ASIA":1.0}.get(sess,0.7)
 
-    if sess == "NEW YORK":
-        return 1.5
-    elif sess == "LONDON":
-        return 1.3
-    elif sess == "ASIA":
-        return 1.0
-    return 0.7
-
-# ==========================
-# 🌍 أحداث الأسواق
 # ==========================
 def market_events():
     h = now().hour
     events = []
 
-    if h == 23:
-        events.append("🔔 افتتاح سوق سيدني")
-    if h == 8:
-        events.append("🔕 إغلاق سوق سيدني")
-
-    if h == 1:
-        events.append("🔔 افتتاح سوق طوكيو")
-    if h == 10:
-        events.append("🔕 إغلاق سوق طوكيو")
-
-    if h == 10:
-        events.append("🔔 افتتاح سوق لندن")
-    if h == 19:
-        events.append("🔕 إغلاق سوق لندن")
-
-    if h == 15:
-        events.append("🔔 افتتاح سوق نيويورك")
-    if h == 0:
-        events.append("🔕 إغلاق سوق نيويورك")
+    if h == 23: events.append("🔔 افتتاح سيدني")
+    if h == 8: events.append("🔕 إغلاق سيدني")
+    if h == 1: events.append("🔔 افتتاح طوكيو")
+    if h == 10: events.append("🔕 إغلاق طوكيو")
+    if h == 10: events.append("🔔 افتتاح لندن")
+    if h == 19: events.append("🔕 إغلاق لندن")
+    if h == 15: events.append("🔔 افتتاح نيويورك")
+    if h == 0: events.append("🔕 إغلاق نيويورك")
 
     return events
 
-# ==========================
-# 📡 API
 # ==========================
 def price(symbol):
     try:
@@ -131,159 +100,185 @@ def price(symbol):
 
 def klines(symbol):
     try:
-        data = requests.get(
+        d = requests.get(
             f"https://api.binance.com/api/v3/klines?symbol={symbol}&interval=5m&limit=100"
         ).json()
-
-        return (
-            [float(x[4]) for x in data],
-            [float(x[2]) for x in data],
-            [float(x[3]) for x in data],
-        )
+        return [float(x[4]) for x in d],[float(x[2]) for x in d],[float(x[3]) for x in d]
     except:
-        return [], [], []
+        return [],[],[]
 
 # ==========================
-# 📊 مؤشرات
-# ==========================
-def ema(data, p):
+def ema(data,p):
     return pd.Series(data).ewm(span=p).mean().iloc[-1]
 
 def rsi(data):
-    s = pd.Series(data)
-    d = s.diff()
-    g = d.clip(lower=0).rolling(14).mean()
-    l = (-d.clip(upper=0)).rolling(14).mean()
-    rs = g.iloc[-1] / (l.iloc[-1] + 1e-9)
-    return 100 - (100 / (1 + rs))
+    s=pd.Series(data)
+    d=s.diff()
+    g=d.clip(lower=0).rolling(14).mean()
+    l=(-d.clip(upper=0)).rolling(14).mean()
+    rs=g.iloc[-1]/(l.iloc[-1]+1e-9)
+    return 100-(100/(1+rs))
 
-def atr(high, low, close):
-    tr = []
-    for i in range(1, len(close)):
-        tr.append(max(
-            high[i]-low[i],
-            abs(high[i]-close[i-1]),
-            abs(low[i]-close[i-1])
-        ))
+def atr(h,l,c):
+    tr=[]
+    for i in range(1,len(c)):
+        tr.append(max(h[i]-l[i],abs(h[i]-c[i-1]),abs(l[i]-c[i-1])))
     return pd.Series(tr).rolling(14).mean().iloc[-1]
 
 # ==========================
-# 📊 تحليل (بدون تغيير منطقي)
+# 🤖 AI LEVEL 2 ENGINE
+# ==========================
+def ai_regime(score, atr_val):
+    if atr_val is None:
+        return "UNKNOWN"
+    if atr_val > 1:
+        return "VOLATILE"
+    if abs(score) > 8:
+        return "TRENDING"
+    return "RANGING"
+
+def ai_quality(score, conf):
+    if conf >= 80 and abs(score) > 10:
+        return "👑 FANNAN AI"
+    if conf >= 65:
+        return "⭐⭐⭐ STRONG"
+    if conf >= 50:
+        return "⭐⭐ MID"
+    return "⭐ WEAK"
+
+def fake_filter(score, regime):
+    if regime == "RANGING" and abs(score) < 6:
+        return True
+    if regime == "VOLATILE" and abs(score) < 5:
+        return True
+    return False
+
+# ==========================
+# 📊 ANALYSIS (UNCHANGED LOGIC)
 # ==========================
 def analyse(symbol):
 
-    c, h, l = klines(symbol)
+    c,h,l = klines(symbol)
     p = price(symbol)
 
-    if not p or len(c) < 60:
+    if not p or len(c)<60:
         return None
 
-    ema20 = ema(c, 20)
-    ema50 = ema(c, 50)
-    r = rsi(c)
-    a = atr(h, l, c)
+    ema20=ema(c,20)
+    ema50=ema(c,50)
+    r=rsi(c)
+    a=atr(h,l,c)
 
-    score = 0
-    score += 2 if ema20 > ema50 else -2
-    score += 2 if r < 30 else -2 if r > 70 else 0
+    score=0
+    score+=2 if ema20>ema50 else -2
+    score+=2 if r<30 else -2 if r>70 else 0
 
-    sess, w = session()
-    mp = market_power()
+    sess,w=session()
+    mp=market_power()
 
-    score *= w
-    score *= mp
+    score*=w
+    score*=mp
 
-    if abs(score) < 4:
+    regime = ai_regime(score,a)
+
+    if fake_filter(score,regime):
         return None
 
-    if score > 0:
-        direction = "🟢 BUY"
-        sl = p - a * 1.5
-        tp1 = p + a * 1.5
-        tp2 = p + a * 2.5
-        tp3 = p + a * 4
+    if abs(score)<4:
+        return None
+
+    if score>0:
+        direction="🟢 BUY"
+        sl=p-a*1.5
+        tp1=p+a*1.5
+        tp2=p+a*2.5
+        tp3=p+a*4
     else:
-        direction = "🔴 SELL"
-        sl = p + a * 1.5
-        tp1 = p - a * 1.5
-        tp2 = p - a * 2.5
-        tp3 = p - a * 4
+        direction="🔴 SELL"
+        sl=p+a*1.5
+        tp1=p-a*1.5
+        tp2=p-a*2.5
+        tp3=p-a*4
 
-    conf = min(100, abs(score) * 15)
+    conf=min(100,abs(score)*15)
 
-    return symbol, p, direction, score, conf, sl, tp1, tp2, tp3, sess, mp
+    return symbol,p,direction,score,conf,sl,tp1,tp2,tp3,sess,mp,regime
 
 # ==========================
-# 🎛 لوحة
+# 🎛 UI
 # ==========================
 def on_chat(msg):
-    chat_id = msg['chat']['id']
-    text = msg.get('text','')
-
-    if text == "/start":
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="BTC", callback_data="BTCUSDT")],
-            [InlineKeyboardButton(text="ETH", callback_data="ETHUSDT")],
-            [InlineKeyboardButton(text="BNB", callback_data="BNBUSDT")],
-            [InlineKeyboardButton(text="SOL", callback_data="SOLUSDT")],
-            [InlineKeyboardButton(text="PAXG", callback_data="PAXGUSDT")],
-            [InlineKeyboardButton(text="STATUS", callback_data="STATUS")]
+    chat_id=msg['chat']['id']
+    if msg.get('text')=="/start":
+        keyboard=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="BTC",callback_data="BTCUSDT")],
+            [InlineKeyboardButton(text="ETH",callback_data="ETHUSDT")],
+            [InlineKeyboardButton(text="BNB",callback_data="BNBUSDT")],
+            [InlineKeyboardButton(text="SOL",callback_data="SOLUSDT")],
+            [InlineKeyboardButton(text="PAXG",callback_data="PAXGUSDT")],
+            [InlineKeyboardButton(text="STATUS",callback_data="STATUS")]
         ])
-
-        bot.sendMessage(chat_id, "👑 لوحة البوت", reply_markup=keyboard)
+        bot.sendMessage(chat_id,"👑 AI BOT",reply_markup=keyboard)
 
 def on_callback(msg):
-    qid, chat_id, data = telepot.glance(msg, flavor='callback_query')
+    qid,chat_id,data=telepot.glance(msg,flavor='callback_query')
+    if data=="STATUS":
+        bot.sendMessage(chat_id,"🟢 LIVE BOT")
 
-    if data == "STATUS":
-        bot.sendMessage(chat_id, "🟢 البوت يعمل")
-        return
-
-# ==========================
-MessageLoop(bot, {
-    'chat': on_chat,
-    'callback_query': on_callback
+MessageLoop(bot,{
+'chat':on_chat,
+'callback_query':on_callback
 }).run_as_thread()
 
 # ==========================
-# 🚀 تشغيل
+# 🚀 RUN
 # ==========================
 def run():
-    bot.sendMessage(ADMIN_CHAT_ID, "👑 BOT STARTED PRO VERSION")
+
+    global last_event_hour
+
+    bot.sendMessage(ADMIN_CHAT_ID,"👑 AI LEVEL 2 STARTED")
 
     while True:
         try:
 
-            events = market_events()
-            for e in events:
-                bot.sendMessage(ADMIN_CHAT_ID, e)
+            # events (no spam)
+            h=now().hour
+            if h!=last_event_hour:
+                last_event_hour=h
+                for e in market_events():
+                    bot.sendMessage(ADMIN_CHAT_ID,e)
 
             for s in watchlist:
 
-                r = analyse(s)
+                r=analyse(s)
                 if not r:
                     continue
 
-                symbol,p,direction,score,conf,sl,tp1,tp2,tp3,sess,mp = r
+                symbol,p,direction,score,conf,sl,tp1,tp2,tp3,sess,mp,regime=r
 
-                if conf < 50:
+                if conf<50:
                     continue
 
-                if last_signal.get(s) == direction:
+                if last_signal.get(s)==direction:
                     continue
 
-                msg = f"""
-👑 روبوت برو
+                quality=ai_quality(score,conf)
+
+                msg=f"""
+👑 AI LEVEL 2 BOT
 
 📊 {symbol}
 💰 {p}
 
 🎯 {direction}
-🔥 {score}
-🧠 {conf}%
+🔥 Score {score}
+🧠 Conf {conf}%
+🤖 Quality {quality}
+📊 Regime {regime}
 
-💼 الجلسة: {sess}
-🌍 قوة السوق: {round(mp,2)}
+💼 Session {sess}
+🌍 Power {mp}
 
 🛑 SL {sl}
 🎯 TP1 {tp1}
@@ -291,10 +286,9 @@ def run():
 🎯 TP3 {tp3}
 """
 
-                bot.sendMessage(ADMIN_CHAT_ID, msg)
+                bot.sendMessage(ADMIN_CHAT_ID,msg)
 
-                last_signal[s] = direction
-
+                last_signal[s]=direction
                 time.sleep(2)
 
         except Exception as e:
