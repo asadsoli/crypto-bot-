@@ -284,8 +284,7 @@ def analyse(symbol):
 
 
 def run():
-    bot.sendMessage(ADMIN_CHAT_ID, "👑 BOT LIVE ON RENDER")
-
+    
     while True:
         try:
             for s in watchlist:
