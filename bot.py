@@ -145,7 +145,9 @@ def news_engine():
         return "NO_NEWS", 1.0
 
 # ==========================
-def analyse(symbol):
+
+        tp1 = p - a*1.5
+        tp2 = p - a*2.5def analyse(symbol):
 
     c,h,l = klines(symbol)
     p = price(symbol)
@@ -203,8 +205,6 @@ def analyse(symbol):
     else:
         direction = "🔴 SELL"
         sl = p + a*1.5
-        tp1 = p - a*1.5
-        tp2 = p - a*2.5
         tp3 = p - a*4
 
     confidence = min(100, abs(score)*15)
@@ -214,12 +214,82 @@ def analyse(symbol):
 if conf < 45:
     continue
 # ==========================
+def analyse(symbol):
+
+    c, h, l = klines(symbol)
+    p = price(symbol)
+
+    if not p or len(c) < 60:
+        return None
+
+    ema20 = ema(c, 20)
+    ema50 = ema(c, 50)
+    r = rsi(c)
+    a = atr(h, l, c)
+
+    buy_liq, sell_liq = liquidity(h, l)
+
+    score = 0
+    score += 2 if ema20 > ema50 else -2
+    score += 2 if r < 30 else -2 if r > 70 else 0
+    score += 1 if buy_liq and p > buy_liq else -1 if sell_liq and p < sell_liq else 0
+
+    score += fvg(h, l)
+    score += order_block(c)
+
+    # Multi TF 15m
+    c15, h15, l15 = klines_tf(symbol, "15m")
+    if len(c15) > 50:
+        score += 2 if ema(c15, 20) > ema(c15, 50) else -2
+
+    # Multi TF 1h
+    c1h, h1h, l1h = klines_tf(symbol, "1h")
+    if len(c1h) > 50:
+        score += 2 if ema(c1h, 20) > ema(c1h, 50) else -2
+
+    # دعم ومقاومة
+    res, sup = support_resistance(h, l)
+    if res and p > res:
+        score += 2
+    elif sup and p < sup:
+        score -= 2
+
+    sess, weight = session()
+    score *= weight
+
+    news_state, news_weight = news_engine()
+    score *= news_weight
+
+    # فلتر الإشارات الضعيفة
+    if abs(score) < 3:
+        return None
+
+    # الاتجاه والأهداف
+    if score > 0:
+        direction = "🟢 BUY"
+        sl = p - a * 1.5
+        tp1 = p + a * 1.5
+        tp2 = p + a * 2.5
+        tp3 = p + a * 4
+    else:
+        direction = "🔴 SELL"
+        sl = p + a * 1.5
+        tp1 = p - a * 1.5
+        tp2 = p - a * 2.5
+        tp3 = p - a * 4
+
+    conf = min(100, abs(score) * 15)
+
+    return symbol, p, direction, score, conf, sl, tp1, tp2, tp3, sess, news
+
+
 def run():
     bot.sendMessage(ADMIN_CHAT_ID, "👑 BOT LIVE ON RENDER")
 
     while True:
         try:
             for s in watchlist:
+
                 r = analyse(s)
                 if not r:
                     continue
@@ -260,7 +330,3 @@ def run():
             print("ERROR:", e)
 
         time.sleep(60)
-
-# ==========================
-keep_alive()
-run()
