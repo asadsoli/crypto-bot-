@@ -224,8 +224,24 @@ def run():
                 if not r:
                     continue
 
-                symbol,p,direction,score,conf,sl,tp1,tp2,tp3,sess,news = r
+                msg = f"""
+👑 روبوت الإشارات الذكي
 
+📊 الزوج: {symbol}
+💰 سعر الدخول: {round(p, 2)}
+
+🎯 الاتجاه: {direction}
+🔥 قوة الإشارة: {round(score, 2)}
+🧠 نسبة الثقة: {round(conf, 2)}%
+
+💼 الجلسة: {sess}
+📰 الأخبار: {news}
+
+🛑 وقف الخسارة: {round(sl, 2)}
+🎯 الهدف الأول: {round(tp1, 2)}
+🎯 الهدف الثاني: {round(tp2, 2)}
+🎯 الهدف الثالث: {round(tp3, 2)}
+"""
                 if last_signal.get(s) == direction:
                     continue
 
