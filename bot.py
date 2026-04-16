@@ -224,6 +224,14 @@ def run():
                 if not r:
                     continue
 
+                symbol,p,direction,score,conf,sl,tp1,tp2,tp3,sess,news = r
+
+                if conf < 45:
+                    continue
+
+                if last_signal.get(s) == direction:
+                    continue
+
                 msg = f"""
 👑 روبوت الإشارات الذكي
 
@@ -242,10 +250,6 @@ def run():
 🎯 الهدف الثاني: {round(tp2, 2)}
 🎯 الهدف الثالث: {round(tp3, 2)}
 """
-                if last_signal.get(s) == direction:
-                    continue
-
-                msg = f"{symbol} | {direction} | Score:{round(score,2)} | Conf:{conf}%"
 
                 bot.sendMessage(ADMIN_CHAT_ID, msg)
 
