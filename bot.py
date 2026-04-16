@@ -6,12 +6,15 @@ import feedparser
 from datetime import datetime, timezone
 import os
 
-# ==========================
-# 🔥 KEEP ALIVE
-# ==========================
 from flask import Flask
 from threading import Thread
 
+from telepot.loop import MessageLoop
+from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
+
+# ==========================
+# 🔥 KEEP ALIVE
+# ==========================
 app = Flask('')
 
 @app.route('/')
@@ -21,9 +24,7 @@ def home():
 def run_web():
     app.run(host='0.0.0.0', port=10000)
 
-def keep_alive():
-    t = Thread(target=run_web)
-    t.start()
+Thread(target=run_web).start()
 
 # ==========================
 # 🔐 بيانات
@@ -33,8 +34,12 @@ ADMIN_CHAT_ID = int(os.getenv("ADMIN_CHAT_ID"))
 
 bot = telepot.Bot(TOKEN)
 
-# ==========================
-# 🧠 حالة البوت
+# 🔥 حذف webhook (حل مشاكل عدم الرد)
+try:
+    requests.get(f"https://api.telegram.org/bot{TOKEN}/deleteWebhook")
+except:
+    pass
+
 # ==========================
 last_run_time = time.time()
 last_signal_info = "لا يوجد"
@@ -42,12 +47,8 @@ last_session = None
 last_signal = {}
 
 # ==========================
-# 📊 قائمة العملات (مع PAXG)
-# ==========================
 watchlist = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "PAXGUSDT"]
 
-# ==========================
-# ⏱️ الوقت والجلسة
 # ==========================
 def now():
     return datetime.now(timezone.utc)
@@ -72,8 +73,6 @@ def market_session():
         return "NEW YORK"
     return "QUIET"
 
-# ==========================
-# 📡 API
 # ==========================
 def price(symbol):
     try:
@@ -102,8 +101,6 @@ def klines_tf(symbol, interval):
         return [], [], []
 
 # ==========================
-# 📐 مؤشرات
-# ==========================
 def ema(data, p):
     return pd.Series(data).ewm(span=p).mean().iloc[-1]
 
@@ -121,8 +118,6 @@ def atr(high, low, close):
         tr.append(max(high[i]-low[i], abs(high[i]-close[i-1]), abs(low[i]-close[i-1])))
     return pd.Series(tr).rolling(14).mean().iloc[-1]
 
-# ==========================
-# 📊 أدوات التحليل
 # ==========================
 def liquidity(highs, lows):
     if len(highs) < 20:
@@ -147,8 +142,6 @@ def order_block(closes):
     return 1 if abs(closes[-1] - closes[-2]) > abs(closes[-2] - closes[-3]) else 0
 
 # ==========================
-# 📰 الأخبار
-# ==========================
 def news_engine():
     try:
         feed = feedparser.parse("https://cryptopanic.com/news/rss/")
@@ -169,7 +162,7 @@ def news_engine():
         return "NO_NEWS", 1.0
 
 # ==========================
-# 🧠 التحليل الأساسي (لم يتم تغييره)
+# 🔥 التحليل (بدون أي تغيير)
 # ==========================
 def analyse(symbol):
 
@@ -235,8 +228,6 @@ def analyse(symbol):
     return symbol,p,direction,score,conf,sl,tp1,tp2,tp3,sess,news
 
 # ==========================
-# 📊 فحص العملة
-# ==========================
 def coin_status(symbol):
     c,h,l = klines(symbol)
     p = price(symbol)
@@ -249,36 +240,69 @@ def coin_status(symbol):
     r = rsi(c)
     a = atr(h,l,c)
 
-    if a / p < 0.003:
-        state = "هادئ 🟢"
-    elif a / p < 0.01:
-        state = "متوسط ⚡"
-    else:
-        state = "عنيف 🔥"
-
+    state = "هادئ 🟢" if a/p < 0.003 else "متوسط ⚡" if a/p < 0.01 else "عنيف 🔥"
     trend = "صاعد 📈" if ema20 > ema50 else "هابط 📉"
 
     return symbol,p,trend,r,state
 
 # ==========================
-# 🚀 التشغيل
+# 🎛 لوحة التحكم
+# ==========================
+def on_chat(msg):
+    chat_id = msg['chat']['id']
+    text = msg.get('text','')
+
+    if text == "/start":
+
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="📊 BTC", callback_data="BTCUSDT")],
+            [InlineKeyboardButton(text="📊 ETH", callback_data="ETHUSDT")],
+            [InlineKeyboardButton(text="📊 BNB", callback_data="BNBUSDT")],
+            [InlineKeyboardButton(text="📊 SOL", callback_data="SOLUSDT")],
+            [InlineKeyboardButton(text="🟡 PAXG", callback_data="PAXGUSDT")],
+            [InlineKeyboardButton(text="📡 حالة البوت", callback_data="STATUS")]
+        ])
+
+        bot.sendMessage(chat_id, "👑 لوحة التحكم", reply_markup=keyboard)
+
+def on_callback(msg):
+    qid, chat_id, data = telepot.glance(msg, flavor='callback_query')
+
+    if data == "STATUS":
+        bot.sendMessage(chat_id, f"🟢 البوت شغال\n📊 آخر إشارة: {last_signal_info}")
+        return
+
+    info = coin_status(data)
+
+    if not info:
+        bot.sendMessage(chat_id, "❌ لا توجد بيانات")
+        return
+
+    symbol,p,trend,r,state = info
+
+    bot.sendMessage(chat_id,
+        f"""📊 {symbol}
+💰 السعر: {round(p,2)}
+📈 الاتجاه: {trend}
+📉 RSI: {round(r,2)}
+⚡ الحالة: {state}"""
+    )
+
+# ==========================
+MessageLoop(bot, {
+    'chat': on_chat,
+    'callback_query': on_callback
+}).run_as_thread()
+
 # ==========================
 def run():
-    global last_run_time, last_signal_info, last_session
+    global last_signal_info
 
     bot.sendMessage(ADMIN_CHAT_ID, "👑 تم تشغيل البوت على السيرفر بنجاح")
 
     while True:
         try:
-            # جلسات السوق
-            sess_now = market_session()
-            if sess_now != last_session:
-                last_session = sess_now
-                bot.sendMessage(ADMIN_CHAT_ID, f"🌍 تغيير الجلسة: {sess_now}")
-
             for s in watchlist:
-
-                last_run_time = time.time()
 
                 r = analyse(s)
                 if not r:
@@ -320,12 +344,9 @@ def run():
 
         except Exception as e:
             print("ERROR:", e)
-            time.sleep(5)
 
         time.sleep(60)
 
-# ==========================
-# 🟢 تشغيل
 # ==========================
 keep_alive()
 
