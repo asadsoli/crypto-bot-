@@ -191,7 +191,7 @@ def analyse(symbol):
     news_state, news_weight = news_engine()
     score *= news_weight
 
-    if abs(score) < 2:
+    if abs(score) < 3:
         return None
 
     if score > 0:
