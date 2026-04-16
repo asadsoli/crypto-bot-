@@ -209,8 +209,10 @@ def analyse(symbol):
 
     confidence = min(100, abs(score)*15)
 
-    return symbol,p,direction,score,confidence,sl,tp1,tp2,tp3,sess,news_state
+    symbol,p,direction,score,conf,sl,tp1,tp2,tp3,sess,news = r
 
+if conf < 45:
+    continue
 # ==========================
 def run():
     bot.sendMessage(ADMIN_CHAT_ID, "👑 BOT LIVE ON RENDER")
