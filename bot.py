@@ -384,3 +384,19 @@ def run():
         time.sleep(60)
 
 Thread(target=run).start()
+
+# ==========================
+def start_bot():
+    while True:
+        try:
+            MessageLoop(bot, handle).run_as_thread()
+            print("✅ BOT LOOP STARTED")
+
+            while True:
+                time.sleep(10)
+
+        except Exception as e:
+            print("🔴 BOT CRASHED:", e)
+            time.sleep(5)
+
+Thread(target=start_bot).start()
