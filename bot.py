@@ -39,6 +39,7 @@ except:
 
 # ==========================
 last_signal = {}
+last_signal_info = "لا يوجد"
 last_event_hour = None
 
 watchlist = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "PAXGUSDT"]
@@ -68,7 +69,6 @@ def market_session():
         return "NEW YORK"
     return "QUIET"
 
-# ==========================
 def market_power():
     sess = market_session()
     return {"NEW YORK":1.5,"LONDON":1.3,"ASIA":1.0}.get(sess,0.7)
@@ -126,7 +126,43 @@ def atr(h,l,c):
     return pd.Series(tr).rolling(14).mean().iloc[-1]
 
 # ==========================
-# 🤖 AI LEVEL 2 ENGINE
+def news_engine():
+    try:
+        feed = feedparser.parse("https://cryptopanic.com/news/rss/")
+        score = 0
+
+        for e in feed.entries[:10]:
+            t = e.title.lower()
+
+            if any(w in t for w in ["rise", "bull", "pump", "gain", "surge"]):
+                score += 1
+
+            if any(w in t for w in ["fall", "crash", "drop", "bear", "dump"]):
+                score -= 1
+
+        if score >= 3:
+            return "BULLISH", 1.2
+        elif score <= -3:
+            return "BEARISH", 0.7
+        return "NEUTRAL", 1.0
+
+    except:
+        return "NO_NEWS", 1.0
+
+# ==========================
+def market_event_bias():
+    h = now().hour
+
+    bias = 1.0
+
+    if h in [10, 15, 16, 17]:
+        bias = 1.2
+
+    if h in [0, 8, 19]:
+        bias = 0.8
+
+    return bias
+
 # ==========================
 def ai_regime(score, atr_val):
     if atr_val is None:
@@ -154,8 +190,6 @@ def fake_filter(score, regime):
     return False
 
 # ==========================
-# 📊 ANALYSIS (UNCHANGED LOGIC)
-# ==========================
 def analyse(symbol):
 
     c,h,l = klines(symbol)
@@ -175,9 +209,13 @@ def analyse(symbol):
 
     sess,w=session()
     mp=market_power()
+    me=market_event_bias()
+    news, nw = news_engine()
 
     score*=w
     score*=mp
+    score*=me
+    score*=nw
 
     regime = ai_regime(score,a)
 
@@ -202,36 +240,86 @@ def analyse(symbol):
 
     conf=min(100,abs(score)*15)
 
-    return symbol,p,direction,score,conf,sl,tp1,tp2,tp3,sess,mp,regime
+    return symbol,p,direction,score,conf,sl,tp1,tp2,tp3,sess,mp
 
-# ==========================
-# 🎛 UI
 # ==========================
 def on_chat(msg):
-    chat_id=msg['chat']['id']
-    if msg.get('text')=="/start":
-        keyboard=InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="BTC",callback_data="BTCUSDT")],
-            [InlineKeyboardButton(text="ETH",callback_data="ETHUSDT")],
-            [InlineKeyboardButton(text="BNB",callback_data="BNBUSDT")],
-            [InlineKeyboardButton(text="SOL",callback_data="SOLUSDT")],
-            [InlineKeyboardButton(text="PAXG",callback_data="PAXGUSDT")],
-            [InlineKeyboardButton(text="STATUS",callback_data="STATUS")]
+    chat_id = msg['chat']['id']
+    text = msg.get('text','')
+
+    if text == "/start":
+
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="📊 BTC", callback_data="BTCUSDT")],
+            [InlineKeyboardButton(text="📊 ETH", callback_data="ETHUSDT")],
+            [InlineKeyboardButton(text="📊 BNB", callback_data="BNBUSDT")],
+            [InlineKeyboardButton(text="📊 SOL", callback_data="SOLUSDT")],
+            [InlineKeyboardButton(text="🟡 PAXG", callback_data="PAXGUSDT")],
+            [InlineKeyboardButton(text="⚡ حالة السوق", callback_data="MARKET")],
+            [InlineKeyboardButton(text="👑 حالة البوت", callback_data="STATUS")]
         ])
-        bot.sendMessage(chat_id,"👑 AI BOT",reply_markup=keyboard)
 
-def on_callback(msg):
-    qid,chat_id,data=telepot.glance(msg,flavor='callback_query')
-    if data=="STATUS":
-        bot.sendMessage(chat_id,"🟢 LIVE BOT")
-
-MessageLoop(bot,{
-'chat':on_chat,
-'callback_query':on_callback
-}).run_as_thread()
+        bot.sendMessage(chat_id, "👑 لوحة التحكم الاحترافية", reply_markup=keyboard)
 
 # ==========================
-# 🚀 RUN
+def on_callback(msg):
+    qid, chat_id, data = telepot.glance(msg, flavor='callback_query')
+
+    if data == "STATUS":
+        bot.sendMessage(chat_id,
+            f"👑 حالة البوت\n🟢 يعمل بشكل طبيعي\n📊 آخر إشارة: {last_signal_info}"
+        )
+        return
+
+    if data == "MARKET":
+        sess, _ = session()
+        mp = market_power()
+
+        bot.sendMessage(chat_id,
+            f"🌍 السوق الآن\n💼 الجلسة: {sess}\n⚡ قوة السوق: {round(mp,2)}"
+        )
+        return
+
+    info = analyse(data)
+
+    if not info:
+        bot.sendMessage(chat_id, "❌ لا توجد إشارة حالياً")
+        return
+
+    symbol,p,direction,score,conf,sl,tp1,tp2,tp3,sess,mp = info
+
+    bot.sendMessage(chat_id,
+        f"""👑 تحليل مباشر
+
+📊 {symbol}
+💰 السعر: {round(p,2)}
+
+🎯 الاتجاه: {direction}
+🔥 القوة: {round(score,2)}
+🧠 الثقة: {round(conf,2)}%
+
+💼 الجلسة: {sess}
+🌍 قوة السوق: {round(mp,2)}
+
+🛑 SL: {round(sl,2)}
+🎯 TP1: {round(tp1,2)}
+🎯 TP2: {round(tp2,2)}
+🎯 TP3: {round(tp3,2)}
+"""
+    )
+
+# ==========================
+def handle(msg):
+    content_type, chat_type, chat_id = telepot.glance(msg)
+
+    if content_type == 'text':
+        on_chat(msg)
+
+    elif content_type == 'callback_query':
+        on_callback(msg)
+
+MessageLoop(bot, handle).run_as_thread()
+
 # ==========================
 def run():
 
@@ -242,7 +330,6 @@ def run():
     while True:
         try:
 
-            # events (no spam)
             h=now().hour
             if h!=last_event_hour:
                 last_event_hour=h
@@ -255,15 +342,13 @@ def run():
                 if not r:
                     continue
 
-                symbol,p,direction,score,conf,sl,tp1,tp2,tp3,sess,mp,regime=r
+                symbol,p,direction,score,conf,sl,tp1,tp2,tp3,sess,mp = r
 
                 if conf<50:
                     continue
 
                 if last_signal.get(s)==direction:
                     continue
-
-                quality=ai_quality(score,conf)
 
                 msg=f"""
 👑 AI LEVEL 2 BOT
@@ -274,8 +359,6 @@ def run():
 🎯 {direction}
 🔥 Score {score}
 🧠 Conf {conf}%
-🤖 Quality {quality}
-📊 Regime {regime}
 
 💼 Session {sess}
 🌍 Power {mp}
