@@ -310,15 +310,19 @@ def on_callback(msg):
 
 # ==========================
 def handle(msg):
-    content_type, chat_type, chat_id = telepot.glance(msg)
+    try:
+        # 🔥 callback (زر)
+        if 'data' in msg:
+            on_callback(msg)
+            return
 
-    if content_type == 'text':
-        on_chat(msg)
+        # 🔥 رسالة عادية
+        if 'text' in msg:
+            on_chat(msg)
+            return
 
-    elif content_type == 'callback_query':
-        on_callback(msg)
-
-MessageLoop(bot, handle).run_as_thread()
+    except Exception as e:
+        print("HANDLE ERROR:", e)
 
 # ==========================
 def run():
