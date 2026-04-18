@@ -391,6 +391,24 @@ def bot_supervisor():
             print("🟢 STARTING BOT LOOP")
 
             MessageLoop(bot, handle).run_as_thread()
+            print("🟢 MESSAGE LOOP STARTED")
+
+            while True:
+                time.sleep(60)
+
+        except Exception as e:
+            print("🔴 BOT CRASH:", e)
+            time.sleep(5)
+
+Thread(target=bot_supervisor).start()
+
+# ==========================
+def bot_supervisor():
+    while True:
+        try:
+            print("🟢 STARTING BOT LOOP")
+
+            MessageLoop(bot, handle).run_as_thread()
 print("🟢 MESSAGE LOOP RUNNING")
 
             while True:
