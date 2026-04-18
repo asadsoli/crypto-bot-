@@ -370,10 +370,20 @@ def run():
             # ==========================
             # 🔔 SESSION OPEN/CLOSE EVENTS
             # ==========================
-            events = market_events()
+            def check_sessions():
+    h = now().hour
 
-            for e in events:
-                bot.sendMessage(ADMIN_CHAT_ID, e)
+    events = []
+
+    if h == 10 and last_session_state["LONDON"] != "CLOSE":
+        events.append("🔕 إغلاق لندن")
+        last_session_state["LONDON"] = "CLOSE"
+
+    if h == 6 and last_session_state["LONDON"] != "OPEN":
+        events.append("🔔 افتتاح لندن")
+        last_session_state["LONDON"] = "OPEN"
+
+    return events
 
             # ==========================
             # 🔔 MARKET EVENTS (existing)
