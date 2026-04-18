@@ -264,48 +264,58 @@ def on_chat(msg):
 def on_callback(msg):
     qid, chat_id, data = telepot.glance(msg, flavor='callback_query')
 
-    if data == "STATUS":
-        bot.sendMessage(chat_id,
-            f"👑 حالة البوت\n🟢 يعمل بشكل طبيعي\n📊 آخر إشارة: {last_signal_info}"
-        )
-        return
-
-    if data == "MARKET":
-        sess, _ = session()
-        mp = market_power()
-
-        bot.sendMessage(chat_id,
-            f"🌍 السوق الآن\n💼 الجلسة: {sess}\n⚡ قوة السوق: {round(mp,2)}"
-        )
-        return
-
     info = analyse(data)
 
     if not info:
-        bot.sendMessage(chat_id, "❌ لا توجد إشارة حالياً")
+        bot.sendMessage(chat_id, "⚪ السوق هادئ / لا توجد حركة واضحة الآن")
         return
 
-    symbol,p,direction,score,conf,sl,tp1,tp2,tp3,sess,mp = info
+    symbol, p, direction, score, conf, sl, tp1, tp2, tp3, sess, mp, is_strong = info
 
+    # ==========================
+    # حالة السوق
+    # ==========================
+    if abs(score) < 6:
+        state = "⚪ هادئ"
+    elif abs(score) < 10:
+        state = "🟡 متوسط"
+    else:
+        state = "🔥 قوي"
+
+    bias = "🟢 شراء (BUY)" if score > 0 else "🔴 بيع (SELL)"
+
+    # ==========================
+    # الجلسات (مفتوح / مغلق)
+    # ==========================
+    h = now().hour
+
+    asia = "🟢 مفتوحة" if 0 <= h < 6 else "🔴 مغلقة"
+    london = "🟢 مفتوحة" if 6 <= h < 12 else "🔴 مغلقة"
+    newyork = "🟢 مفتوحة" if 12 <= h < 18 else "🔴 مغلقة"
+
+    # ==========================
+    # الإرسال
+    # ==========================
     bot.sendMessage(chat_id,
-        f"""👑 تحليل مباشر
+        f"""📊 {symbol}
 
-📊 {symbol}
-💰 السعر: {round(p,2)}
+💰 السعر الحالي: {round(p, 2)}
 
-🎯 الاتجاه: {direction}
-🔥 القوة: {round(score,2)}
-🧠 الثقة: {round(conf,2)}%
+📈 الاتجاه: {bias}
+⚡ حالة السوق: {state}
 
-💼 الجلسة: {sess}
-🌍 قوة السوق: {round(mp,2)}
+💼 الجلسة الحالية: {sess}
+🌍 قوة السوق: {round(mp, 2)}
 
-🛑 SL: {round(sl,2)}
-🎯 TP1: {round(tp1,2)}
-🎯 TP2: {round(tp2,2)}
-🎯 TP3: {round(tp3,2)}
+🌐 الجلسات:
+🇯🇵 آسيا: {asia}
+🇬🇧 لندن: {london}
+🇺🇸 نيويورك: {newyork}
+
+🧠 قوة التحليل: {round(score, 2)}
+📊 الثقة: {round(conf, 2)}%
 """
-    )
+                   )
 
 # ==========================
 def handle(msg):
