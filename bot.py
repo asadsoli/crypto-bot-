@@ -222,7 +222,7 @@ def analyse(symbol):
     if fake_filter(score,regime):
         return None
 
-    if abs(score)<4:
+    if abs(score)<2:
         return None
 
     if score>0:
@@ -348,7 +348,7 @@ def run():
 
                 symbol,p,direction,score,conf,sl,tp1,tp2,tp3,sess,mp = r
 
-                if conf<50:
+                if conf<40:
                     continue
 
                 if last_signal.get(s)==direction:
