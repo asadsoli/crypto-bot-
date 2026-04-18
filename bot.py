@@ -268,7 +268,7 @@ def on_chat(msg):
 # ==========================
 def on_callback(msg):
 
-    # ...
+    qid, chat_id, data = telepot.glance(msg, flavor='callback_query')
 
     p = price(data)
 
@@ -276,6 +276,11 @@ def on_callback(msg):
         bot.sendMessage(chat_id, "❌ لا يمكن جلب السعر حالياً")
         return
 
+    info = analyse(data)
+
+    # ==========================
+    # لو ما في إشارة
+    # ==========================
     if not info:
         bot.sendMessage(chat_id,
             f"""📊 {data}
@@ -290,19 +295,19 @@ def on_callback(msg):
     symbol, p, direction, score, conf, sl, tp1, tp2, tp3, sess, mp, is_strong = info
 
     # ==========================
-    # حالة السوق
+    # حالة السوق (FIXED)
     # ==========================
-if conf < 60 or abs(score) < 5:
-    state = "⚪ ضعيف"
-elif conf < 75:
-    state = "🟡 متوسط"
-else:
-    state = "🔥 قوي"
+    if conf < 60 or abs(score) < 5:
+        state = "⚪ ضعيف"
+    elif conf < 75:
+        state = "🟡 متوسط"
+    else:
+        state = "🔥 قوي"
 
     bias = "🟢 شراء (BUY)" if score > 0 else "🔴 بيع (SELL)"
 
     # ==========================
-    # الجلسات (مفتوح / مغلق)
+    # الجلسات
     # ==========================
     h = now().hour
 
@@ -332,7 +337,7 @@ else:
 🧠 قوة التحليل: {round(score, 2)}
 📊 الثقة: {round(conf, 2)}%
 """
-                   )
+    )
 
 # ==========================
 def handle(msg):
