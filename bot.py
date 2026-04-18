@@ -192,64 +192,54 @@ def fake_filter(score, regime):
 # ==========================
 def analyse(symbol):
 
-    c,h,l = klines(symbol)
+    c, h, l = klines(symbol)
     p = price(symbol)
 
-    if not p or len(c)<60:
+    if not p or len(c) < 60:
         return None
 
-    ema20=ema(c,20)
-    ema50=ema(c,50)
-    r=rsi(c)
-    a=atr(h,l,c)
+    ema20 = ema(c, 20)
+    ema50 = ema(c, 50)
+    r = rsi(c)
+    a = atr(h, l, c)
 
     trend = 1 if ema20 > ema50 else -1
 
-momentum = 0
-if r < 30:
-    momentum = 1
-elif r > 70:
-    momentum = -1
+    momentum = 0
+    if r < 30:
+        momentum = 1
+    elif r > 70:
+        momentum = -1
 
-volatility = 1 if a > 1 else 0.5
+    score = (trend * 2) + (momentum * 3)
 
-score = (trend * 2) + (momentum * 3)
-score = score * volatility * mp * nw * me
-
-    sess,w=session()
-    mp=market_power()
-    me=market_event_bias()
+    sess, w = session()
+    mp = market_power()
+    me = market_event_bias()
     news, nw = news_engine()
 
-    score*=w
-    score*=mp
-    score*=me
-    score*=nw
-
-    regime = ai_regime(score,a)
-
-    if fake_filter(score,regime):
-        return None
+    score = score * w * mp * me * nw
 
     if abs(score) < 6:
-    return None
+        return None
 
-    if score>0:
-        direction="🟢 BUY"
-        sl=p-a*1.5
-        tp1=p+a*1.5
-        tp2=p+a*2.5
-        tp3=p+a*4
+    if score > 0:
+        direction = "🟢 BUY"
+        sl = p - a * 1.5
+        tp1 = p + a * 1.5
+        tp2 = p + a * 2.5
+        tp3 = p + a * 4
     else:
-        direction="🔴 SELL"
-        sl=p+a*1.5
-        tp1=p-a*1.5
-        tp2=p-a*2.5
-        tp3=p-a*4
+        direction = "🔴 SELL"
+        sl = p + a * 1.5
+        tp1 = p - a * 1.5
+        tp2 = p - a * 2.5
+        tp3 = p - a * 4
 
     conf = min(100, abs(score) * 6)
+    is_strong = conf >= 85
 
-    return symbol,p,direction,score,conf,sl,tp1,tp2,tp3,sess,mp
+    return symbol, p, direction, score, conf, sl, tp1, tp2, tp3, sess, mp, is_strong
 
 # ==========================
 def on_chat(msg):
