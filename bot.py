@@ -360,7 +360,7 @@ def run():
 
     global last_event_hour
 
-    bot.sendMessage(ADMIN_CHAT_ID,"👑 AI LEVEL 2 STARTED")
+    bot.sendMessage(ADMIN_CHAT_ID, "👑 AI LEVEL 2 STARTED")
 
     while True:
         try:
@@ -370,8 +370,8 @@ def run():
             # ==========================
             events = market_events()
 
-for e in events:
-    bot.sendMessage(ADMIN_CHAT_ID, e)
+            for e in events:
+                bot.sendMessage(ADMIN_CHAT_ID, e)
 
             # ==========================
             # 🔔 MARKET EVENTS (existing)
@@ -391,7 +391,7 @@ for e in events:
                 if not r:
                     continue
 
-                symbol,p,direction,score,conf,sl,tp1,tp2,tp3,sess,mp = r
+                symbol, p, direction, score, conf, sl, tp1, tp2, tp3, sess, mp, is_strong = r
 
                 if conf < 40:
                     continue
