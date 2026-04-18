@@ -358,6 +358,21 @@ def handle(msg):
         print("HANDLE ERROR:", e)
 
 # ==========================
+def check_sessions():
+    h = now().hour
+    events = []
+
+    if h == 10 and last_session_state["LONDON"] != "CLOSED":
+        events.append("🔕 إغلاق لندن")
+        last_session_state["LONDON"] = "CLOSED"
+
+    if h == 6 and last_session_state["LONDON"] != "OPEN":
+        events.append("🔔 افتتاح لندن")
+        last_session_state["LONDON"] = "OPEN"
+
+    return events
+
+
 def run():
 
     global last_event_hour
@@ -370,20 +385,10 @@ def run():
             # ==========================
             # 🔔 SESSION OPEN/CLOSE EVENTS
             # ==========================
-            def check_sessions():
-    h = now().hour
+            events = check_sessions()
 
-    events = []
-
-    if h == 10 and last_session_state["LONDON"] != "CLOSE":
-        events.append("🔕 إغلاق لندن")
-        last_session_state["LONDON"] = "CLOSE"
-
-    if h == 6 and last_session_state["LONDON"] != "OPEN":
-        events.append("🔔 افتتاح لندن")
-        last_session_state["LONDON"] = "OPEN"
-
-    return events
+            for e in events:
+                bot.sendMessage(ADMIN_CHAT_ID, e)
 
             # ==========================
             # 🔔 MARKET EVENTS (existing)
@@ -438,6 +443,7 @@ def run():
         except Exception as e:
             print("RUN ERROR:", e)
             time.sleep(3)
+
 
 Thread(target=run).start()
 
