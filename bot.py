@@ -247,7 +247,7 @@ score = score * volatility * mp * nw * me
         tp2=p-a*2.5
         tp3=p-a*4
 
-    conf=min(100,abs(score)*15)
+    conf = min(100, abs(score) * 6)
 
     return symbol,p,direction,score,conf,sl,tp1,tp2,tp3,sess,mp
 
