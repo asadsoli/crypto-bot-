@@ -362,15 +362,19 @@ def check_sessions():
     h = now().hour
     events = []
 
-    if h == 10 and last_session_state["LONDON"] != "CLOSED":
-        events.append("🔕 إغلاق لندن")
-        last_session_state["LONDON"] = "CLOSED"
-
-    if h == 6 and last_session_state["LONDON"] != "OPEN":
-        events.append("🔔 افتتاح لندن")
-        last_session_state["LONDON"] = "OPEN"
+    # 🟢 لندن
+    if 6 <= h < 12:
+        if session_state["LONDON"] != "OPEN":
+            events.append("🔔 افتتاح لندن")
+            session_state["LONDON"] = "OPEN"
+    else:
+        if session_state["LONDON"] != "CLOSED":
+            events.append("🔕 إغلاق لندن")
+            session_state["LONDON"] = "CLOSED")
 
     return events
+
+
 
 
 def run():
