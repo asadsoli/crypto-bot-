@@ -379,9 +379,8 @@ def run():
                 time.sleep(2)
 
         except Exception as e:
-            print(e)
-
-        time.sleep(60)
+    print("RUN ERROR:", e)
+    time.sleep(3)
 
 Thread(target=run).start()
 
