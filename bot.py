@@ -39,10 +39,15 @@ except:
 
 # ==========================
 last_signal = {}
-last_signal_info = "لا يوجد"
 last_event_hour = None
 
 watchlist = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "PAXGUSDT"]
+
+last_session_state = {
+    "ASIA": None,
+    "LONDON": None,
+    "NEW_YORK": None
+}
 
 # ==========================
 def now():
