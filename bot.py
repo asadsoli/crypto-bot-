@@ -128,7 +128,7 @@ def atr(h,l,c):
 # ==========================
 def news_engine():
     try:
-        feed = feedparser.parse("https://cryptopanic.com/news/rss/")
+        feed = feedparser.parse("https://cryptopanic.com/news/rss/", request_timeout=5)
         score = 0
 
         for e in feed.entries[:10]:
