@@ -453,6 +453,8 @@ def bot_supervisor():
 # 📩 HANDLER
 # ==========================
 def handle(msg):
+    print("🔥 HANDLE RECEIVED MESSAGE")  # 👈 هذا للاختبار فقط
+
     global last_ping
     last_ping = time.time()
 
