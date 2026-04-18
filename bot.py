@@ -348,27 +348,41 @@ def run():
     while True:
         try:
 
-            h=now().hour
-            if h!=last_event_hour:
-                last_event_hour=h
-                for e in market_events():
-                    bot.sendMessage(ADMIN_CHAT_ID,e)
+            # ==========================
+            # 🔔 SESSION OPEN/CLOSE EVENTS
+            # ==========================
+            events = check_sessions()
 
+            for e in events:
+                bot.sendMessage(ADMIN_CHAT_ID, e)
+
+            # ==========================
+            # 🔔 MARKET EVENTS (existing)
+            # ==========================
+            h = now().hour
+            if h != last_event_hour:
+                last_event_hour = h
+                for e in market_events():
+                    bot.sendMessage(ADMIN_CHAT_ID, e)
+
+            # ==========================
+            # 📊 ANALYSIS LOOP
+            # ==========================
             for s in watchlist:
 
-                r=analyse(s)
+                r = analyse(s)
                 if not r:
                     continue
 
                 symbol,p,direction,score,conf,sl,tp1,tp2,tp3,sess,mp = r
 
-                if conf<40:
+                if conf < 40:
                     continue
 
-                if last_signal.get(s)==direction:
+                if last_signal.get(s) == direction:
                     continue
 
-                msg=f"""
+                msg = f"""
 👑 AI LEVEL 2 BOT
 
 📊 {symbol}
@@ -387,9 +401,9 @@ def run():
 🎯 TP3 {tp3}
 """
 
-                bot.sendMessage(ADMIN_CHAT_ID,msg)
+                bot.sendMessage(ADMIN_CHAT_ID, msg)
 
-                last_signal[s]=direction
+                last_signal[s] = direction
                 time.sleep(2)
 
         except Exception as e:
