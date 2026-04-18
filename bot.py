@@ -231,8 +231,8 @@ score = score * volatility * mp * nw * me
     if fake_filter(score,regime):
         return None
 
-    if abs(score)<2:
-        return None
+    if abs(score) < 6:
+    return None
 
     if score>0:
         direction="🟢 BUY"
