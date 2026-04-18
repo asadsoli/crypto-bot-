@@ -391,6 +391,7 @@ def bot_supervisor():
             print("🟢 STARTING BOT LOOP")
 
             MessageLoop(bot, handle).run_as_thread()
+print("🟢 MESSAGE LOOP RUNNING")
 
             while True:
                 time.sleep(60)
