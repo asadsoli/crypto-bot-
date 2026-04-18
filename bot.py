@@ -15,6 +15,8 @@ from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
 # ==========================
 # 🔥 KEEP ALIVE
 # ==========================
+import os
+
 app = Flask('')
 
 @app.route('/')
@@ -22,7 +24,8 @@ def home():
     return "BOT IS RUNNING"
 
 def run_web():
-    app.run(host='0.0.0.0', port=10000)
+    PORT = int(os.getenv("PORT", 10000))  # 👈 هذا المهم
+    app.run(host='0.0.0.0', port=PORT)
 
 Thread(target=run_web).start()
 
