@@ -280,12 +280,12 @@ def on_callback(msg):
     # ==========================
     # حالة السوق
     # ==========================
-    if abs(score) < 6:
-        state = "⚪ هادئ"
-    elif abs(score) < 10:
-        state = "🟡 متوسط"
-    else:
-        state = "🔥 قوي"
+if conf < 60 or abs(score) < 5:
+    state = "⚪ ضعيف"
+elif conf < 75:
+    state = "🟡 متوسط"
+else:
+    state = "🔥 قوي"
 
     bias = "🟢 شراء (BUY)" if score > 0 else "🔴 بيع (SELL)"
 
