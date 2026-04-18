@@ -271,9 +271,26 @@ def on_callback(msg):
 
     info = analyse(data)
 
-    if not info:
-        bot.sendMessage(chat_id, "⚪ السوق هادئ / لا توجد حركة واضحة الآن")
-        return
+# ==========================
+# حتى لو ما في إشارة
+# ==========================
+p = price(data)
+
+if not p:
+    bot.sendMessage(chat_id, "❌ لا يمكن جلب السعر حالياً")
+    return
+
+# إذا ما في تحليل
+if not info:
+    bot.sendMessage(chat_id,
+        f"""📊 {data}
+
+💰 السعر الحالي: {round(p, 2)}
+
+⚪ السوق: هادئ / لا توجد إشارة قوية الآن
+"""
+    )
+    return
 
     symbol, p, direction, score, conf, sl, tp1, tp2, tp3, sess, mp, is_strong = info
 
