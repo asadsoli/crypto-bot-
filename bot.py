@@ -33,9 +33,11 @@ ADMIN_CHAT_ID = int(os.getenv("ADMIN_CHAT_ID"))
 bot = telepot.Bot(TOKEN)
 
 try:
-    requests.get(f"https://api.telegram.org/bot{TOKEN}/deleteWebhook")
-except:
-    pass
+    requests.get(
+        f"https://api.telegram.org/bot{TOKEN}/deleteWebhook?drop_pending_updates=true"
+    )
+except Exception as e:
+    print("Webhook delete error:", e)
 
 # ==========================
 last_signal = {}
