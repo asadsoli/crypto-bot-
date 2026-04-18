@@ -203,9 +203,18 @@ def analyse(symbol):
     r=rsi(c)
     a=atr(h,l,c)
 
-    score=0
-    score+=2 if ema20>ema50 else -2
-    score+=2 if r<30 else -2 if r>70 else 0
+    trend = 1 if ema20 > ema50 else -1
+
+momentum = 0
+if r < 30:
+    momentum = 1
+elif r > 70:
+    momentum = -1
+
+volatility = 1 if a > 1 else 0.5
+
+score = (trend * 2) + (momentum * 3)
+score = score * volatility * mp * nw * me
 
     sess,w=session()
     mp=market_power()
