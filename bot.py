@@ -450,6 +450,24 @@ def bot_supervisor():
 
 
 # ==========================
-# 🚀 تشغيل البوت (خارج الدالة تماماً)
+# 📩 HANDLER
+# ==========================
+def handle(msg):
+    global last_ping
+    last_ping = time.time()
+
+    print("📩 MSG:", msg)
+
+    if 'data' in msg:
+        on_callback(msg)
+        return
+
+    if 'text' in msg:
+        on_chat(msg)
+        return
+
+
+# ==========================
+# 🚀 تشغيل البوت (آخر سطر فقط)
 # ==========================
 Thread(target=bot_supervisor).start()
