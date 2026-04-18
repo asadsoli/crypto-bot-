@@ -368,10 +368,10 @@ def run():
             # ==========================
             # 🔔 SESSION OPEN/CLOSE EVENTS
             # ==========================
-            events = check_sessions()
+            events = market_events()
 
-            for e in events:
-                bot.sendMessage(ADMIN_CHAT_ID, e)
+for e in events:
+    bot.sendMessage(ADMIN_CHAT_ID, e)
 
             # ==========================
             # 🔔 MARKET EVENTS (existing)
