@@ -373,7 +373,7 @@ def check_sessions():
     else:
         if session_state["LONDON"] != "CLOSED":
             events.append("🔕 إغلاق لندن")
-            session_state["LONDON"] = "CLOSED")
+            session_state["LONDON"] = "CLOSED"
 
     return events
 
