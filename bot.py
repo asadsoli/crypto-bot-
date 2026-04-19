@@ -43,17 +43,23 @@ def run_web():
 Thread(target=run_web).start()
 
 # ==========================
+import requests
+import os
+import telepot
+
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 ADMIN_CHAT_ID = int(os.getenv("ADMIN_CHAT_ID"))
 
 bot = telepot.Bot(TOKEN)
 
+# 🔴 إزالة أي webhook قديم (مهم جدًا لـ MessageLoop)
 try:
-    requests.get(
+    response = requests.get(
         f"https://api.telegram.org/bot{TOKEN}/deleteWebhook?drop_pending_updates=true"
     )
+    print("🟢 Webhook deleted:", response.json())
 except Exception as e:
-    print("Webhook delete error:", e)
+    print("🔴 Webhook delete error:", e)
 
 # ==========================
 last_signal = {}
