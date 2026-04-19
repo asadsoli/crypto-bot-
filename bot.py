@@ -1,23 +1,26 @@
-import telepot
-import requests
+import os
 import time
+import requests
 import pandas as pd
 import feedparser
 from datetime import datetime, timezone
-import os
+
+import telepot
+from telepot.loop import MessageLoop
+from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
 
 from flask import Flask
 from threading import Thread
-import time
 
+
+# ==========================
+# 🌐 Flask App
+# ==========================
 app = Flask(__name__)
 
 @app.route('/')
 def home():
     return "BOT IS RUNNING"
-
-from telepot.loop import MessageLoop
-from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
 
 # ==========================
 # 🔥 KEEP ALIVE
