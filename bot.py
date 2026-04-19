@@ -235,17 +235,30 @@ def handle(msg):
 # ==========================
 if __name__ == "__main__":
     print("🟢 MAIN STARTED")
-    # تشغيل Flask في Thread
-    Thread(target=run_web).start()
     
-    # تنبيه المشرف
+    # 1. إغلاق أي اتصال قديم بشكل إجباري قبل بدء التشغيل (تصحيح الرابط هنا)
     try:
-        bot.sendMessage(ADMIN_CHAT_ID, "👑 AI LEVEL 2 STARTED ON RENDER")
+        requests.get(f"https://telegram.org{TOKEN}/deleteWebhook?drop_pending_updates=true")
+        # إضافة وقت انتظار بسيط لضمان استجابة سيرفرات تليجرام
+        time.sleep(2) 
     except:
         pass
 
-    # تشغيل البوت
+    # 2. تشغيل Flask في Thread لضمان عدم توقف ريندر
+    Thread(target=run_web, daemon=True).start()
+    
+    # 3. تنبيه المشرف (تأكد أن ADMIN_CHAT_ID معرف في الأعلى)
+    try:
+        bot.sendMessage(ADMIN_CHAT_ID, "👑 AI LEVEL 2 STARTED (Clean Start)")
+    except Exception as e:
+        print(f"Admin Alert Error: {e}")
+
+    # 4. تشغيل البوت بنظام القنوات (Polling)
     MessageLoop(bot, handle).run_as_thread()
     
+    print("🟢 Bot is now polling... Ready for commands.")
+    
+    # 5. حلقة لمنع السكربت من الانتهاء
     while True:
         time.sleep(10)
+        
