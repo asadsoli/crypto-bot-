@@ -23,6 +23,8 @@ from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
 # 🔥 KEEP ALIVE
 # ==========================
 import os
+from flask import Flask
+from threading import Thread
 
 app = Flask('')
 
