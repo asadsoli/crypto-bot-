@@ -520,5 +520,6 @@ def handle(msg):
 # ==========================
 
 if __name__ == "__main__":
+    print("🟢 MAIN STARTED")
     Thread(target=run_web).start()
     Thread(target=start_bot).start()
