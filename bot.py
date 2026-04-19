@@ -511,5 +511,7 @@ def handle(msg):
 # ==========================
 # 🚀 تشغيل البوت (آخر سطر فقط)
 # ==========================
-Thread(target=run_web).start()
-Thread(target=start_bot).start()
+
+if __name__ == "__main__":
+    Thread(target=run_web).start()
+    Thread(target=start_bot).start()
