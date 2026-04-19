@@ -8,6 +8,13 @@ import os
 
 from flask import Flask
 from threading import Thread
+import time
+
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "BOT IS RUNNING"
 
 from telepot.loop import MessageLoop
 from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
@@ -24,8 +31,7 @@ def home():
     return "BOT IS RUNNING"
 
 def run_web():
-    PORT = int(os.getenv("PORT", 10000))  # 👈 هذا المهم
-    app.run(host='0.0.0.0', port=PORT)
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
 
 Thread(target=run_web).start()
 
