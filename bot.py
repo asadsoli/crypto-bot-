@@ -484,6 +484,7 @@ def bot_supervisor():
 
         print("🟢 MESSAGE LOOP IS RUNNING")
 
+        # إبقاء السيرفر حي فقط بدون إعادة تشغيل MessageLoop
         while True:
             time.sleep(10)
 
