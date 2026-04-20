@@ -228,12 +228,12 @@ def analyse(symbol):
 
         final_score = score * mp * w * nw * vf
 
-        if abs(final_score) < 4:
+        if abs(final_score) < 2.5:
             return None
 
-        if abs(final_score) >= 8:
+        if abs(final_score) >= 6:
             strength = "🔥 STRONG"
-        elif abs(final_score) >= 6:
+        elif abs(final_score) >= 4:
             strength = "🟢 GOOD"
         else:
             return None
