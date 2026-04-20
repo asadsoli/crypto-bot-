@@ -332,14 +332,17 @@ if __name__ == "__main__":
         # 🌐 Web server
         Thread(target=run_web, daemon=True).start()
 
-        # 📩 Telegram bot loop (start first for responsiveness)
+        # 📩 Telegram bot loop (يشغل أولاً للاستجابة السريعة)
         MessageLoop(bot, handle).run_as_thread()
 
         # 🧠 Engine (analysis loop)
         Thread(target=engine_loop, daemon=True).start()
 
         # 💚 Heartbeat (monitor alive)
-        Thread(target=heartbeat, daemon=True).start()
+        try:
+            Thread(target=heartbeat, daemon=True).start()
+        except Exception as e:
+            print("HEARTBEAT ERROR:", e)
 
         # 🔔 Startup message
         try:
