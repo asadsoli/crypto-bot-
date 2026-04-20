@@ -195,7 +195,7 @@ def news_engine():
 
 
 # ==========================
-# 🧠 ANALYSIS ENGINE (UNCHANGED LOGIC)
+# 🧠 ANALYSIS ENGINE (FIXED)
 # ==========================
 def analyse(symbol):
     try:
@@ -229,15 +229,14 @@ def analyse(symbol):
         final_score = score * mp * w * nw * vf
 
         if abs(final_score) < 4:
-    return None
+            return None
 
-# قوة الإشارة
-if abs(final_score) >= 8:
-    strength = "🔥 STRONG"
-elif abs(final_score) >= 6:
-    strength = "🟢 GOOD"
-else:
-    return None
+        if abs(final_score) >= 8:
+            strength = "🔥 STRONG"
+        elif abs(final_score) >= 6:
+            strength = "🟢 GOOD"
+        else:
+            return None
 
         direction = "🟢 BUY" if final_score > 0 else "🔴 SELL"
         mult = 1.5 if final_score > 0 else -1.5
@@ -306,34 +305,7 @@ def event_loop():
 # ==========================
 # 📩 TELEGRAM HANDLER (SAFE)
 # ==========================
-def handle(msg):
-    try:
-        flavor = telepot.flavor(msg)
-
-        # callback buttons
-        if flavor == 'callback_query':
-            qid, chat_id, data = telepot.glance(msg, flavor='callback_query')
-
-            if data == "MARKET":
-                sess, mp, _ = market_data()
-                ev = "\n".join(market_events()) or "No events"
-
-                bot.sendMessage(chat_id, f"🌍 {sess}\nPower: {mp}\n{ev}")
-                return
-
-            info = analyse(data)
-
-            if not info:
-    p = price(data)
-    bot.sendMessage(chat_id, f"""
-📊 {data}
-💰 {round(p,2) if p else "?"}
-
-⚪ السوق هادئ
-""")
-    return
-
-        sent_signals = {}
+sent_signals = {}
 
 def signal_loop():
     while True:
@@ -365,7 +337,6 @@ def signal_loop():
 
 ━━━━━━━━━━━━━━
 🛑 SL: {round(sl,2)}
-
 🎯 TP1: {round(t1,2)}
 🎯 TP2: {round(t2,2)}
 🎯 TP3: {round(t3,2)}
@@ -378,6 +349,50 @@ def signal_loop():
             print("SIGNAL ERROR:", e)
 
         time.sleep(60)
+
+        def handle(msg):
+    try:
+        flavor = telepot.flavor(msg)
+
+        if flavor == 'callback_query':
+            qid, chat_id, data = telepot.glance(msg, flavor='callback_query')
+
+            if data == "MARKET":
+                sess, mp, _ = market_data()
+                ev = "\n".join(market_events()) or "No events"
+                bot.sendMessage(chat_id, f"🌍 {sess}\nPower: {mp}\n{ev}")
+                return
+
+            info = analyse(data)
+
+            if not info:
+                p = price(data)
+                bot.sendMessage(chat_id, f"""
+📊 {data}
+💰 {round(p,2) if p else "?"}
+
+⚪ السوق هادئ
+""")
+                return
+
+            sym, pr, dr, strength, sc, cf, sl, t1, t2, t3, sess, vf = info
+
+            bot.sendMessage(chat_id, f"""
+📊 {sym}
+💰 {round(pr,2)}
+
+🎯 {dr} {strength}
+🔥 Score: {round(sc,2)}
+🧠 {cf}%
+
+🌍 {sess}
+📈 Volume x{vf}
+
+🛑 SL: {round(sl,2)}
+🎯 TP1: {round(t1,2)}
+🎯 TP2: {round(t2,2)}
+🎯 TP3: {round(t3,2)}
+""")
 
         elif 'text' in msg:
             chat_id = msg['chat']['id']
