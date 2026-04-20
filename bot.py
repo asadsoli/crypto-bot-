@@ -328,24 +328,29 @@ def handle(msg):
 # ==========================
 if __name__ == "__main__":
 
-    # 🌐 Web server
-    Thread(target=run_web, daemon=True).start()
-
-    # 🧠 Engine (analysis loop)
-    Thread(target=engine_loop, daemon=True).start()
-
-    # 💚 Heartbeat (monitor alive)
-    Thread(target=heartbeat, daemon=True).start()
-
-    # 📩 Telegram bot loop
-    MessageLoop(bot, handle).run_as_thread()
-
-    # 🔔 Startup message
     try:
-        bot.sendMessage(ADMIN_CHAT_ID, "👑 ULTRA AI BOT STARTED")
-    except Exception as e:
-        print("START MSG ERROR:", e)
+        # 🌐 Web server
+        Thread(target=run_web, daemon=True).start()
 
-    # 🔒 keep main thread alive safely
-    while True:
-        time.sleep(10)
+        # 📩 Telegram bot loop (start first for responsiveness)
+        MessageLoop(bot, handle).run_as_thread()
+
+        # 🧠 Engine (analysis loop)
+        Thread(target=engine_loop, daemon=True).start()
+
+        # 💚 Heartbeat (monitor alive)
+        Thread(target=heartbeat, daemon=True).start()
+
+        # 🔔 Startup message
+        try:
+            bot.sendMessage(ADMIN_CHAT_ID, "👑 ULTRA AI BOT STARTED")
+        except Exception as e:
+            print("START MSG ERROR:", e)
+
+        # 🔒 keep main thread alive safely
+        while True:
+            time.sleep(10)
+
+    except Exception as e:
+        print("FATAL START ERROR:", e)
+        time.sleep(5)
