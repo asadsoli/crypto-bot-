@@ -73,6 +73,7 @@ def market_data():
 # ==========================
 def market_events():
     h = now().hour
+
     mapping = {
         1: "🔔 Tokyo Open",
         10: "🔔 London Open",
@@ -227,8 +228,16 @@ def analyse(symbol):
 
         final_score = score * mp * w * nw * vf
 
-        if abs(final_score) < 6:
-            return None
+        if abs(final_score) < 4:
+    return None
+
+# قوة الإشارة
+if abs(final_score) >= 8:
+    strength = "🔥 STRONG"
+elif abs(final_score) >= 6:
+    strength = "🟢 GOOD"
+else:
+    return None
 
         direction = "🟢 BUY" if final_score > 0 else "🔴 SELL"
         mult = 1.5 if final_score > 0 else -1.5
@@ -240,7 +249,7 @@ def analyse(symbol):
 
         conf = min(100, abs(final_score) * 6)
 
-        return symbol, p, direction, final_score, conf, sl, tp1, tp2, tp3, session_name, vf
+        return symbol, p, direction, strength, final_score, conf, sl, tp1, tp2, tp3, session_name, vf
 
     except Exception as e:
         print("ANALYSE ERROR:", e)
@@ -250,15 +259,48 @@ def analyse(symbol):
 # ==========================
 # 🚀 ENGINE LOOP (ANTI FREEZE)
 # ==========================
-def engine_loop():
+def market_events():
+    h = now().hour
+
+    mapping = {
+        1: "🔔 Tokyo Open",
+        10: "🔔 London Open",
+        15: "🔔 New York Open",
+        19: "🔕 London Close",
+    }
+
+    return [mapping[h]] if h in mapping else []
+
+
+last_event_hour = None
+
+def event_loop():
+    global last_event_hour
+
     while True:
         try:
-            for s in watchlist:
-                analyse(s)
-        except Exception as e:
-            print("ENGINE ERROR:", e)
+            h = now().hour
 
-        time.sleep(5)
+            # يمنع التكرار (يرسل مرة واحدة فقط لكل ساعة)
+            if h != last_event_hour:
+                events = market_events()
+
+                for e in events:
+                    bot.sendMessage(
+                        ADMIN_CHAT_ID,
+                        f"""
+🌍 MARKET EVENT
+
+{e}
+"""
+                    )
+
+                last_event_hour = h
+
+        except Exception as e:
+            print("EVENT ERROR:", e)
+
+        time.sleep(60)
 
 
 # ==========================
@@ -282,27 +324,60 @@ def handle(msg):
             info = analyse(data)
 
             if not info:
-                bot.sendMessage(chat_id, f"{data} ⚪ No signal")
-                return
+    p = price(data)
+    bot.sendMessage(chat_id, f"""
+📊 {data}
+💰 {round(p,2) if p else "?"}
 
-            sym, pr, dr, sc, cf, sl, t1, t2, t3, sess, vf = info
+⚪ السوق هادئ
+""")
+    return
 
-            bot.sendMessage(chat_id, f"""
+        sent_signals = {}
+
+def signal_loop():
+    while True:
+        try:
+            for s in watchlist:
+                info = analyse(s)
+                if not info:
+                    continue
+
+                sym, pr, dr, strength, sc, cf, sl, t1, t2, t3, sess, vf = info
+
+                key = f"{sym}_{dr}_{strength}"
+
+                if key in sent_signals:
+                    continue
+
+                sent_signals[key] = time.time()
+
+                msg = f"""
+╔═══ 🔥 ULTRA SIGNAL ═══╗
 📊 {sym}
 💰 {round(pr,2)}
 
-🎯 {dr}
-🔥 Score: {round(sc,2)}
+🎯 {dr} {strength}
 🧠 {cf}%
 
 🌍 {sess}
 📈 Volume x{vf}
 
+━━━━━━━━━━━━━━
 🛑 SL: {round(sl,2)}
+
 🎯 TP1: {round(t1,2)}
 🎯 TP2: {round(t2,2)}
 🎯 TP3: {round(t3,2)}
-""")
+╚══════════════════════╝
+"""
+
+                bot.sendMessage(ADMIN_CHAT_ID, msg)
+
+        except Exception as e:
+            print("SIGNAL ERROR:", e)
+
+        time.sleep(60)
 
         elif 'text' in msg:
             chat_id = msg['chat']['id']
@@ -322,35 +397,45 @@ def handle(msg):
     except Exception as e:
         print("HANDLER ERROR:", e)
 
-
+# ==========================
+# 💚 HEARTBEAT
+# ==========================
+def heartbeat():
+    while True:
+        print("💚 BOT ALIVE:", datetime.now())
+        time.sleep(30)
+        
 # ==========================
 # 🚀 START SYSTEM
 # ==========================
 if __name__ == "__main__":
 
     try:
-        # 🌐 Web server
-        Thread(target=run_web, daemon=True).start()
+        # 🌐 Web server (keep alive)
+        Thread(target=run_web, daemon=True, name="web").start()
 
-        # 📩 Telegram bot loop (يشغل أولاً للاستجابة السريعة)
+        # 📩 Telegram bot loop
         MessageLoop(bot, handle).run_as_thread()
 
-        # 🧠 Engine (analysis loop)
-        Thread(target=engine_loop, daemon=True).start()
+        # 🧠 Engine (تحليل السوق)
+        Thread(target=engine_loop, daemon=True, name="engine").start()
 
-        # 💚 Heartbeat (monitor alive)
-        try:
-            Thread(target=heartbeat, daemon=True).start()
-        except Exception as e:
-            print("HEARTBEAT ERROR:", e)
+        # 🔥 Signal system
+        Thread(target=signal_loop, daemon=True, name="signal").start()
 
-        # 🔔 Startup message
+        # 🌍 Market events
+        Thread(target=event_loop, daemon=True, name="events").start()
+
+        # 💚 Heartbeat
+        Thread(target=heartbeat, daemon=True, name="heartbeat").start()
+
+        # 🔔 رسالة بدء التشغيل
         try:
             bot.sendMessage(ADMIN_CHAT_ID, "👑 ULTRA AI BOT STARTED")
         except Exception as e:
             print("START MSG ERROR:", e)
 
-        # 🔒 keep main thread alive safely
+        # 🔒 إبقاء البرنامج شغال
         while True:
             time.sleep(10)
 
