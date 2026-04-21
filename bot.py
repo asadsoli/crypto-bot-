@@ -5,7 +5,6 @@ import pandas as pd
 import feedparser
 from datetime import datetime, timezone
 from threading import Thread
-
 import telepot
 from telepot.loop import MessageLoop
 from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
