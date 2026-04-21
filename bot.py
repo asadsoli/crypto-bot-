@@ -4,11 +4,11 @@ import requests
 import pandas as pd
 import feedparser
 from datetime import datetime, timezone
-from threading import Thread
 
 import telepot
 from telepot.loop import MessageLoop
 from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
+
 from flask import Flask
 
 # ==========================
@@ -18,22 +18,22 @@ app = Flask(__name__)
 
 @app.route("/")
 def home():
-    return "👑 ULTRA V10 BOT RUNNING"
-
-def run_web():
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+    return "👑 ULTRA V10 BOT RUNNING STABLE"
 
 
 # ==========================
-# 🔑 BOT CONFIG
+# 🔑 ENV
 # ==========================
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 ADMIN_CHAT_ID = int(os.getenv("ADMIN_CHAT_ID", "0"))
 
+if not TOKEN:
+    print("❌ TOKEN MISSING")
+    raise SystemExit()
+
 bot = telepot.Bot(TOKEN)
 
-# 🔥 remove webhook (important)
+# delete webhook (important)
 try:
     requests.get(
         f"https://api.telegram.org/bot{TOKEN}/deleteWebhook?drop_pending_updates=true",
@@ -61,42 +61,21 @@ def now():
 
 
 # ==========================
-# 🌍 MARKET SESSION
+# 🌍 SESSION
 # ==========================
 def market_session():
     h = now().hour
-
     if 0 <= h < 6:
         return "ASIA", 1.0
     elif 6 <= h < 12:
         return "LONDON", 1.3
     elif 12 <= h < 20:
         return "NEW YORK", 1.5
-
     return "QUIET", 0.7
 
 
 # ==========================
-# 🌍 EVENTS
-# ==========================
-def market_events():
-    h = now().hour
-    events = []
-
-    if h == 1:
-        events.append("🔔 Tokyo Open")
-    if h == 10:
-        events.append("🔔 London Active")
-    if h == 15:
-        events.append("🔔 New York Open")
-    if h == 19:
-        events.append("🔕 London Close")
-
-    return events
-
-
-# ==========================
-# 📈 PRICE
+# 🌐 PRICE DATA
 # ==========================
 session = requests.Session()
 
@@ -119,13 +98,13 @@ def klines(symbol):
             params={"symbol": symbol, "interval": "5m", "limit": 100},
             timeout=5
         )
+        d = r.json()
 
-        data = r.json()
-        closes = [float(x[4]) for x in data]
-        highs = [float(x[2]) for x in data]
-        lows = [float(x[3]) for x in data]
+        c = [float(x[4]) for x in d]
+        h = [float(x[2]) for x in d]
+        l = [float(x[3]) for x in d]
 
-        return closes, highs, lows
+        return c, h, l
     except:
         return [], [], []
 
@@ -150,7 +129,6 @@ def rsi(data):
 
 def atr(h, l, c):
     tr = []
-
     for i in range(1, len(c)):
         tr.append(
             max(
@@ -192,57 +170,62 @@ def news_engine():
 
 
 # ==========================
-# 🧠 ANALYSIS CORE
+# 🧠 ANALYSIS ENGINE
 # ==========================
 def analyse(symbol):
-    c, h, l = klines(symbol)
-    p = price(symbol)
+    try:
+        c, h, l = klines(symbol)
+        p = price(symbol)
 
-    if not p or len(c) < 60:
+        if not p or len(c) < 60:
+            return None
+
+        ema20 = ema(c, 20)
+        ema50 = ema(c, 50)
+        r = rsi(c)
+        a = atr(h, l, c)
+
+        if not a:
+            return None
+
+        trend = 1 if ema20 > ema50 else -1
+
+        momentum = 0
+        if r < 35:
+            momentum = 1
+        elif r > 65:
+            momentum = -1
+
+        score = (trend * 2) + (momentum * 3)
+
+        sess, mp = market_session()
+        news, nw = news_engine()
+
+        score *= mp * nw
+
+        if abs(score) < 5:
+            return None
+
+        if score > 0:
+            direction = "🟢 BUY"
+            sl = p - a
+            tp1 = p + a
+            tp2 = p + a * 2
+            tp3 = p + a * 3
+        else:
+            direction = "🔴 SELL"
+            sl = p + a
+            tp1 = p - a
+            tp2 = p - a * 2
+            tp3 = p - a * 3
+
+        conf = min(100, abs(score) * 7)
+
+        return symbol, p, direction, score, conf, sl, tp1, tp2, tp3, sess, news
+
+    except Exception as e:
+        print("ANALYSE ERROR:", e)
         return None
-
-    ema20 = ema(c, 20)
-    ema50 = ema(c, 50)
-    r = rsi(c)
-    a = atr(h, l, c)
-
-    if not a:
-        return None
-
-    trend = 1 if ema20 > ema50 else -1
-
-    momentum = 0
-    if r < 35:
-        momentum = 1
-    elif r > 65:
-        momentum = -1
-
-    score = (trend * 2) + (momentum * 3)
-
-    sess, mp = market_session()
-    news, nw = news_engine()
-
-    score *= mp * nw
-
-    if abs(score) < 5:
-        return None
-
-    if score > 0:
-        direction = "🟢 BUY"
-        sl = p - a
-        tp1 = p + a
-        tp2 = p + a * 2
-        tp3 = p + a * 3
-    else:
-        direction = "🔴 SELL"
-        sl = p + a
-        tp1 = p - a
-        tp2 = p - a * 2
-        tp3 = p - a * 3
-
-    conf = min(100, abs(score) * 7)
-
-    return symbol, p, direction, score, conf, sl, tp1, tp2, tp3, sess, news
 
 
 # ==========================
@@ -253,17 +236,16 @@ def on_chat(msg):
     text = msg.get("text", "")
 
     if text == "/start":
-
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="BTC", callback_data="BTCUSDT")],
             [InlineKeyboardButton(text="ETH", callback_data="ETHUSDT")],
             [InlineKeyboardButton(text="BNB", callback_data="BNBUSDT")],
             [InlineKeyboardButton(text="SOL", callback_data="SOLUSDT")],
             [InlineKeyboardButton(text="PAXG", callback_data="PAXGUSDT")],
-            [InlineKeyboardButton(text="🟢 BOT ON/OFF", callback_data="TOGGLE")]
+            [InlineKeyboardButton(text="🟢 TOGGLE BOT", callback_data="TOGGLE")]
         ])
 
-        bot.sendMessage(chat_id, "👑 ULTRA V10 CONTROL PANEL", reply_markup=kb)
+        bot.sendMessage(chat_id, "👑 ULTRA V10 STABLE CONTROL", reply_markup=kb)
 
 
 # ==========================
@@ -282,7 +264,7 @@ def on_callback(msg):
     p = price(data)
 
     if not p:
-        bot.sendMessage(chat_id, "❌ no price")
+        bot.sendMessage(chat_id, "❌ PRICE ERROR")
         return
 
     info = analyse(data)
@@ -298,11 +280,11 @@ def on_callback(msg):
 💰 {round(p,2)}
 
 🎯 {direction}
-🔥 Score: {round(score,2)}
-📊 Conf: {round(conf,2)}%
+🔥 Score {round(score,2)}
+📊 Conf {round(conf,2)}%
 
-💼 Session: {sess}
-📰 News: {news}
+💼 Session {sess}
+📰 News {news}
 
 🛑 SL {round(sl,2)}
 🎯 TP1 {round(tp1,2)}
@@ -312,14 +294,15 @@ def on_callback(msg):
 
 
 # ==========================
-# 🔥 MAIN LOOP
+# 🔥 SAFE LOOP (NO CRASH)
 # ==========================
-def signal_loop():
+def safe_loop():
     global bot_enabled, last_event_hour
+
+    print("🟢 SIGNAL LOOP STARTED")
 
     while True:
         try:
-
             if not bot_enabled:
                 time.sleep(5)
                 continue
@@ -328,11 +311,8 @@ def signal_loop():
 
             if h != last_event_hour:
                 last_event_hour = h
-                for e in market_events():
-                    bot.sendMessage(ADMIN_CHAT_ID, e)
 
             for s in watchlist:
-
                 info = analyse(s)
                 if not info:
                     continue
@@ -371,27 +351,29 @@ def signal_loop():
             time.sleep(30)
 
         except Exception as e:
-            print("LOOP ERROR:", e)
+            print("LOOP RECOVERED:", e)
             time.sleep(3)
 
 
 # ==========================
-# 🌐 START SYSTEM
+# 🚀 START SYSTEM (RENDER SAFE)
 # ==========================
-def start_bot():
+if __name__ == "__main__":
+
+    print("🔥 V10 STABLE STARTING...")
+
+    # Flask MUST run first
+    from threading import Thread
+    Thread(target=lambda: app.run(
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", 10000))
+    )).start()
+
+    # Telegram loop
     MessageLoop(bot, {
         "chat": on_chat,
         "callback_query": on_callback
     }).run_as_thread()
 
-
-if __name__ == "__main__":
-
-    print("🔥 ULTRA V10 STARTING...")
-
-    Thread(target=run_web, daemon=True).start()
-    Thread(target=start_bot, daemon=True).start()
-    Thread(target=signal_loop, daemon=True).start()
-
-    while True:
-        time.sleep(10)
+    # Signal loop
+    safe_loop()
