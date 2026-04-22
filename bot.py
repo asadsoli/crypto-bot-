@@ -2,15 +2,15 @@
 # 🧠 ULTRA V10 - PHASE 1 CORE FUSION ENGINE
 # ==========================
 
+import os
 import requests
 import pandas as pd
 import feedparser
+from flask import Flask
 
 # ==========================
 # 🌐 FLASK WEB LAYER
 # ==========================
-from flask import Flask
-import os
 
 app = Flask(__name__)
 
@@ -21,6 +21,38 @@ def home():
 def run_web():
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
+
+
+# ==========================
+# 📱 TELEGRAM LAYER
+# ==========================
+
+def send_telegram(message):
+    token = os.getenv("BOT_TOKEN")
+    chat_id = os.getenv("CHAT_ID")
+
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+
+    requests.post(url, data={
+        "chat_id": chat_id,
+        "text": message
+    })
+
+
+def send_panel():
+    text = """
+🚀 ULTRA V10 PANEL
+
+📊 STATUS: ONLINE
+🧠 AI ENGINE: ACTIVE
+📡 LIVE SYSTEM: RUNNING
+
+COMMANDS:
+- ANALYZE BTCUSDT
+- SCALP BTCUSDT
+- RANK COINS
+"""
+    send_telegram(text)
 
 
 # ==========================
@@ -593,10 +625,17 @@ def live_loop():
 # 🔗 SYSTEM STARTUP
 # ==========================
 def start_system():
+    # 🌐 تشغيل Flask Web Server
     Thread(target=run_web).start()
+
+    # 🔄 تشغيل البوت (Live Market Loop)
     Thread(target=live_loop).start()
 
+    # 📱 إرسال لوحة تيليغرام عند التشغيل
+    send_panel()
+
     print("🚀 ULTRA V10 FULL SYSTEM RUNNING")
+
 
 if __name__ == "__main__":
     start_system()
