@@ -32,37 +32,57 @@ import time
 
 def الاستماع_للازرار():
     التوكن = os.getenv("BOT_TOKEN")
+
+    if not التوكن:
+        print("❌ BOT_TOKEN غير موجود")
+        return
+
     الرابط = f"https://api.telegram.org/bot{التوكن}/getUpdates"
 
     اخر_تحديث = 0
+
+    print("📡 بدء الاستماع للأزرار...")
 
     while True:
         try:
             الاستجابة = requests.get(
                 الرابط,
-                params={"offset": اخر_تحديث + 1}
+                params={"offset": اخر_تحديث + 1},
+                timeout=10
             ).json()
 
-            for تحديث in الاستجابة.get("result", []):
+            النتائج = الاستجابة.get("result", [])
+
+            for تحديث in النتائج:
                 اخر_تحديث = تحديث["update_id"]
 
                 if "callback_query" in تحديث:
                     البيانات = تحديث["callback_query"]["data"]
 
+                    # 📊 تحليل
                     if البيانات == "ANALYZE_BTCUSDT":
-                        print("📊 تحليل:", control_panel("analyze", "BTCUSDT"))
+                        نتيجة = control_panel("analyze", "BTCUSDT")
+                        print("📊 تحليل BTC:", نتيجة)
 
+                    # ⚡ سكالب
                     elif البيانات == "SCALP_BTCUSDT":
-                        print("⚡ سكالب:", control_panel("scalp", "BTCUSDT"))
+                        نتيجة = control_panel("scalp", "BTCUSDT")
+                        print("⚡ سكالب BTC:", نتيجة)
 
+                    # 🏆 ترتيب
                     elif البيانات == "RANK_COINS":
-                        print("🏆 ترتيب العملات:", control_panel("rank"))
+                        نتيجة = control_panel("rank")
+                        print("🏆 ترتيب العملات:", نتيجة)
 
+                    # 🧠 حالة
                     elif البيانات == "STATUS":
                         print("🧠 حالة البوت: يعمل بشكل طبيعي")
 
         except Exception as خطأ:
-            print("❌ خطأ:", خطأ)
+            print("❌ خطأ في الاستماع:", خطأ)
+
+            # ⛔ حماية من التوقف
+            time.sleep(3)
 
         time.sleep(1)
 
