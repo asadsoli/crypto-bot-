@@ -7,17 +7,20 @@ import pandas as pd
 import feedparser
 
 # ==========================
-# 📊 MARKET INPUT
+# 🌐 FLASK WEB LAYER
 # ==========================
-def get_price(symbol):
-    try:
-        return float(requests.get(
-            "https://api.binance.com/api/v3/ticker/price",
-            params={"symbol": symbol},
-            timeout=5
-        ).json()["price"])
-    except:
-        return None
+from flask import Flask
+import os
+
+app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return "ULTRA V10 RUNNING 🚀"
+
+def run_web():
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
 
 
 # ==========================
@@ -590,11 +593,10 @@ def live_loop():
 # 🔗 SYSTEM STARTUP
 # ==========================
 def start_system():
-
+    Thread(target=run_web).start()
     Thread(target=live_loop).start()
 
     print("🚀 ULTRA V10 FULL SYSTEM RUNNING")
-
 
 if __name__ == "__main__":
     start_system()
