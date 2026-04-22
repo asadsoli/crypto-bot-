@@ -26,33 +26,48 @@ def run_web():
 # ==========================
 # 📱 TELEGRAM LAYER
 # ==========================
+import requests
+import os
 
-def send_telegram(message):
+def send_panel():
     token = os.getenv("BOT_TOKEN")
     chat_id = os.getenv("CHAT_ID")
 
+    if not token or not chat_id:
+        print("❌ BOT_TOKEN أو CHAT_ID ناقص")
+        return
+
     url = f"https://api.telegram.org/bot{token}/sendMessage"
 
-    requests.post(url, data={
-        "chat_id": chat_id,
-        "text": message
-    })
+    keyboard = {
+        "inline_keyboard": [
+            [
+                {"text": "📊 تحليل BTC", "callback_data": "ANALYZE_BTCUSDT"},
+                {"text": "⚡ سكالب BTC", "callback_data": "SCALP_BTCUSDT"}
+            ],
+            [
+                {"text": "🏆 ترتيب العملات", "callback_data": "RANK_COINS"}
+            ],
+            [
+                {"text": "🧠 حالة البوت", "callback_data": "STATUS"}
+            ]
+        ]
+    }
 
-
-def send_panel():
     text = """
 🚀 ULTRA V10 PANEL
 
-📊 STATUS: ONLINE
-🧠 AI ENGINE: ACTIVE
-📡 LIVE SYSTEM: RUNNING
-
-COMMANDS:
-- ANALYZE BTCUSDT
-- SCALP BTCUSDT
-- RANK COINS
+📊 الحالة: ONLINE
+🧠 الذكاء: ACTIVE
+📡 النظام: RUNNING
 """
-    send_telegram(text)
+
+    requests.post(url, json={
+        "chat_id": chat_id,
+        "text": text,
+        "reply_markup": keyboard
+    })
+
 
 
 # ==========================
