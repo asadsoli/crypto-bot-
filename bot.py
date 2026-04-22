@@ -28,45 +28,43 @@ def run_web():
 # ==========================
 import requests
 import os
+import time
 
-def send_panel():
-    token = os.getenv("BOT_TOKEN")
-    chat_id = os.getenv("CHAT_ID")
+def الاستماع_للازرار():
+    التوكن = os.getenv("BOT_TOKEN")
+    الرابط = f"https://api.telegram.org/bot{التوكن}/getUpdates"
 
-    if not token or not chat_id:
-        print("❌ BOT_TOKEN أو CHAT_ID ناقص")
-        return
+    اخر_تحديث = 0
 
-    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    while True:
+        try:
+            الاستجابة = requests.get(
+                الرابط,
+                params={"offset": اخر_تحديث + 1}
+            ).json()
 
-    keyboard = {
-        "inline_keyboard": [
-            [
-                {"text": "📊 تحليل BTC", "callback_data": "ANALYZE_BTCUSDT"},
-                {"text": "⚡ سكالب BTC", "callback_data": "SCALP_BTCUSDT"}
-            ],
-            [
-                {"text": "🏆 ترتيب العملات", "callback_data": "RANK_COINS"}
-            ],
-            [
-                {"text": "🧠 حالة البوت", "callback_data": "STATUS"}
-            ]
-        ]
-    }
+            for تحديث in الاستجابة.get("result", []):
+                اخر_تحديث = تحديث["update_id"]
 
-    text = """
-🚀 ULTRA V10 PANEL
+                if "callback_query" in تحديث:
+                    البيانات = تحديث["callback_query"]["data"]
 
-📊 الحالة: ONLINE
-🧠 الذكاء: ACTIVE
-📡 النظام: RUNNING
-"""
+                    if البيانات == "ANALYZE_BTCUSDT":
+                        print("📊 تحليل:", control_panel("analyze", "BTCUSDT"))
 
-    requests.post(url, json={
-        "chat_id": chat_id,
-        "text": text,
-        "reply_markup": keyboard
-    })
+                    elif البيانات == "SCALP_BTCUSDT":
+                        print("⚡ سكالب:", control_panel("scalp", "BTCUSDT"))
+
+                    elif البيانات == "RANK_COINS":
+                        print("🏆 ترتيب العملات:", control_panel("rank"))
+
+                    elif البيانات == "STATUS":
+                        print("🧠 حالة البوت: يعمل بشكل طبيعي")
+
+        except Exception as خطأ:
+            print("❌ خطأ:", خطأ)
+
+        time.sleep(1)
 
 
 
@@ -648,6 +646,9 @@ def start_system():
 
     # 📱 إرسال لوحة تيليغرام عند التشغيل
     send_panel()
+
+    # 🎯 تشغيل مستقبل أزرار تيليغرام
+    Thread(target=listen_callbacks).start()
 
     print("🚀 ULTRA V10 FULL SYSTEM RUNNING")
 
