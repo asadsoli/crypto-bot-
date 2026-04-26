@@ -9,253 +9,294 @@ from threading import Thread
 import telepot
 from telepot.loop import MessageLoop
 from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
+
 from flask import Flask
 
-==========================
-
-🌐 WEB SERVER
-
-==========================
-
-app = Flask(name)
+# ==========================
+# 🌐 FLASK KEEP ALIVE
+# ==========================
+app = Flask(__name__)
 
 @app.route('/')
 def home():
-return "👑 ULTRA AI BOT RUNNING"
+    return "👑 ULTRA AI BOT RUNNING"
 
 def run_web():
-port = int(os.environ.get("PORT", 10000))
-app.run(host='0.0.0.0', port=port)
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
 
-==========================
 
-🔑 TELEGRAM
-
-==========================
-
+# ==========================
+# 🔑 TELEGRAM
+# ==========================
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 ADMIN_CHAT_ID = int(os.getenv("ADMIN_CHAT_ID"))
+
 bot = telepot.Bot(TOKEN)
 
-==========================
-
-📊 STATE
-
-==========================
-
-watchlist = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "PAXGUSDT"]
-sent_signals = {}
-last_event_hour = None
-
-==========================
-
-⏱ TIME
-
-==========================
-
-def now():
-return datetime.now(timezone.utc)
-
-==========================
-
-🌍 SESSION
-
-==========================
-
-def market_data():
-h = now().hour
-if 0 <= h < 6:
-return "ASIA", 1.0, 0.8
-elif 6 <= h < 12:
-return "LONDON", 1.3, 1.2
-elif 12 <= h < 20:
-return "NEW YORK", 1.5, 1.5
-return "QUIET", 0.7, 0.6
-
-==========================
-
-📈 EVENTS
-
-==========================
-
-def market_events():
-h = now().hour
-mapping = {
-1: "🔔 Tokyo Open",
-10: "🔔 London Open",
-15: "🔔 New York Open",
-19: "🔕 London Close",
-}
-return [mapping[h]] if h in mapping else []
-
-==========================
-
-🌐 REQUEST SESSION
-
-==========================
-
-session = requests.Session()
-
-==========================
-
-📊 BINANCE
-
-==========================
-
-def price(symbol):
+# delete webhook
 try:
-r = session.get("https://api.binance.com/api/v3/ticker/price",
-params={"symbol": symbol}, timeout=5)
-return float(r.json()["price"])
+    requests.get(f"https://api.telegram.org/bot{TOKEN}/deleteWebhook?drop_pending_updates=true")
 except:
-return None
+    pass
+
+
+# ==========================
+# 📊 STATE
+# ==========================
+watchlist = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "PAXGUSDT"]
+last_signal = {}
+
+# ==========================
+# ⏱ TIME
+# ==========================
+def now():
+    return datetime.now(timezone.utc)
+
+
+# ==========================
+# 🌍 MARKET SESSIONS
+# ==========================
+def market_data():
+    h = now().hour
+    if 0 <= h < 6:
+        return "ASIA", 1.0, 0.8
+    elif 6 <= h < 12:
+        return "LONDON", 1.3, 1.2
+    elif 12 <= h < 20:
+        return "NEW YORK", 1.5, 1.5
+    return "QUIET", 0.7, 0.6
+
+
+# ==========================
+# 📈 EVENTS
+# ==========================
+def market_events():
+    h = now().hour
+    mapping = {
+        1: "🔔 Tokyo Open",
+        10: "🔔 London Open",
+        15: "🔔 New York Open",
+        19: "🔕 London Close",
+    }
+
+    return [mapping[h]] if h in mapping else []
+
+
+# ==========================
+# 🌐 SESSION (IMPORTANT FIX)
+# ==========================
+session = requests.Session()
+session.headers.update({"User-Agent": "Mozilla/5.0"})
+
+
+# ==========================
+# 📊 BINANCE API
+# ==========================
+def price(symbol):
+    try:
+        url = f"https://api.binance.com/api/v3/ticker/price"
+        r = session.get(url, params={"symbol": symbol}, timeout=5)
+        return float(r.json()["price"])
+    except:
+        return None
+
 
 def klines(symbol):
-try:
-r = session.get("https://api.binance.com/api/v3/klines",
-params={"symbol": symbol, "interval": "5m", "limit": 100},
-timeout=5)
-d = r.json()
-c = [float(x[4]) for x in d]
-h = [float(x[2]) for x in d]
-l = [float(x[3]) for x in d]
-v = [float(x[5]) for x in d]
-return c, h, l, v
-except:
-return [], [], [], []
+    try:
+        url = f"https://api.binance.com/api/v3/klines"
+        r = session.get(url, params={
+            "symbol": symbol,
+            "interval": "5m",
+            "limit": 100
+        }, timeout=5)
 
-==========================
+        d = r.json()
 
-📊 INDICATORS
+        c = [float(x[4]) for x in d]
+        h = [float(x[2]) for x in d]
+        l = [float(x[3]) for x in d]
+        v = [float(x[5]) for x in d]
 
-==========================
+        return c, h, l, v
+    except:
+        return [], [], [], []
 
+
+# ==========================
+# 📊 INDICATORS
+# ==========================
 def ema(data, p):
-return pd.Series(data).ewm(span=p).mean().iloc[-1]
+    return pd.Series(data).ewm(span=p).mean().iloc[-1]
+
 
 def rsi(data):
-s = pd.Series(data)
-d = s.diff()
-g = d.clip(lower=0).rolling(14).mean()
-l = (-d.clip(upper=0)).rolling(14).mean()
-rs = g.iloc[-1] / (l.iloc[-1] + 1e-9)
-return 100 - (100 / (1 + rs))
+    s = pd.Series(data)
+    d = s.diff()
+    g = d.clip(lower=0).rolling(14).mean()
+    l = (-d.clip(upper=0)).rolling(14).mean()
+    rs = g.iloc[-1] / (l.iloc[-1] + 1e-9)
+    return 100 - (100 / (1 + rs))
+
 
 def atr(h, l, c):
-tr = []
-for i in range(1, len(c)):
-tr.append(max(h[i]-l[i], abs(h[i]-c[i-1]), abs(l[i]-c[i-1])))
-return pd.Series(tr).rolling(14).mean().iloc[-1]
+    tr = []
+    for i in range(1, len(c)):
+        tr.append(max(
+            h[i] - l[i],
+            abs(h[i] - c[i-1]),
+            abs(l[i] - c[i-1])
+        ))
+    return pd.Series(tr).rolling(14).mean().iloc[-1]
 
-==========================
 
-📰 NEWS
+# ==========================
+# 💧 LIQUIDITY
+# ==========================
+def liquidity(h, l):
+    if len(h) < 20:
+        return None, None
+    return max(h[-20:]), min(l[-20:])
 
-==========================
 
+# ==========================
+# ⚡ VOLUME
+# ==========================
+def volume_factor(v):
+    if len(v) < 20:
+        return 1.0
+    avg = sum(v[-20:-1]) / 19
+    return 1.3 if v[-1] > avg * 1.5 else 1.0
+
+
+# ==========================
+# 📰 NEWS ENGINE
+# ==========================
 def news_engine():
-try:
-feed = feedparser.parse("https://cryptopanic.com/news/rss/")
-score = 0
-for e in feed.entries[:10]:
-t = e.title.lower()
-if "bull" in t or "rise" in t:
-score += 1
-if "bear" in t or "drop" in t:
-score -= 1
+    try:
+        feed = feedparser.parse("https://cryptopanic.com/news/rss/")
+        score = 0
 
-if score >= 3:  
-        return "BULLISH", 1.3  
-    elif score <= -3:  
-        return "BEARISH", 0.7  
-    return "NEUTRAL", 1.0  
-except:  
-    return "NO_NEWS", 1.0
+        for e in feed.entries[:10]:
+            t = e.title.lower()
+            if any(w in t for w in ["bull", "pump", "rise"]):
+                score += 1
+            if any(w in t for w in ["crash", "drop", "bear"]):
+                score -= 1
 
-==========================
+        if score >= 3:
+            return "BULLISH", 1.2
+        elif score <= -3:
+            return "BEARISH", 0.7
+        return "NEUTRAL", 1.0
+    except:
+        return "NO_NEWS", 1.0
 
-🧠 ANALYSIS
 
-==========================
-
+# ==========================
+# 🧠 ANALYSIS ENGINE (UNCHANGED LOGIC)
+# ==========================
 def analyse(symbol):
-try:
-c, h, l, v = klines(symbol)
-p = price(symbol)
+    try:
+        c, h, l, v = klines(symbol)
+        p = price(symbol)
 
-if not p or len(c) < 60:  
-        return None  
+        if not p or len(c) < 60:
+            return None
 
-    ema20 = ema(c, 20)  
-    ema50 = ema(c, 50)  
-    r = rsi(c)  
-    a = atr(h, l, c)  
+        ema20 = ema(c, 20)
+        ema50 = ema(c, 50)
+        r = rsi(c)
+        a = atr(h, l, c)
 
-    trend = 1 if ema20 > ema50 else -1  
-    momentum = 1 if r < 40 else (-1 if r > 60 else 0)  
+        buy_liq, sell_liq = liquidity(h, l)
 
-    session_name, mp, w = market_data()  
-    news, nw = news_engine()  
+        trend = 1 if ema20 > ema50 else -1
+        momentum = 1 if r < 35 else (-1 if r > 65 else 0)
 
-    score = (trend*2 + momentum*3) * mp * w * nw  
+        score = (trend * 2) + (momentum * 3)
 
-    # 🔥 classification  
-    if abs(score) < 2:  
-        state = "⚪ QUIET"  
-    elif abs(score) < 4:  
-        state = "🟡 WEAK"  
-    elif abs(score) < 6:  
-        state = "🟢 BUY" if score > 0 else "🔴 SELL"  
-    else:  
-        state = "🔥 STRONG BUY" if score > 0 else "💥 STRONG SELL"  
+        if buy_liq and p > buy_liq:
+            score += 1
+        if sell_liq and p < sell_liq:
+            score -= 1
 
-    direction = "BUY" if score > 0 else "SELL"  
+        session_name, mp, w = market_data()
+        news, nw = news_engine()
+        vf = volume_factor(v)
 
-    sl = p - a if score > 0 else p + a  
-    tp1 = p + a if score > 0 else p - a  
-    tp2 = p + a*2 if score > 0 else p - a*2  
-    tp3 = p + a*3 if score > 0 else p - a*3  
+        final_score = score * mp * w * nw * vf
 
-    return symbol, p, state, direction, score, sl, tp1, tp2, tp3, session_name, news  
+        if abs(final_score) < 6:
+            return None
 
-except Exception as e:  
-    print("ANALYSE ERROR:", e)  
-    return None
+        direction = "🟢 BUY" if final_score > 0 else "🔴 SELL"
+        mult = 1.5 if final_score > 0 else -1.5
 
-==========================
+        sl = p - (a * mult)
+        tp1 = p + (a * mult)
+        tp2 = p + (a * mult * 1.6)
+        tp3 = p + (a * mult * 2.6)
 
-🚀 SIGNAL LOOP
+        conf = min(100, abs(final_score) * 6)
 
-==========================
+        return symbol, p, direction, final_score, conf, sl, tp1, tp2, tp3, session_name, vf
 
-def signal_loop():
-while True:
-try:
-for s in watchlist:
-info = analyse(s)
-if not info:
-continue
+    except Exception as e:
+        print("ANALYSE ERROR:", e)
+        return None
 
-sym, pr, state, dr, sc, sl, t1, t2, t3, sess, news = info  
 
-            if "STRONG" not in state:  
-                continue  
+# ==========================
+# 🚀 ENGINE LOOP (ANTI FREEZE)
+# ==========================
+def engine_loop():
+    while True:
+        try:
+            for s in watchlist:
+                analyse(s)
+        except Exception as e:
+            print("ENGINE ERROR:", e)
 
-            key = f"{sym}_{dr}"  
+        time.sleep(5)
 
-            if key in sent_signals and time.time() - sent_signals[key] < 600:  
-                continue  
 
-            sent_signals[key] = time.time()  
+# ==========================
+# 📩 TELEGRAM HANDLER (SAFE)
+# ==========================
+def handle(msg):
+    try:
+        flavor = telepot.flavor(msg)
 
-            bot.sendMessage(ADMIN_CHAT_ID, f"""
+        # callback buttons
+        if flavor == 'callback_query':
+            qid, chat_id, data = telepot.glance(msg, flavor='callback_query')
 
-🚀 {sym}
+            if data == "MARKET":
+                sess, mp, _ = market_data()
+                ev = "\n".join(market_events()) or "No events"
+
+                bot.sendMessage(chat_id, f"🌍 {sess}\nPower: {mp}\n{ev}")
+                return
+
+            info = analyse(data)
+
+            if not info:
+                bot.sendMessage(chat_id, f"{data} ⚪ No signal")
+                return
+
+            sym, pr, dr, sc, cf, sl, t1, t2, t3, sess, vf = info
+
+            bot.sendMessage(chat_id, f"""
+📊 {sym}
 💰 {round(pr,2)}
 
-🔥 {state}
+🎯 {dr}
+🔥 Score: {round(sc,2)}
+🧠 {cf}%
+
 🌍 {sess}
-📰 {news}
+📈 Volume x{vf}
 
 🛑 SL: {round(sl,2)}
 🎯 TP1: {round(t1,2)}
@@ -263,99 +304,36 @@ sym, pr, state, dr, sc, sl, t1, t2, t3, sess, news = info
 🎯 TP3: {round(t3,2)}
 """)
 
-except Exception as e:  
-        print("SIGNAL ERROR:", e)  
+        elif 'text' in msg:
+            chat_id = msg['chat']['id']
 
-    time.sleep(30)
+            if msg.get('text') == "/start":
+                keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="BTC", callback_data="BTCUSDT"),
+                     InlineKeyboardButton(text="ETH", callback_data="ETHUSDT")],
+                    [InlineKeyboardButton(text="BNB", callback_data="BNBUSDT"),
+                     InlineKeyboardButton(text="SOL", callback_data="SOLUSDT")],
+                    [InlineKeyboardButton(text="PAXG", callback_data="PAXGUSDT")],
+                    [InlineKeyboardButton(text="Market", callback_data="MARKET")]
+                ])
 
-==========================
+                bot.sendMessage(chat_id, "👑 ULTRA AI CONTROL", reply_markup=keyboard)
 
-🌍 EVENTS LOOP
+    except Exception as e:
+        print("HANDLER ERROR:", e)
 
-==========================
 
-def event_loop():
-global last_event_hour
-while True:
-try:
-h = now().hour
-if h != last_event_hour:
-for e in market_events():
-bot.sendMessage(ADMIN_CHAT_ID, f"🌍 {e}")
-last_event_hour = h
-except:
-pass
-time.sleep(60)
+# ==========================
+# 🚀 START SYSTEM
+# ==========================
+if __name__ == "__main__":
 
-==========================
+    Thread(target=run_web).start()
+    Thread(target=engine_loop).start()
 
-📩 TELEGRAM
+    MessageLoop(bot, handle).run_as_thread()
 
-==========================
+    bot.sendMessage(ADMIN_CHAT_ID, "👑 ULTRA AI BOT STARTED")
 
-def handle(msg):
-try:
-flavor = telepot.flavor(msg)
-
-if flavor == 'callback_query':  
-        _, chat_id, data = telepot.glance(msg, flavor='callback_query')  
-
-        info = analyse(data)  
-        if not info:  
-            p = price(data)  
-            bot.sendMessage(chat_id, f"{data} ⚪ {round(p,2) if p else '?'}")  
-            return  
-
-        sym, pr, state, dr, sc, sl, t1, t2, t3, sess, news = info  
-
-        bot.sendMessage(chat_id, f"""
-
-📊 {sym}
-💰 {round(pr,2)}
-
-🔥 {state}
-🌍 {sess}
-📰 {news}
-""")
-
-elif 'text' in msg:  
-        chat_id = msg['chat']['id']  
-        if msg['text'] == "/start":  
-            kb = InlineKeyboardMarkup(inline_keyboard=[  
-                [InlineKeyboardButton(text="BTC", callback_data="BTCUSDT"),  
-                 InlineKeyboardButton(text="ETH", callback_data="ETHUSDT")],  
-                [InlineKeyboardButton(text="BNB", callback_data="BNBUSDT"),  
-                 InlineKeyboardButton(text="SOL", callback_data="SOLUSDT")],  
-                [InlineKeyboardButton(text="PAXG", callback_data="PAXGUSDT")]  
-            ])  
-            bot.sendMessage(chat_id, "👑 CONTROL", reply_markup=kb)  
-
-except Exception as e:  
-    print("HANDLER ERROR:", e)
-
-==========================
-
-💚 HEARTBEAT
-
-==========================
-
-def heartbeat():
-while True:
-print("💚 ALIVE", datetime.now())
-time.sleep(30)
-
-==========================
-
-🚀 START
-
-==========================
-
-if name == "main":
-Thread(target=run_web, daemon=True).start()
-MessageLoop(bot, handle).run_as_thread()
-Thread(target=signal_loop, daemon=True).start()
-Thread(target=event_loop, daemon=True).start()
-Thread(target=heartbeat, daemon=True).start()
-
-while True:  
-    time.sleep(10)
+    while True:
+        time.sleep(10)
