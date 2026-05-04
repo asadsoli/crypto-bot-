@@ -3,174 +3,96 @@ import time
 import requests
 import pandas as pd
 import feedparser
-from datetime import datetime, timezone
+from datetime import datetime
 from threading import Thread
 
 import telepot
 from telepot.loop import MessageLoop
 from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
 
-from flask import Flask
+# ==========================
+# 🔐 CONFIG
+# ==========================
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+CHAT_ID = os.getenv("CHAT_ID")
+
+bot = telepot.Bot(BOT_TOKEN)
 
 # ==========================
-# 🌐 FLASK KEEP ALIVE
+# 🌍 MARKET SESSION
 # ==========================
-app = Flask(__name__)
+def get_utc_hour():
+    return datetime.utcnow().hour
 
-@app.route('/')
-def home():
-    return "👑 ULTRA AI BOT RUNNING"
+def get_market_session():
+    h = get_utc_hour()
 
-def run_web():
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host='0.0.0.0', port=port)
-
-
-# ==========================
-# 🔑 TELEGRAM
-# ==========================
-TOKEN = os.getenv("TELEGRAM_TOKEN")
-ADMIN_CHAT_ID = int(os.getenv("ADMIN_CHAT_ID"))
-
-bot = telepot.Bot(TOKEN)
-
-# delete webhook
-try:
-    requests.get(f"https://api.telegram.org/bot{TOKEN}/deleteWebhook?drop_pending_updates=true")
-except:
-    pass
-
+    if 22 <= h or h < 7:
+        return "SYDNEY", 0.8
+    elif 0 <= h < 9:
+        return "TOKYO", 1.0
+    elif 8 <= h < 17:
+        return "LONDON", 1.3
+    elif 13 <= h < 22:
+        return "NEW YORK", 1.5
+    return "QUIET", 0.6
 
 # ==========================
-# 📊 STATE
+# 📊 PRICE DATA
 # ==========================
-watchlist = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "PAXGUSDT"]
-last_signal = {}
-
-# ==========================
-# ⏱ TIME
-# ==========================
-def now():
-    return datetime.now(timezone.utc)
-
-
-# ==========================
-# 🌍 MARKET SESSIONS
-# ==========================
-def market_data():
-    h = now().hour
-    if 0 <= h < 6:
-        return "ASIA", 1.0, 0.8
-    elif 6 <= h < 12:
-        return "LONDON", 1.3, 1.2
-    elif 12 <= h < 20:
-        return "NEW YORK", 1.5, 1.5
-    return "QUIET", 0.7, 0.6
-
-
-# ==========================
-# 📈 EVENTS
-# ==========================
-def market_events():
-    h = now().hour
-    mapping = {
-        1: "🔔 Tokyo Open",
-        10: "🔔 London Open",
-        15: "🔔 New York Open",
-        19: "🔕 London Close",
-    }
-
-    return [mapping[h]] if h in mapping else []
-
-
-# ==========================
-# 🌐 SESSION (IMPORTANT FIX)
-# ==========================
-session = requests.Session()
-session.headers.update({"User-Agent": "Mozilla/5.0"})
-
-
-# ==========================
-# 📊 BINANCE API
-# ==========================
-def price(symbol):
+def get_price(symbol):
     try:
-        url = f"https://api.binance.com/api/v3/ticker/price"
-        r = session.get(url, params={"symbol": symbol}, timeout=5)
-        return float(r.json()["price"])
+        return float(requests.get(
+            "https://api.binance.com/api/v3/ticker/price",
+            params={"symbol": symbol},
+            timeout=5
+        ).json()["price"])
     except:
         return None
 
-
 def klines(symbol):
     try:
-        url = f"https://api.binance.com/api/v3/klines"
-        r = session.get(url, params={
-            "symbol": symbol,
-            "interval": "5m",
-            "limit": 100
-        }, timeout=5)
+        data = requests.get(
+            f"https://api.binance.com/api/v3/klines?symbol={symbol}&interval=5m&limit=100"
+        ).json()
 
-        d = r.json()
+        close = [float(x[4]) for x in data]
+        high = [float(x[2]) for x in data]
+        low = [float(x[3]) for x in data]
 
-        c = [float(x[4]) for x in d]
-        h = [float(x[2]) for x in d]
-        l = [float(x[3]) for x in d]
-        v = [float(x[5]) for x in d]
-
-        return c, h, l, v
+        return close, high, low
     except:
-        return [], [], [], []
-
+        return [], [], []
 
 # ==========================
-# 📊 INDICATORS
+# 📈 INDICATORS
 # ==========================
-def ema(data, p):
-    return pd.Series(data).ewm(span=p).mean().iloc[-1]
-
+def ema(data, period):
+    return pd.Series(data).ewm(span=period).mean().iloc[-1]
 
 def rsi(data):
     s = pd.Series(data)
     d = s.diff()
-    g = d.clip(lower=0).rolling(14).mean()
-    l = (-d.clip(upper=0)).rolling(14).mean()
-    rs = g.iloc[-1] / (l.iloc[-1] + 1e-9)
+
+    gain = d.clip(lower=0).rolling(14).mean()
+    loss = (-d.clip(upper=0)).rolling(14).mean()
+
+    rs = gain.iloc[-1] / (loss.iloc[-1] + 1e-9)
     return 100 - (100 / (1 + rs))
 
-
-def atr(h, l, c):
+def atr(high, low, close):
     tr = []
-    for i in range(1, len(c)):
+    for i in range(1, len(close)):
         tr.append(max(
-            h[i] - l[i],
-            abs(h[i] - c[i-1]),
-            abs(l[i] - c[i-1])
+            high[i] - low[i],
+            abs(high[i] - close[i-1]),
+            abs(low[i] - close[i-1])
         ))
+
     return pd.Series(tr).rolling(14).mean().iloc[-1]
 
-
 # ==========================
-# 💧 LIQUIDITY
-# ==========================
-def liquidity(h, l):
-    if len(h) < 20:
-        return None, None
-    return max(h[-20:]), min(l[-20:])
-
-
-# ==========================
-# ⚡ VOLUME
-# ==========================
-def volume_factor(v):
-    if len(v) < 20:
-        return 1.0
-    avg = sum(v[-20:-1]) / 19
-    return 1.3 if v[-1] > avg * 1.5 else 1.0
-
-
-# ==========================
-# 📰 NEWS ENGINE
+# 🧠 NEWS
 # ==========================
 def news_engine():
     try:
@@ -179,161 +101,202 @@ def news_engine():
 
         for e in feed.entries[:10]:
             t = e.title.lower()
-            if any(w in t for w in ["bull", "pump", "rise"]):
+
+            if "bull" in t or "pump" in t:
                 score += 1
-            if any(w in t for w in ["crash", "drop", "bear"]):
+            if "bear" in t or "dump" in t:
                 score -= 1
 
-        if score >= 3:
-            return "BULLISH", 1.2
-        elif score <= -3:
-            return "BEARISH", 0.7
-        return "NEUTRAL", 1.0
+        return score
     except:
-        return "NO_NEWS", 1.0
-
+        return 0
 
 # ==========================
-# 🧠 ANALYSIS ENGINE (UNCHANGED LOGIC)
+# 🧠 AI ENGINE (CORE)
 # ==========================
-def analyse(symbol):
-    try:
-        c, h, l, v = klines(symbol)
-        p = price(symbol)
+def ai_engine(symbol):
 
-        if not p or len(c) < 60:
-            return None
+    close, high, low = klines(symbol)
+    price = get_price(symbol)
 
-        ema20 = ema(c, 20)
-        ema50 = ema(c, 50)
-        r = rsi(c)
-        a = atr(h, l, c)
-
-        buy_liq, sell_liq = liquidity(h, l)
-
-        trend = 1 if ema20 > ema50 else -1
-        momentum = 1 if r < 35 else (-1 if r > 65 else 0)
-
-        score = (trend * 2) + (momentum * 3)
-
-        if buy_liq and p > buy_liq:
-            score += 1
-        if sell_liq and p < sell_liq:
-            score -= 1
-
-        session_name, mp, w = market_data()
-        news, nw = news_engine()
-        vf = volume_factor(v)
-
-        final_score = score * mp * w * nw * vf
-
-        if abs(final_score) < 6:
-            return None
-
-        direction = "🟢 BUY" if final_score > 0 else "🔴 SELL"
-        mult = 1.5 if final_score > 0 else -1.5
-
-        sl = p - (a * mult)
-        tp1 = p + (a * mult)
-        tp2 = p + (a * mult * 1.6)
-        tp3 = p + (a * mult * 2.6)
-
-        conf = min(100, abs(final_score) * 6)
-
-        return symbol, p, direction, final_score, conf, sl, tp1, tp2, tp3, session_name, vf
-
-    except Exception as e:
-        print("ANALYSE ERROR:", e)
+    if not price or len(close) < 60:
         return None
 
+    ema20 = ema(close, 20)
+    ema50 = ema(close, 50)
+    r = rsi(close)
+    a = atr(high, low, close)
+
+    trend = 1 if ema20 > ema50 else -1
+
+    momentum = 0
+    if r < 30:
+        momentum = 1
+    elif r > 70:
+        momentum = -1
+
+    score = (trend * 2) + (momentum * 3)
+
+    session, power = get_market_session()
+    news_score = news_engine()
+
+    final_score = (score * power) + (news_score * 2)
+
+    if abs(final_score) < 6:
+        return None
+
+    if final_score > 0:
+        direction = "🟢 BUY"
+        sl = price - a * 1.5
+        tp1 = price + a * 1.5
+        tp2 = price + a * 2.5
+    else:
+        direction = "🔴 SELL"
+        sl = price + a * 1.5
+        tp1 = price - a * 1.5
+        tp2 = price - a * 2.5
+
+    confidence = min(100, abs(final_score) * 6)
+
+    return {
+        "symbol": symbol,
+        "price": price,
+        "direction": direction,
+        "score": final_score,
+        "confidence": confidence,
+        "session": session,
+        "power": power,
+        "sl": sl,
+        "tp1": tp1,
+        "tp2": tp2
+    }
 
 # ==========================
-# 🚀 ENGINE LOOP (ANTI FREEZE)
+# 📱 PANEL
 # ==========================
-def engine_loop():
-    while True:
-        try:
-            for s in watchlist:
-                analyse(s)
-        except Exception as e:
-            print("ENGINE ERROR:", e)
+def send_panel():
 
-        time.sleep(5)
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="📊 BTC", callback_data="BTCUSDT"),
+            InlineKeyboardButton(text="⚡ ETH", callback_data="ETHUSDT")
+        ],
+        [
+            InlineKeyboardButton(text="🏆 RANK", callback_data="RANK"),
+            InlineKeyboardButton(text="🧠 STATUS", callback_data="STATUS")
+        ]
+    ])
 
+    bot.sendMessage(CHAT_ID,
+        "🚀 ULTRA V10 PANEL\n\n📊 ONLINE\n🧠 AI ACTIVE\n📡 LIVE RUNNING",
+        reply_markup=keyboard
+    )
 
 # ==========================
-# 📩 TELEGRAM HANDLER (SAFE)
+# 📩 CALLBACK
+# ==========================
+def on_callback(msg):
+
+    qid, chat_id, data = telepot.glance(msg, flavor='callback_query')
+
+    if data == "STATUS":
+        bot.sendMessage(chat_id, "🧠 BOT IS RUNNING")
+
+    elif data == "RANK":
+        bot.sendMessage(chat_id, "🏆 RANK SYSTEM READY")
+
+    else:
+        result = ai_engine(data)
+
+        if not result:
+            bot.sendMessage(chat_id, f"{data}\n⚪ NO SIGNAL")
+            return
+
+        bot.sendMessage(chat_id,
+            f"""
+📊 {result['symbol']}
+💰 {result['price']}
+
+🎯 {result['direction']}
+🔥 Score: {round(result['score'],2)}
+📊 Conf: {round(result['confidence'],2)}%
+
+🌍 Session: {result['session']}
+⚡ Power: {result['power']}
+
+🛑 SL: {result['sl']}
+🎯 TP1: {result['tp1']}
+🎯 TP2: {result['tp2']}
+"""
+        )
+
+# ==========================
+# 📩 CHAT
+# ==========================
+def on_chat(msg):
+
+    chat_id = msg['chat']['id']
+    text = msg.get('text','')
+
+    if text == "/start":
+        send_panel()
+
+# ==========================
+# 🔥 HANDLER
 # ==========================
 def handle(msg):
-    try:
-        flavor = telepot.flavor(msg)
 
-        # callback buttons
-        if flavor == 'callback_query':
-            qid, chat_id, data = telepot.glance(msg, flavor='callback_query')
+    if 'data' in msg:
+        on_callback(msg)
+    elif 'text' in msg:
+        on_chat(msg)
 
-            if data == "MARKET":
-                sess, mp, _ = market_data()
-                ev = "\n".join(market_events()) or "No events"
+# ==========================
+# 🔄 LIVE LOOP
+# ==========================
+def live_loop():
 
-                bot.sendMessage(chat_id, f"🌍 {sess}\nPower: {mp}\n{ev}")
-                return
+    watchlist = ["BTCUSDT", "ETHUSDT", "BNBUSDT"]
 
-            info = analyse(data)
+    while True:
 
-            if not info:
-                bot.sendMessage(chat_id, f"{data} ⚪ No signal")
-                return
+        for coin in watchlist:
 
-            sym, pr, dr, sc, cf, sl, t1, t2, t3, sess, vf = info
+            result = ai_engine(coin)
 
-            bot.sendMessage(chat_id, f"""
-📊 {sym}
-💰 {round(pr,2)}
+            if result and result['confidence'] > 85:
 
-🎯 {dr}
-🔥 Score: {round(sc,2)}
-🧠 {cf}%
+                bot.sendMessage(CHAT_ID,
+                    f"""
+🔥 SIGNAL
 
-🌍 {sess}
-📈 Volume x{vf}
+📊 {coin}
+🎯 {result['direction']}
+🔥 {round(result['confidence'],2)}%
+🌍 {result['session']}
+"""
+                )
 
-🛑 SL: {round(sl,2)}
-🎯 TP1: {round(t1,2)}
-🎯 TP2: {round(t2,2)}
-🎯 TP3: {round(t3,2)}
-""")
+            time.sleep(2)
 
-        elif 'text' in msg:
-            chat_id = msg['chat']['id']
-
-            if msg.get('text') == "/start":
-                keyboard = InlineKeyboardMarkup(inline_keyboard=[
-                    [InlineKeyboardButton(text="BTC", callback_data="BTCUSDT"),
-                     InlineKeyboardButton(text="ETH", callback_data="ETHUSDT")],
-                    [InlineKeyboardButton(text="BNB", callback_data="BNBUSDT"),
-                     InlineKeyboardButton(text="SOL", callback_data="SOLUSDT")],
-                    [InlineKeyboardButton(text="PAXG", callback_data="PAXGUSDT")],
-                    [InlineKeyboardButton(text="Market", callback_data="MARKET")]
-                ])
-
-                bot.sendMessage(chat_id, "👑 ULTRA AI CONTROL", reply_markup=keyboard)
-
-    except Exception as e:
-        print("HANDLER ERROR:", e)
-
+        time.sleep(30)
 
 # ==========================
 # 🚀 START SYSTEM
 # ==========================
-if __name__ == "__main__":
+def start_system():
 
-    Thread(target=run_web).start()
-    Thread(target=engine_loop).start()
+    print("🚀 ULTRA V10 FULL SYSTEM RUNNING")
+
+    send_panel()
 
     MessageLoop(bot, handle).run_as_thread()
 
-    bot.sendMessage(ADMIN_CHAT_ID, "👑 ULTRA AI BOT STARTED")
+    Thread(target=live_loop).start()
 
     while True:
         time.sleep(10)
+
+
+if __name__ == "__main__":
+    start_system()
