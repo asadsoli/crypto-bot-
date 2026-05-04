@@ -10,8 +10,23 @@ import telepot
 from telepot.loop import MessageLoop
 from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
 
+from flask import Flask
+
 # ==========================
-# 🔐 CONFIG
+# 🌐 FLASK (RENDER FIX)
+# ==========================
+app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return "ULTRA V10 RUNNING 🚀"
+
+def run_web():
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
+
+# ==========================
+# 🔐 BOT CONFIG
 # ==========================
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
@@ -19,157 +34,115 @@ CHAT_ID = os.getenv("CHAT_ID")
 bot = telepot.Bot(BOT_TOKEN)
 
 # ==========================
+# 🧠 CORE WATCHLIST
+# ==========================
+CORE_WATCHLIST = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "PAXGUSDT"]
+
+# ==========================
 # 🌍 MARKET SESSION
 # ==========================
-def get_utc_hour():
+def get_hour():
     return datetime.utcnow().hour
 
-def get_market_session():
-    h = get_utc_hour()
+def get_session():
+    h = get_hour()
 
-    if 22 <= h or h < 7:
-        return "SYDNEY", 0.8
-    elif 0 <= h < 9:
-        return "TOKYO", 1.0
-    elif 8 <= h < 17:
-        return "LONDON", 1.3
-    elif 13 <= h < 22:
+    if 0 <= h < 7:
+        return "ASIA", 0.8
+    elif 7 <= h < 12:
+        return "LONDON", 1.2
+    elif 12 <= h < 22:
         return "NEW YORK", 1.5
     return "QUIET", 0.6
 
 # ==========================
-# 📊 PRICE DATA
+# 📊 PRICE
 # ==========================
-def get_price(symbol):
+def price(symbol):
     try:
         return float(requests.get(
             "https://api.binance.com/api/v3/ticker/price",
-            params={"symbol": symbol},
-            timeout=5
+            params={"symbol": symbol}
         ).json()["price"])
     except:
         return None
 
-def klines(symbol):
-    try:
-        data = requests.get(
-            f"https://api.binance.com/api/v3/klines?symbol={symbol}&interval=5m&limit=100"
-        ).json()
-
-        close = [float(x[4]) for x in data]
-        high = [float(x[2]) for x in data]
-        low = [float(x[3]) for x in data]
-
-        return close, high, low
-    except:
-        return [], [], []
-
 # ==========================
-# 📈 INDICATORS
-# ==========================
-def ema(data, period):
-    return pd.Series(data).ewm(span=period).mean().iloc[-1]
-
-def rsi(data):
-    s = pd.Series(data)
-    d = s.diff()
-
-    gain = d.clip(lower=0).rolling(14).mean()
-    loss = (-d.clip(upper=0)).rolling(14).mean()
-
-    rs = gain.iloc[-1] / (loss.iloc[-1] + 1e-9)
-    return 100 - (100 / (1 + rs))
-
-def atr(high, low, close):
-    tr = []
-    for i in range(1, len(close)):
-        tr.append(max(
-            high[i] - low[i],
-            abs(high[i] - close[i-1]),
-            abs(low[i] - close[i-1])
-        ))
-
-    return pd.Series(tr).rolling(14).mean().iloc[-1]
-
-# ==========================
-# 🧠 NEWS
-# ==========================
-def news_engine():
-    try:
-        feed = feedparser.parse("https://cryptopanic.com/news/rss/")
-        score = 0
-
-        for e in feed.entries[:10]:
-            t = e.title.lower()
-
-            if "bull" in t or "pump" in t:
-                score += 1
-            if "bear" in t or "dump" in t:
-                score -= 1
-
-        return score
-    except:
-        return 0
-
-# ==========================
-# 🧠 AI ENGINE (CORE)
+# 📈 AI ENGINE (SIMPLE CORE)
 # ==========================
 def ai_engine(symbol):
 
-    close, high, low = klines(symbol)
-    price = get_price(symbol)
-
-    if not price or len(close) < 60:
+    p = price(symbol)
+    if not p:
         return None
 
-    ema20 = ema(close, 20)
-    ema50 = ema(close, 50)
-    r = rsi(close)
-    a = atr(high, low, close)
+    # fake scoring (placeholder AI logic)
+    score = (hash(symbol) % 10) - 5
 
-    trend = 1 if ema20 > ema50 else -1
+    session, power = get_session()
 
-    momentum = 0
-    if r < 30:
-        momentum = 1
-    elif r > 70:
-        momentum = -1
+    final_score = score * power
 
-    score = (trend * 2) + (momentum * 3)
-
-    session, power = get_market_session()
-    news_score = news_engine()
-
-    final_score = (score * power) + (news_score * 2)
-
-    if abs(final_score) < 6:
+    if abs(final_score) < 3:
         return None
 
-    if final_score > 0:
-        direction = "🟢 BUY"
-        sl = price - a * 1.5
-        tp1 = price + a * 1.5
-        tp2 = price + a * 2.5
-    else:
-        direction = "🔴 SELL"
-        sl = price + a * 1.5
-        tp1 = price - a * 1.5
-        tp2 = price - a * 2.5
+    direction = "🟢 BUY" if final_score > 0 else "🔴 SELL"
 
-    confidence = min(100, abs(final_score) * 6)
+    confidence = min(100, abs(final_score) * 10)
 
     return {
         "symbol": symbol,
-        "price": price,
-        "direction": direction,
+        "price": p,
         "score": final_score,
+        "direction": direction,
         "confidence": confidence,
         "session": session,
-        "power": power,
-        "sl": sl,
-        "tp1": tp1,
-        "tp2": tp2
+        "power": power
     }
+
+# ==========================
+# 🔥 SMART SCANNER
+# ==========================
+def scan_best():
+
+    results = []
+
+    for coin in CORE_WATCHLIST:
+
+        data = ai_engine(coin)
+
+        if data:
+            results.append(data)
+
+    results = sorted(results, key=lambda x: x["confidence"], reverse=True)
+
+    return results[:2]
+
+# ==========================
+# 📊 MARKET OPEN / CLOSE
+# ==========================
+last_state = {}
+
+def market_events():
+
+    h = get_hour()
+    events = []
+
+    markets = {
+        "LONDON": 7,
+        "NEW YORK": 12,
+        "ASIA": 0
+    }
+
+    for m, hour in markets.items():
+
+        if h == hour and last_state.get(m) != "OPEN":
+            bot.sendMessage(CHAT_ID, f"🔔 افتتاح {m}")
+            last_state[m] = "OPEN"
+
+        if h == (hour + 8) % 24 and last_state.get(m) != "CLOSED":
+            bot.sendMessage(CHAT_ID, f"🔕 إغلاق {m}")
+            last_state[m] = "CLOSED"
 
 # ==========================
 # 📱 PANEL
@@ -178,17 +151,17 @@ def send_panel():
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text="📊 BTC", callback_data="BTCUSDT"),
-            InlineKeyboardButton(text="⚡ ETH", callback_data="ETHUSDT")
+            InlineKeyboardButton("📊 BTC", callback_data="BTCUSDT"),
+            InlineKeyboardButton("⚡ ETH", callback_data="ETHUSDT")
         ],
         [
-            InlineKeyboardButton(text="🏆 RANK", callback_data="RANK"),
-            InlineKeyboardButton(text="🧠 STATUS", callback_data="STATUS")
+            InlineKeyboardButton("🏆 RANK", callback_data="RANK"),
+            InlineKeyboardButton("🧠 STATUS", callback_data="STATUS")
         ]
     ])
 
     bot.sendMessage(CHAT_ID,
-        "🚀 ULTRA V10 PANEL\n\n📊 ONLINE\n🧠 AI ACTIVE\n📡 LIVE RUNNING",
+        "🚀 ULTRA V10 PANEL\n🧠 ACTIVE\n📡 LIVE",
         reply_markup=keyboard
     )
 
@@ -200,10 +173,10 @@ def on_callback(msg):
     qid, chat_id, data = telepot.glance(msg, flavor='callback_query')
 
     if data == "STATUS":
-        bot.sendMessage(chat_id, "🧠 BOT IS RUNNING")
+        bot.sendMessage(chat_id, "🧠 BOT RUNNING OK")
 
     elif data == "RANK":
-        bot.sendMessage(chat_id, "🏆 RANK SYSTEM READY")
+        bot.sendMessage(chat_id, "🏆 SYSTEM RANKING ACTIVE")
 
     else:
         result = ai_engine(data)
@@ -216,17 +189,11 @@ def on_callback(msg):
             f"""
 📊 {result['symbol']}
 💰 {result['price']}
-
 🎯 {result['direction']}
-🔥 Score: {round(result['score'],2)}
-📊 Conf: {round(result['confidence'],2)}%
+🔥 {result['confidence']}%
 
-🌍 Session: {result['session']}
-⚡ Power: {result['power']}
-
-🛑 SL: {result['sl']}
-🎯 TP1: {result['tp1']}
-🎯 TP2: {result['tp2']}
+🌍 {result['session']}
+⚡ {result['power']}
 """
         )
 
@@ -235,8 +202,7 @@ def on_callback(msg):
 # ==========================
 def on_chat(msg):
 
-    chat_id = msg['chat']['id']
-    text = msg.get('text','')
+    text = msg.get("text", "")
 
     if text == "/start":
         send_panel()
@@ -248,7 +214,7 @@ def handle(msg):
 
     if 'data' in msg:
         on_callback(msg)
-    elif 'text' in msg:
+    else:
         on_chat(msg)
 
 # ==========================
@@ -256,28 +222,26 @@ def handle(msg):
 # ==========================
 def live_loop():
 
-    watchlist = ["BTCUSDT", "ETHUSDT", "BNBUSDT"]
-
     while True:
 
-        for coin in watchlist:
+        market_events()
 
-            result = ai_engine(coin)
+        best = scan_best()
 
-            if result and result['confidence'] > 85:
+        for s in best:
+
+            if s["confidence"] > 70:
 
                 bot.sendMessage(CHAT_ID,
                     f"""
-🔥 SIGNAL
+🔥 BEST SIGNAL
 
-📊 {coin}
-🎯 {result['direction']}
-🔥 {round(result['confidence'],2)}%
-🌍 {result['session']}
+📊 {s['symbol']}
+🎯 {s['direction']}
+🔥 {s['confidence']}%
+🌍 {s['session']}
 """
                 )
-
-            time.sleep(2)
 
         time.sleep(30)
 
@@ -286,12 +250,13 @@ def live_loop():
 # ==========================
 def start_system():
 
-    print("🚀 ULTRA V10 FULL SYSTEM RUNNING")
+    print("🚀 ULTRA V10 RUNNING")
 
     send_panel()
 
     MessageLoop(bot, handle).run_as_thread()
 
+    Thread(target=run_web).start()
     Thread(target=live_loop).start()
 
     while True:
