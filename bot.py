@@ -33,7 +33,10 @@ def handle(msg):
 def start_bot():
     print("🔥 BOT STARTED - ULTRA V10 RUNNING")
 
-    MessageLoop(bot, handle).run_as_thread()
+    try:
+        MessageLoop(bot, handle).run_as_thread()
+    except Exception as e:
+        print(f"⚠ BOT ALREADY RUNNING: {e}")
 
     while True:
         time.sleep(10)
