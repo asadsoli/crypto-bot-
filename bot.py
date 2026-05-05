@@ -4,21 +4,16 @@ import telepot
 from telepot.loop import MessageLoop
 import time
 
-# 🧠 Time Engine
 time_engine = TimeEngine()
 
-# 🔑 Token from Render Environment
 TOKEN = os.environ.get("TELEGRAM_TOKEN")
 
-# ❌ حماية من الخطأ
 if not TOKEN:
     raise Exception("❌ TELEGRAM_TOKEN is missing in environment variables")
 
-# 🤖 Bot init
 bot = telepot.Bot(TOKEN)
 
 
-# 📩 Handle messages
 def handle(msg):
     chat_id = msg['chat']['id']
     text = msg.get('text', '')
@@ -35,16 +30,11 @@ def handle(msg):
         )
 
 
-# 🚀 Start bot safely
 def start_bot():
     print("🔥 BOT STARTED - ULTRA V10 RUNNING")
 
-    # حماية من تشغيل مزدوج (مهم لـ Render)
-    try:
-        MessageLoop(bot, handle).run_as_thread()
-    except Exception as e:
-        print(f"⚠ ERROR IN MESSAGE LOOP: {e}")
+    MessageLoop(bot, handle).run_as_thread()
 
-    # إبقاء السيرفر حي
+    # مهم جدًا: منع crash بدون try/except خارجي
     while True:
         time.sleep(10)
