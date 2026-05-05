@@ -7,6 +7,10 @@ import time
 time_engine = TimeEngine()
 
 TOKEN = os.environ.get("TELEGRAM_TOKEN")
+
+if not TOKEN:
+    raise Exception("❌ TELEGRAM_TOKEN is missing in environment variables")
+
 bot = telepot.Bot(TOKEN)
 
 
@@ -27,7 +31,7 @@ def handle(msg):
 
 
 def start_bot():
-    print("🔥 BOT STARTED")
+    print("🔥 BOT STARTED - ULTRA V10 RUNNING")
     MessageLoop(bot, handle).run_as_thread()
 
     while True:
