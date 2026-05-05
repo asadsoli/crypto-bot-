@@ -1,7 +1,6 @@
 flask
 telepot
 requests
-pandas
-feedparser
 python-dotenv
 pytz
+feedparser
