@@ -1,18 +1,18 @@
 from flask import Flask
-import threading
-from bot import start_bot
 import os
+from bot import telegram_webhook
 
 app = Flask(__name__)
 
 @app.route("/")
 def home():
-    return "ULTRA V10 RUNNING ✔"
+    return "ULTRA V10 WEBHOOK ACTIVE ✔"
 
-def run_bot():
-    start_bot()
+
+@app.route("/webhook", methods=["POST"])
+def webhook():
+    return telegram_webhook()
+
 
 if __name__ == "__main__":
-    threading.Thread(target=run_bot).start()
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
