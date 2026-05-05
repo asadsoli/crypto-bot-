@@ -1,5 +1,4 @@
-.safe_mode.py
-class SafeUpgradeSystem:
+class SafeprintUpgradeSystem:
     def __init__(self):
         self.lock = True
 
