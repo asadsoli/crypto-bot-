@@ -1,42 +1,30 @@
-from core.time_engine import TimeEngine
 import os
 import telepot
-from telepot.loop import MessageLoop
-import time
+from flask import request
+from core.time_engine import TimeEngine
 
 time_engine = TimeEngine()
 
 TOKEN = os.environ.get("TELEGRAM_TOKEN")
-
-if not TOKEN:
-    raise Exception("❌ TELEGRAM_TOKEN is missing")
-
 bot = telepot.Bot(TOKEN)
 
 
-def handle(msg):
-    chat_id = msg['chat']['id']
-    text = msg.get('text', '')
+def telegram_webhook():
+    data = request.get_json()
 
-    if text == "/start":
-        current_time = time_engine.get_current_time()
-        session = time_engine.get_session()
+    if data and "message" in data:
+        chat_id = data["message"]["chat"]["id"]
+        text = data["message"].get("text", "")
 
-        bot.sendMessage(
-            chat_id,
-            f"🤖 ULTRA V10 ONLINE ✔\n"
-            f"🕒 الوقت: {current_time}\n"
-            f"🌍 الجلسة: {session}"
-        )
+        if text == "/start":
+            current_time = time_engine.get_current_time()
+            session = time_engine.get_session()
 
+            bot.sendMessage(
+                chat_id,
+                f"🤖 ULTRA V10 ONLINE ✔\n"
+                f"🕒 الوقت: {current_time}\n"
+                f"🌍 الجلسة: {session}"
+            )
 
-def start_bot():
-    print("🔥 BOT STARTED - ULTRA V10 RUNNING")
-
-    try:
-        MessageLoop(bot, handle).run_as_thread()
-    except Exception as e:
-        print(f"⚠ BOT ALREADY RUNNING: {e}")
-
-    while True:
-        time.sleep(10)
+    return "OK"
