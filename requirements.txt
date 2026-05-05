@@ -1,6 +1,0 @@
-telepot
-requests
-pandas
-feedparser
-flask
-pytz
