@@ -9,7 +9,10 @@ bot = telepot.Bot(TOKEN)
 
 def handle(msg):
     chat_id = msg['chat']['id']
-    bot.sendMessage(chat_id, "✅ BOT WORKING")
+    text = msg.get('text', '')
+
+    if text == "/start":
+        bot.sendMessage(chat_id, "🤖 ULTRA V10 BOT ONLINE ✔")
 
 def start_bot():
     print("🔥 BOT STARTED")
