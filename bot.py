@@ -1,3 +1,6 @@
+from core.time_engine import TimeEngine
+
+time_engine = TimeEngine()
 import os
 import telepot
 from telepot.loop import MessageLoop
@@ -12,11 +15,15 @@ def handle(msg):
     text = msg.get('text', '')
 
     if text == "/start":
-        bot.sendMessage(chat_id, "🤖 ULTRA V10 BOT ONLINE ✔")
+        current_time = time_engine.get_current_time()
+        session = time_engine.get_session()
 
-def start_bot():
-    print("🔥 BOT STARTED")
-    MessageLoop(bot, handle).run_as_thread()
+        bot.sendMessage(
+            chat_id,
+            f"🤖 ULTRA V10 ONLINE ✔\n"
+            f"🕒 الوقت: {current_time}\n"
+            f"🌍 الجلسة: {session}"
+        )
 
     while True:
         time.sleep(10)
