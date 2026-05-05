@@ -1,14 +1,14 @@
 from core.time_engine import TimeEngine
-
-time_engine = TimeEngine()
 import os
 import telepot
 from telepot.loop import MessageLoop
 import time
 
-TOKEN = os.environ.get("TELEGRAM_TOKEN")
+time_engine = TimeEngine()
 
+TOKEN = os.environ.get("TELEGRAM_TOKEN")
 bot = telepot.Bot(TOKEN)
+
 
 def handle(msg):
     chat_id = msg['chat']['id']
@@ -24,6 +24,11 @@ def handle(msg):
             f"🕒 الوقت: {current_time}\n"
             f"🌍 الجلسة: {session}"
         )
+
+
+def start_bot():
+    print("🔥 BOT STARTED")
+    MessageLoop(bot, handle).run_as_thread()
 
     while True:
         time.sleep(10)
