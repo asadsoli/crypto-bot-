@@ -9,7 +9,7 @@ time_engine = TimeEngine()
 TOKEN = os.environ.get("TELEGRAM_TOKEN")
 
 if not TOKEN:
-    raise Exception("❌ TELEGRAM_TOKEN is missing in environment variables")
+    raise Exception("❌ TELEGRAM_TOKEN is missing")
 
 bot = telepot.Bot(TOKEN)
 
@@ -24,7 +24,7 @@ def handle(msg):
 
         bot.sendMessage(
             chat_id,
-            "🤖 ULTRA V10 ONLINE ✔\n"
+            f"🤖 ULTRA V10 ONLINE ✔\n"
             f"🕒 الوقت: {current_time}\n"
             f"🌍 الجلسة: {session}"
         )
@@ -35,6 +35,5 @@ def start_bot():
 
     MessageLoop(bot, handle).run_as_thread()
 
-    # مهم جدًا: منع crash بدون try/except خارجي
     while True:
         time.sleep(10)
