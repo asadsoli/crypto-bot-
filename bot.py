@@ -4,10 +4,12 @@ from flask import request
 
 from core.time_engine import TimeEngine
 from core.market_state import MarketStateEngine
+from core.news_engine import NewsEngine
 
 # 🧠 Engines
 time_engine = TimeEngine()
 market = MarketStateEngine()
+news_engine = NewsEngine()
 
 # 🔑 Token
 TOKEN = os.environ.get("TELEGRAM_TOKEN")
@@ -27,8 +29,13 @@ def telegram_webhook():
             current_time = time_engine.get_current_time()
             session = time_engine.get_session()
 
-            # 🧠 Market State Engine
-            state = market.get_market_state()
+            # 📰 News Analysis (مبدئي فارغ الآن)
+            news = news_engine.analyze_news()
+
+            # 🧠 Market State Engine (مرتبط بالأخبار)
+            state = market.get_market_state(
+                news_risk=news["risk"]
+            )
 
             bot.sendMessage(
                 chat_id,
@@ -36,6 +43,10 @@ def telegram_webhook():
 
 🕒 الوقت: {current_time}
 🌍 الجلسة: {session}
+
+📰 NEWS STATUS:
+⚠️ Risk: {news['risk']}
+📊 Impact Score: {news['impact_score']}
 
 📊 MARKET STATE:
 ⚡ الحالة: {state['state']}
