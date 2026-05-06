@@ -6,12 +6,12 @@ from core.time_engine import TimeEngine
 from core.market_state import MarketStateEngine
 from core.news_engine import NewsEngine
 
-# 🧠 Engines
+# 🧠 Engines Initialization
 time_engine = TimeEngine()
 market = MarketStateEngine()
 news_engine = NewsEngine()
 
-# 🔑 Token
+# 🔑 Telegram Token
 TOKEN = os.environ.get("TELEGRAM_TOKEN")
 bot = telepot.Bot(TOKEN)
 
@@ -26,17 +26,19 @@ def telegram_webhook():
         # 📌 /start command
         if text == "/start":
 
+            # 🕒 Time Engine
             current_time = time_engine.get_current_time()
             session = time_engine.get_session()
 
-            # 📰 News Analysis (مبدئي فارغ الآن)
+            # 📰 News Engine (تحليل الأخبار)
             news = news_engine.analyze_news()
 
-            # 🧠 Market State Engine (مرتبط بالأخبار)
+            # 🧠 Market State (مرتبط بالأخبار)
             state = market.get_market_state(
                 news_risk=news["risk"]
             )
 
+            # 📤 Response
             bot.sendMessage(
                 chat_id,
                 f"""🤖 ULTRA V10 CORE ACTIVE ✔
@@ -44,7 +46,7 @@ def telegram_webhook():
 🕒 الوقت: {current_time}
 🌍 الجلسة: {session}
 
-📰 NEWS STATUS:
+📰 NEWS ENGINE:
 ⚠️ Risk: {news['risk']}
 📊 Impact Score: {news['impact_score']}
 
