@@ -1,14 +1,21 @@
 from core.liquidity_engine import LiquidityEngine
 from core.market_structure import MarketStructure
 from core.orderflow_engine import OrderFlowEngine
+from core.market_data import MarketData  # 💰 NEW: Live Market Data
 
 class SignalEngine:
     def __init__(self):
         self.liquidity_engine = LiquidityEngine()
         self.structure_engine = MarketStructure()
-        self.orderflow_engine = OrderFlowEngine()  # 💎 الجديد
+        self.orderflow_engine = OrderFlowEngine()
+
+        # 💰 LIVE MARKET DATA (NEW)
+        self.market_data = MarketData("BTCUSDT", "1m")
 
     def analyze(self, market_state, news, risk):
+
+        # 📊 🔥 جلب بيانات السوق الحقيقية
+        candles = self.market_data.get_candles()
 
         # ❌ Risk Block
         if risk["decision"] == "BLOCK":
@@ -31,14 +38,14 @@ class SignalEngine:
                 "reason": "High impact news"
             }
 
-        # 💧 Liquidity Analysis
-        liquidity = self.liquidity_engine.analyze()
+        # 💧 Liquidity Analysis (الآن يمكن ترقيته لاحقًا باستخدام candles)
+        liquidity = self.liquidity_engine.analyze(candles)
 
-        # 🧱 Market Structure Analysis
-        structure = self.structure_engine.analyze()
+        # 🧱 Market Structure (حقيقي مع البيانات)
+        structure = self.structure_engine.analyze(candles)
 
         # 💎 Order Flow (OB + FVG)
-        orderflow = self.orderflow_engine.analyze()
+        orderflow = self.orderflow_engine.analyze(candles)
 
         # ⚪ Range Market → لا دخول
         if structure["bias"] == "RANGE":
@@ -71,7 +78,7 @@ class SignalEngine:
                 "reason": liquidity["reason"]
             }
 
-        # 💎 Institutional Order Block Entry (NEW CORE LOGIC)
+        # 💎 Order Block + FVG (Elite Entry)
         if orderflow["confidence"] >= 90:
             return {
                 "signal": "INSTITUTIONAL ENTRY",
@@ -83,7 +90,7 @@ class SignalEngine:
                 "reason": orderflow["reason"]
             }
 
-        # 📈 Default Institutional Trend Trade
+        # 📈 Final Institutional Trend Trade
         return {
             "signal": "INSTITUTIONAL ENTRY",
             "entry": "ORDER BLOCK / FVG ZONE",
@@ -91,5 +98,5 @@ class SignalEngine:
             "tp": "NEXT LIQUIDITY ZONE",
             "confidence": 80,
             "quality": "INSTITUTIONAL SMART MONEY",
-            "reason": "Structure + Liquidity aligned"
+            "reason": "Structure + Liquidity aligned (LIVE DATA)"
         }
