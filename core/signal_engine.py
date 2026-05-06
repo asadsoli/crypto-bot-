@@ -1,10 +1,12 @@
 from core.liquidity_engine import LiquidityEngine
 from core.market_structure import MarketStructure
+from core.orderflow_engine import OrderFlowEngine
 
 class SignalEngine:
     def __init__(self):
         self.liquidity_engine = LiquidityEngine()
         self.structure_engine = MarketStructure()
+        self.orderflow_engine = OrderFlowEngine()  # 💎 الجديد
 
     def analyze(self, market_state, news, risk):
 
@@ -34,6 +36,9 @@ class SignalEngine:
 
         # 🧱 Market Structure Analysis
         structure = self.structure_engine.analyze()
+
+        # 💎 Order Flow (OB + FVG)
+        orderflow = self.orderflow_engine.analyze()
 
         # ⚪ Range Market → لا دخول
         if structure["bias"] == "RANGE":
@@ -66,7 +71,19 @@ class SignalEngine:
                 "reason": liquidity["reason"]
             }
 
-        # 📈 Institutional Trend Trade
+        # 💎 Institutional Order Block Entry (NEW CORE LOGIC)
+        if orderflow["confidence"] >= 90:
+            return {
+                "signal": "INSTITUTIONAL ENTRY",
+                "entry": orderflow["entry"],
+                "sl": orderflow["sl"],
+                "tp": orderflow["tp"],
+                "confidence": orderflow["confidence"],
+                "quality": "ULTRA SMART MONEY",
+                "reason": orderflow["reason"]
+            }
+
+        # 📈 Default Institutional Trend Trade
         return {
             "signal": "INSTITUTIONAL ENTRY",
             "entry": "ORDER BLOCK / FVG ZONE",
