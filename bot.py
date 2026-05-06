@@ -6,12 +6,14 @@ from core.time_engine import TimeEngine
 from core.market_state import MarketStateEngine
 from core.news_engine import NewsEngine
 from core.risk_manager import RiskManager
+from core.signal_engine import SignalEngine
 
 # 🧠 Engines Initialization
 time_engine = TimeEngine()
 market = MarketStateEngine()
 news_engine = NewsEngine()
 risk_manager = RiskManager()
+signal_engine = SignalEngine()
 
 # 🔑 Telegram Token
 TOKEN = os.environ.get("TELEGRAM_TOKEN")
@@ -40,11 +42,18 @@ def telegram_webhook():
                 news_risk=news["risk"]
             )
 
-            # 🛡 Risk Manager (🔥 الإضافة الجديدة)
+            # 🛡 Risk Manager
             risk = risk_manager.evaluate(
                 market_state=state,
                 news=news,
-                volatility=0  # مؤقتًا (لاحقًا نربطه بالسوق الحقيقي)
+                volatility=0
+            )
+
+            # 💰 Signal Engine (🔥 الجديد)
+            signal = signal_engine.analyze(
+                market_state=state,
+                news=news,
+                risk=risk
             )
 
             # 📤 Response
@@ -67,6 +76,14 @@ def telegram_webhook():
 ⚡ القرار: {risk['decision']}
 📊 SCORE: {risk['score']}
 🧠 السبب: {risk['reason']}
+
+💰 SIGNAL ENGINE:
+📊 القرار: {signal['signal']}
+📈 Entry: {signal.get('entry', 'N/A')}
+🛑 SL: {signal.get('sl', 'N/A')}
+🎯 TP: {signal.get('tp', 'N/A')}
+💎 Confidence: {signal.get('confidence', 'N/A')}%
+🏆 Quality: {signal.get('quality', 'N/A')}
 """
             )
 
