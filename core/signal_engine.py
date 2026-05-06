@@ -1,36 +1,60 @@
 from core.liquidity_engine import LiquidityEngine
+from core.market_structure import MarketStructure
 
 class SignalEngine:
     def __init__(self):
         self.liquidity_engine = LiquidityEngine()
+        self.structure_engine = MarketStructure()
 
     def analyze(self, market_state, news, risk):
 
-        # ❌ إذا ممنوع تداول
+        # ❌ Risk Block
         if risk["decision"] == "BLOCK":
             return {
                 "signal": "NO TRADE",
                 "reason": "Risk Manager blocked trading"
             }
 
-        # 🧠 حالة السوق الضعيفة
+        # 🧠 High Risk Market
         if market_state["state"] == "HIGH_RISK":
             return {
                 "signal": "NO TRADE",
                 "reason": "Market too risky"
             }
 
-        # 📰 أخبار خطيرة
+        # 📰 High Impact News
         if news["risk"] == "HIGH":
             return {
                 "signal": "NO TRADE",
                 "reason": "High impact news"
             }
 
-        # 💧 Liquidity Engine (🔥 الجديد)
+        # 💧 Liquidity Analysis
         liquidity = self.liquidity_engine.analyze()
 
-        # 🧠 إذا السوق ينتظر سحب سيولة
+        # 🧱 Market Structure Analysis
+        structure = self.structure_engine.analyze()
+
+        # ⚪ Range Market → لا دخول
+        if structure["bias"] == "RANGE":
+            return {
+                "signal": "NO TRADE",
+                "reason": "Market ranging - no structure"
+            }
+
+        # 🔄 Reversal Setup (CHoCH)
+        if structure["bias"] == "REVERSAL":
+            return {
+                "signal": "REVERSAL TRADE",
+                "entry": "CHoCH CONFIRMATION ZONE",
+                "sl": "BEYOND STRUCTURE",
+                "tp": "NEXT LIQUIDITY POOL",
+                "confidence": structure["confidence"],
+                "quality": "SMART MONEY REVERSAL",
+                "reason": structure["reason"]
+            }
+
+        # 💧 Liquidity Sweep Setup
         if liquidity["signal_hint"] == "WAIT_SWEEP":
             return {
                 "signal": "WAIT FOR LIQUIDITY SWEEP",
@@ -38,17 +62,17 @@ class SignalEngine:
                 "sl": "BEYOND LIQUIDITY ZONE",
                 "tp": "NEXT LIQUIDITY POOL",
                 "confidence": 85,
-                "quality": "SMART MONEY",
+                "quality": "SMART MONEY LIQUIDITY",
                 "reason": liquidity["reason"]
             }
 
-        # 📈 (Fallback مؤسسي)
+        # 📈 Institutional Trend Trade
         return {
-            "signal": "BUY / SELL (INSTITUTIONAL MODE)",
-            "entry": "ORDER BLOCK / FVG",
+            "signal": "INSTITUTIONAL ENTRY",
+            "entry": "ORDER BLOCK / FVG ZONE",
             "sl": "BELOW STRUCTURE",
             "tp": "NEXT LIQUIDITY ZONE",
             "confidence": 80,
-            "quality": "INSTITUTIONAL",
-            "reason": "Market ready but no clear sweep setup yet"
+            "quality": "INSTITUTIONAL SMART MONEY",
+            "reason": "Structure + Liquidity aligned"
         }
