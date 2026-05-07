@@ -1,8 +1,49 @@
 class MarketStructure:
 
+    def __init__(self):
+        self.last_swing_high = None
+        self.last_swing_low = None
+        self.trend = "UNKNOWN"
+
+    # =========================
+    # 📊 SWING DETECTION
+    # =========================
+
+    def get_swings(self, candles, strength=3):
+
+        swing_highs = []
+        swing_lows = []
+
+        for i in range(strength, len(candles) - strength):
+
+            current = candles[i]
+
+            highs = [candles[j]["high"] for j in range(i - strength, i + strength + 1)]
+            lows = [candles[j]["low"] for j in range(i - strength, i + strength + 1)]
+
+            # 🔼 Swing High
+            if current["high"] == max(highs):
+                swing_highs.append({
+                    "index": i,
+                    "price": current["high"]
+                })
+
+            # 🔽 Swing Low
+            if current["low"] == min(lows):
+                swing_lows.append({
+                    "index": i,
+                    "price": current["low"]
+                })
+
+        return swing_highs, swing_lows
+
+    # =========================
+    # 🧠 STRUCTURE ANALYSIS
+    # =========================
+
     def analyze(self, candles):
 
-        if not candles or len(candles) < 20:
+        if not candles or len(candles) < 30:
             return {
                 "bias": "UNKNOWN",
                 "direction": "NONE",
@@ -10,83 +51,88 @@ class MarketStructure:
                 "reason": "Not enough data"
             }
 
-        highs = [c["high"] for c in candles]
-        lows = [c["low"] for c in candles]
-        closes = [c["close"] for c in candles]
+        swing_highs, swing_lows = self.get_swings(candles)
+
+        if len(swing_highs) < 2 or len(swing_lows) < 2:
+            return {
+                "bias": "RANGE",
+                "direction": "NONE",
+                "confidence": 50,
+                "reason": "Not enough swing structure"
+            }
+
+        last_high = swing_highs[-1]["price"]
+        prev_high = swing_highs[-2]["price"]
+
+        last_low = swing_lows[-1]["price"]
+        prev_low = swing_lows[-2]["price"]
 
         # =========================
-        # 📊 Detect Swing Points
+        # 📈 TREND DETECTION
         # =========================
 
-        higher_highs = 0
-        higher_lows = 0
-        lower_highs = 0
-        lower_lows = 0
-
-        for i in range(2, len(candles)):
-
-            # previous structure
-            prev_high = highs[i - 1]
-            prev_low = lows[i - 1]
-
-            curr_high = highs[i]
-            curr_low = lows[i]
-
-            # 📈 Higher High / Higher Low
-            if curr_high > prev_high:
-                higher_highs += 1
-
-            if curr_low > prev_low:
-                higher_lows += 1
-
-            # 📉 Lower High / Lower Low
-            if curr_high < prev_high:
-                lower_highs += 1
-
-            if curr_low < prev_low:
-                lower_lows += 1
+        bullish = last_high > prev_high and last_low > prev_low
+        bearish = last_high < prev_high and last_low < prev_low
 
         # =========================
-        # 🧠 Market Bias Decision
+        # 🔥 BOS (Break of Structure)
         # =========================
 
-        score_bull = higher_highs + higher_lows
-        score_bear = lower_highs + lower_lows
+        close = candles[-1]["close"]
 
-        # 🔼 Bullish Structure
-        if score_bull > score_bear * 1.2:
+        bos_bull = close > last_high
+        bos_bear = close < last_low
 
+        # =========================
+        # 🔄 CHoCH DETECTION
+        # =========================
+
+        choch_bull = self.trend == "BEARISH" and bos_bull
+        choch_bear = self.trend == "BULLISH" and bos_bear
+
+        # =========================
+        # 🧠 FINAL DECISION
+        # =========================
+
+        if choch_bull:
+            self.trend = "BULLISH"
+            return {
+                "bias": "REVERSAL",
+                "direction": "BUY",
+                "confidence": 90,
+                "reason": "CHoCH bullish (trend reversal)"
+            }
+
+        if choch_bear:
+            self.trend = "BEARISH"
+            return {
+                "bias": "REVERSAL",
+                "direction": "SELL",
+                "confidence": 90,
+                "reason": "CHoCH bearish (trend reversal)"
+            }
+
+        if bullish:
+            self.trend = "BULLISH"
             return {
                 "bias": "TREND",
                 "direction": "BUY",
-                "confidence": min(95, score_bull * 2),
+                "confidence": 85,
                 "reason": "Bullish structure (HH + HL)"
             }
 
-        # 🔽 Bearish Structure
-        if score_bear > score_bull * 1.2:
-
+        if bearish:
+            self.trend = "BEARISH"
             return {
                 "bias": "TREND",
                 "direction": "SELL",
-                "confidence": min(95, score_bear * 2),
+                "confidence": 85,
                 "reason": "Bearish structure (LH + LL)"
             }
 
-        # 🔄 Reversal / CHoCH Zone
-        if abs(score_bull - score_bear) < 3:
-
-            return {
-                "bias": "REVERSAL",
-                "direction": "WAIT",
-                "confidence": 75,
-                "reason": "Market indecision / CHoCH possible"
-            }
-
-        # ⚪ Range Market
         return {
             "bias": "RANGE",
             "direction": "NONE",
             "confidence": 60,
-            "reason": "No clear structure"
-            }
+            "reason": "Sideways / indecision"
+        }
