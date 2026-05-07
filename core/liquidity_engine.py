@@ -1,11 +1,12 @@
 class LiquidityEngine:
 
-    def __init__(self):
+    def __init__(self, debug=False):
         self.recent_swing_highs = []
         self.recent_swing_lows = []
+        self.debug = debug  # 🟢 تشغيل/إيقاف الطباعة
 
     # =========================
-    # 📊 LOAD SWINGS FROM STRUCTURE
+    # 📊 LOAD SWINGS
     # =========================
 
     def update_swings(self, swing_highs, swing_lows):
@@ -13,20 +14,24 @@ class LiquidityEngine:
         self.recent_swing_highs = swing_highs[-10:] if swing_highs else []
         self.recent_swing_lows = swing_lows[-10:] if swing_lows else []
 
+        if self.debug:
+            print("📊 Swings Updated")
+            print("🔼 Highs:", len(self.recent_swing_highs))
+            print("🔽 Lows:", len(self.recent_swing_lows))
+
     # =========================
-    # 💧 FIND LIQUIDITY ZONES
+    # 💧 LIQUIDITY ZONES
     # =========================
 
     def detect_liquidity_zones(self):
 
         liquidity_zones = []
 
-        # 🔼 Buy-side liquidity (above highs)
         for i in range(1, len(self.recent_swing_highs)):
+
             prev = self.recent_swing_highs[i - 1]
             curr = self.recent_swing_highs[i]
 
-            # Equal highs (liquidity pool)
             if abs(curr["price"] - prev["price"]) <= 0.0005 * curr["price"]:
                 liquidity_zones.append({
                     "type": "BUY_SIDE_LIQUIDITY",
@@ -35,12 +40,11 @@ class LiquidityEngine:
                     "reason": "Equal highs liquidity pool"
                 })
 
-        # 🔽 Sell-side liquidity (below lows)
         for i in range(1, len(self.recent_swing_lows)):
+
             prev = self.recent_swing_lows[i - 1]
             curr = self.recent_swing_lows[i]
 
-            # Equal lows (liquidity pool)
             if abs(curr["price"] - prev["price"]) <= 0.0005 * curr["price"]:
                 liquidity_zones.append({
                     "type": "SELL_SIDE_LIQUIDITY",
@@ -48,6 +52,10 @@ class LiquidityEngine:
                     "strength": "HIGH",
                     "reason": "Equal lows liquidity pool"
                 })
+
+        if self.debug:
+            print("📍 Zones Found:", len(liquidity_zones))
+            print("📍 Zones Data:", liquidity_zones)
 
         return liquidity_zones
 
@@ -60,29 +68,39 @@ class LiquidityEngine:
         if not candles:
             return {"signal_hint": "NO_DATA", "reason": "No candles"}
 
-        last_close = candles[-1]["close"]
-        last_high = candles[-1]["high"]
-        last_low = candles[-1]["low"]
+        last = candles[-1]
 
-        # 🟢 Sweep buy-side liquidity (stop hunts above highs)
+        last_close = last["close"]
+        last_high = last["high"]
+        last_low = last["low"]
+
         for swing in self.recent_swing_highs:
             if last_high > swing["price"] and last_close < swing["price"]:
-                return {
+                result = {
                     "signal_hint": "WAIT_SELL_CONFIRMATION",
                     "type": "BUY_SIDE_SWEEP",
                     "swept_level": swing["price"],
-                    "reason": "Liquidity taken above highs (sell pressure expected)"
+                    "reason": "Liquidity taken above highs"
                 }
 
-        # 🔴 Sweep sell-side liquidity
+                if self.debug:
+                    print("⚡ Sweep Detected:", result)
+
+                return result
+
         for swing in self.recent_swing_lows:
             if last_low < swing["price"] and last_close > swing["price"]:
-                return {
+                result = {
                     "signal_hint": "WAIT_BUY_CONFIRMATION",
                     "type": "SELL_SIDE_SWEEP",
                     "swept_level": swing["price"],
-                    "reason": "Liquidity taken below lows (buy pressure expected)"
+                    "reason": "Liquidity taken below lows"
                 }
+
+                if self.debug:
+                    print("⚡ Sweep Detected:", result)
+
+                return result
 
         return {
             "signal_hint": "NO_SWEEP",
@@ -101,11 +119,14 @@ class LiquidityEngine:
         liquidity_zones = self.detect_liquidity_zones()
         sweep = self.detect_sweep(candles)
 
+        if self.debug:
+            print("💧 Liquidity V2 ACTIVE")
+            print("⚡ Sweep:", sweep)
+
         # =========================
-        # 🎯 FINAL DECISION
+        # 🎯 DECISION
         # =========================
 
-        # 🔥 Strong sweep setup
         if sweep["signal_hint"] in ["WAIT_BUY_CONFIRMATION", "WAIT_SELL_CONFIRMATION"]:
             return {
                 "signal_hint": "WAIT_SWEEP",
@@ -114,7 +135,6 @@ class LiquidityEngine:
                 "reason": sweep["reason"]
             }
 
-        # 💧 Liquidity exists but no sweep yet
         if liquidity_zones:
             return {
                 "signal_hint": "LIQUIDITY_PRESENT",
