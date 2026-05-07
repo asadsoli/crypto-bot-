@@ -1,103 +1,98 @@
-from core.liquidity_engine import LiquidityEngine
-from core.orderflow_engine import OrderFlowEngine
-from core.market_data import MarketData
-from core.smart_money import SmartMoneyEngine  # 🔥 NEW CORE
+def analyze(self, market_state, news, risk):
 
-class SignalEngine:
+    candles = self.market_data.get_candles()
 
-    def __init__(self):
-        self.liquidity_engine = LiquidityEngine()
-        self.orderflow_engine = OrderFlowEngine()
-        self.smart_money = SmartMoneyEngine()
+    # 🛡 Safety check (مهم جدًا)
+    if not candles or len(candles) < 20:
+        return {
+            "signal": "NO TRADE",
+            "reason": "Insufficient market data"
+        }
 
-        # 💰 Live Market Data
-        self.market_data = MarketData("BTCUSDT", "1m")
+    # ❌ Risk Block
+    if risk["decision"] == "BLOCK":
+        return {
+            "signal": "NO TRADE",
+            "reason": "Risk Manager blocked trading"
+        }
 
-    def analyze(self, market_state, news, risk):
+    # 🧠 Market Risk
+    if market_state["state"] == "HIGH_RISK":
+        return {
+            "signal": "NO TRADE",
+            "reason": "Market too risky"
+        }
 
-        # 📊 Live candles
-        candles = self.market_data.get_candles()
+    # 📰 News Risk
+    if news["risk"] == "HIGH":
+        return {
+            "signal": "NO TRADE",
+            "reason": "High impact news"
+        }
 
-        # ❌ Risk Block
-        if risk["decision"] == "BLOCK":
-            return {
-                "signal": "NO TRADE",
-                "reason": "Risk Manager blocked trading"
-            }
+    # =========================
+    # 🧠 CORE ANALYSIS
+    # =========================
 
-        # 🧠 Market Risk
-        if market_state["state"] == "HIGH_RISK":
-            return {
-                "signal": "NO TRADE",
-                "reason": "Market too risky"
-            }
+    structure = self.smart_money.analyze_structure(candles)
+    liquidity = self.liquidity_engine.analyze(candles)
+    orderflow = self.orderflow_engine.analyze(candles)
 
-        # 📰 News Risk
-        if news["risk"] == "HIGH":
-            return {
-                "signal": "NO TRADE",
-                "reason": "High impact news"
-            }
+    score = 0
+    reasons = []
 
-        # 🧠 SMART MONEY STRUCTURE (NEW CORE)
-        structure = self.smart_money.analyze_structure(candles)
+    # 🧱 Structure Weight
+    if structure["bias"] == "REVERSAL":
+        score += 35
+        reasons.append("Structure Reversal")
 
-        # 💧 Liquidity
-        liquidity = self.liquidity_engine.analyze(candles)
+    elif structure["bias"] == "TREND":
+        score += 25
+        reasons.append("Trend Structure")
 
-        # 💎 Order Flow (OB + FVG)
-        orderflow = self.orderflow_engine.analyze(candles)
+    # 💧 Liquidity Weight
+    if liquidity["signal_hint"] == "WAIT_SWEEP":
+        score += 35
+        reasons.append("Liquidity Sweep Setup")
 
-        # ⚪ Range
-        if structure["bias"] == "RANGE":
-            return {
-                "signal": "NO TRADE",
-                "reason": "No Smart Money structure"
-            }
+    # 💎 OrderFlow Weight
+    if orderflow.get("confidence", 0) >= 90:
+        score += 40
+        reasons.append("Order Block / FVG Strong")
 
-        # 🔄 Reversal (CHoCH)
-        if structure["bias"] == "REVERSAL":
-            return {
-                "signal": "REVERSAL TRADE",
-                "entry": "CHoCH CONFIRMATION",
-                "sl": "BEYOND STRUCTURE",
-                "tp": "LIQUIDITY POOL",
-                "confidence": 85,
-                "quality": "SMART MONEY REVERSAL",
-                "reason": structure["reason"]
-            }
+    elif orderflow.get("confidence", 0) >= 75:
+        score += 25
+        reasons.append("Moderate Order Flow")
 
-        # 💧 Liquidity Sweep
-        if liquidity["signal_hint"] == "WAIT_SWEEP":
-            return {
-                "signal": "WAIT SWEEP",
-                "entry": "AFTER SWEEP",
-                "sl": "LIQUIDITY ZONE",
-                "tp": "NEXT POOL",
-                "confidence": 85,
-                "quality": "LIQUIDITY",
-                "reason": liquidity["reason"]
-            }
+    # =========================
+    # 📊 FINAL DECISION ENGINE
+    # =========================
 
-        # 💎 Order Block / FVG Elite Entry
-        if orderflow["confidence"] >= 90:
-            return {
-                "signal": "INSTITUTIONAL ENTRY",
-                "entry": orderflow["entry"],
-                "sl": orderflow["sl"],
-                "tp": orderflow["tp"],
-                "confidence": orderflow["confidence"],
-                "quality": "ULTRA SMART MONEY",
-                "reason": orderflow["reason"]
-            }
+    if score >= 85:
 
-        # 📈 Default Institutional
         return {
             "signal": "INSTITUTIONAL ENTRY",
-            "entry": "ORDER BLOCK / FVG",
-            "sl": "STRUCTURE",
-            "tp": "LIQUIDITY ZONE",
-            "confidence": 80,
-            "quality": "SMART MONEY",
-            "reason": "Structure + Liquidity aligned"
+            "direction": structure.get("direction", "BUY/SELL"),
+            "entry": orderflow.get("entry", "MARKET"),
+            "sl": orderflow.get("sl", "AUTO"),
+            "tp": orderflow.get("tp", "AUTO"),
+            "confidence": score,
+            "quality": "ULTRA SMART MONEY",
+            "reason": " + ".join(reasons)
         }
+
+    elif score >= 60:
+
+        return {
+            "signal": "WATCH ZONE",
+            "confidence": score,
+            "quality": "MID SETUP",
+            "reason": " + ".join(reasons)
+        }
+
+    return {
+        "signal": "NO TRADE",
+        "confidence": score,
+        "quality": "LOW PROBABILITY",
+        "reason": "No confluence detected"
+    }
