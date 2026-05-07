@@ -4,49 +4,83 @@ class LiquidityEngine:
 
         if not candles or len(candles) < 20:
             return {
-                "signal_hint": "NO_DATA",
-                "reason": "Insufficient candles"
+                "signal": "NO_LIQUIDITY",
+                "signal_hint": "NONE",
+                "reason": "Not enough data"
             }
 
         highs = [c["high"] for c in candles]
         lows = [c["low"] for c in candles]
 
-        recent_high = max(highs[-20:])
-        recent_low = min(lows[-20:])
+        liquidity_zones = []
+        sweep_detected = False
 
-        # 💧 Detect Equal Highs (Liquidity above)
-        equal_highs = 0
-        for i in range(-10, -1):
-            if abs(highs[i] - highs[i-1]) < 0.0005:
-                equal_highs += 1
+        # =========================
+        # 💧 EQUAL HIGHS / LOWS
+        # =========================
 
-        # 💧 Detect Equal Lows (Liquidity below)
-        equal_lows = 0
-        for i in range(-10, -1):
-            if abs(lows[i] - lows[i-1]) < 0.0005:
-                equal_lows += 1
+        for i in range(2, len(candles) - 2):
 
-        last_close = candles[-1]["close"]
+            # 🟢 Equal Highs (Buy-side liquidity)
+            if abs(highs[i] - highs[i - 1]) < 0.0005:
+                liquidity_zones.append({
+                    "type": "EQUAL_HIGHS",
+                    "level": highs[i],
+                    "side": "BUY_SIDE"
+                })
 
-        # 🔥 Scenario 1: Buy-side liquidity (above price)
-        if equal_highs >= 2 and last_close < recent_high:
+            # 🔴 Equal Lows (Sell-side liquidity)
+            if abs(lows[i] - lows[i - 1]) < 0.0005:
+                liquidity_zones.append({
+                    "type": "EQUAL_LOWS",
+                    "level": lows[i],
+                    "side": "SELL_SIDE"
+                })
+
+        # =========================
+        # 💥 SWEEP DETECTION
+        # =========================
+
+        latest = candles[-1]
+
+        for zone in liquidity_zones:
+
+            # 🟢 Sweep Buy-side liquidity (price goes above highs then drops)
+            if zone["type"] == "EQUAL_HIGHS":
+                if latest["high"] > zone["level"] and latest["close"] < zone["level"]:
+                    sweep_detected = True
+                    return {
+                        "signal": "LIQUIDITY_SWEEP",
+                        "signal_hint": "REVERSAL_SELL",
+                        "zone": zone,
+                        "reason": "Buy-side liquidity grabbed"
+                    }
+
+            # 🔴 Sweep Sell-side liquidity (price goes below lows then rises)
+            if zone["type"] == "EQUAL_LOWS":
+                if latest["low"] < zone["level"] and latest["close"] > zone["level"]:
+                    sweep_detected = True
+                    return {
+                        "signal": "LIQUIDITY_SWEEP",
+                        "signal_hint": "REVERSAL_BUY",
+                        "zone": zone,
+                        "reason": "Sell-side liquidity grabbed"
+                    }
+
+        # =========================
+        # ⚠️ WAIT STATE
+        # =========================
+
+        if liquidity_zones:
             return {
+                "signal": "LIQUIDITY_BUILDUP",
                 "signal_hint": "WAIT_SWEEP",
-                "bias": "BEARISH_SWEEP_SETUP",
-                "reason": "Buy-side liquidity above detected (equal highs + resistance)"
+                "zones": liquidity_zones[-3:],
+                "reason": "Liquidity building, waiting for sweep"
             }
 
-        # 🔥 Scenario 2: Sell-side liquidity (below price)
-        if equal_lows >= 2 and last_close > recent_low:
-            return {
-                "signal_hint": "WAIT_SWEEP",
-                "bias": "BULLISH_SWEEP_SETUP",
-                "reason": "Sell-side liquidity below detected (equal lows + support)"
-            }
-
-        # 🧠 No clear liquidity trap
         return {
-            "signal_hint": "NO_CLEAR_LIQUIDITY",
-            "bias": "NEUTRAL",
-            "reason": "No strong liquidity pool detected"
+            "signal": "NO_LIQUIDITY",
+            "signal_hint": "NONE",
+            "reason": "No clear liquidity structure"
         }
