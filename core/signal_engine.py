@@ -18,34 +18,20 @@ class SignalEngine:
 
         # 🛡 Safety check
         if not candles or len(candles) < 30:
-            return {
-                "signal": "NO TRADE",
-                "reason": "Insufficient market data"
-            }
+            return {"signal": "NO TRADE", "reason": "Insufficient market data"}
 
-        # ❌ Risk Block
+        # ❌ Risk filter
         if risk["decision"] == "BLOCK":
-            return {
-                "signal": "NO TRADE",
-                "reason": "Risk Manager blocked trading"
-            }
+            return {"signal": "NO TRADE", "reason": "Risk Manager blocked trading"}
 
-        # 🧠 Market Risk
         if market_state["state"] == "HIGH_RISK":
-            return {
-                "signal": "NO TRADE",
-                "reason": "Market too risky"
-            }
+            return {"signal": "NO TRADE", "reason": "Market too risky"}
 
-        # 📰 News Risk
         if news["risk"] == "HIGH":
-            return {
-                "signal": "NO TRADE",
-                "reason": "High impact news"
-            }
+            return {"signal": "NO TRADE", "reason": "High impact news"}
 
         # =========================
-        # 🧠 CORE DATA
+        # 🧠 CORE ANALYSIS
         # =========================
 
         structure = self.smart_money.analyze_structure(candles)
@@ -53,95 +39,96 @@ class SignalEngine:
         orderflow = self.orderflow_engine.analyze(candles)
 
         # =========================
-        # 🔥 FIX: SAFE EXTRACTION (IMPORTANT)
+        # 🔥 SAFE EXTRACT
         # =========================
 
         liquidity_hint = liquidity.get("signal_hint", "NONE")
-        sweep_data = liquidity.get("sweep", {})
-        sweep_type = sweep_data.get("type", "")
+        sweep = liquidity.get("sweep", {})
+        sweep_type = sweep.get("type", "")
 
         ob_type = orderflow.get("type", "")
-        ob_conf = orderflow.get("confidence", 0)
+        confidence = orderflow.get("confidence", 0)
 
         # =========================
-        # 💧 STATES
+        # 💣 CONDITIONS
         # =========================
 
-        liquidity_sweep = liquidity_hint == "WAIT_SWEEP"
         confirmed_sweep = sweep_type in ["BUY_SIDE_SWEEP", "SELL_SIDE_SWEEP"]
+        liquidity_setup = liquidity_hint == "WAIT_SWEEP"
 
         ob_valid = "OB" in ob_type
         fvg_valid = "FVG" in ob_type
 
-        # =========================
-        # 🔥 CONFLUENCE ENGINE
-        # =========================
-
+        score = 0
         reasons = []
 
-        # 💣 1) STRONG ENTRY (Sweep + OB)
-        if confirmed_sweep and ob_valid:
+        # =========================
+        # 🧠 STRUCTURE SCORE
+        # =========================
 
-            reasons = ["Liquidity Sweep Confirmed", "Order Block Aligned"]
+        if structure["bias"] == "REVERSAL":
+            score += 35
+            reasons.append("CHoCH / Reversal")
+
+        elif structure["bias"] == "TREND":
+            score += 25
+            reasons.append("Trend Structure")
+
+        # =========================
+        # 💧 LIQUIDITY SCORE
+        # =========================
+
+        if confirmed_sweep:
+            score += 35
+            reasons.append("Liquidity Sweep Confirmed")
+
+        elif liquidity_setup:
+            score += 20
+            reasons.append("Liquidity Building")
+
+        # =========================
+        # 💎 ORDERFLOW SCORE
+        # =========================
+
+        if confidence >= 90:
+            score += 40
+            reasons.append("Strong OB / FVG")
+
+        elif confidence >= 75:
+            score += 25
+            reasons.append("Moderate OrderFlow")
+
+        # =========================
+        # 🎯 FINAL DECISION ENGINE
+        # =========================
+
+        if score >= 85 and (confirmed_sweep and (ob_valid or fvg_valid)):
 
             return {
                 "signal": "INSTITUTIONAL ENTRY",
-                "type": "LIQUIDITY + OB",
+                "type": "FULL CONFLUENCE",
                 "direction": structure.get("direction", "BUY/SELL"),
                 "entry": orderflow.get("entry", "MARKET"),
                 "sl": orderflow.get("sl", "AUTO"),
                 "tp": orderflow.get("tp", "AUTO"),
-                "confidence": 95,
-                "quality": "SMART MONEY CONFLUENCE",
+                "confidence": score,
+                "quality": "ULTRA SMART MONEY",
                 "reason": " + ".join(reasons)
             }
 
-        # 💣 2) LIQUIDITY + FVG
-        if confirmed_sweep and fvg_valid:
-
-            reasons = ["Liquidity Sweep Confirmed", "FVG Imbalance Zone"]
+        elif score >= 70:
 
             return {
-                "signal": "INSTITUTIONAL ENTRY",
-                "type": "LIQUIDITY + FVG",
-                "direction": structure.get("direction", "BUY/SELL"),
-                "entry": orderflow.get("entry", "MARKET"),
-                "sl": orderflow.get("sl", "AUTO"),
-                "tp": orderflow.get("tp", "AUTO"),
-                "confidence": 90,
-                "quality": "SMART MONEY IMBALANCE",
+                "signal": "WATCH ZONE",
+                "type": "PARTIAL CONFLUENCE",
+                "confidence": score,
+                "quality": "MID SETUP",
                 "reason": " + ".join(reasons)
             }
 
-        # ⚠️ 3) PRE-SWEEP SETUP (important upgrade)
-        if liquidity_sweep and (ob_valid or fvg_valid):
-
-            return {
-                "signal": "SETUP READY",
-                "type": "PRE-LIQUIDITY",
-                "direction": structure.get("direction", "WAIT"),
-                "entry": orderflow.get("entry", "WAIT"),
-                "confidence": 75,
-                "quality": "WAITING CONFIRMATION",
-                "reason": "Liquidity building near Smart Money zone"
-            }
-
-        # 📉 4) STRUCTURE ONLY (new important layer)
-        if structure.get("bias") in ["TREND", "REVERSAL"]:
-
-            return {
-                "signal": "STRUCTURE ONLY",
-                "type": structure.get("bias"),
-                "direction": structure.get("direction"),
-                "confidence": structure.get("confidence", 60),
-                "quality": "STRUCTURE SIGNAL",
-                "reason": structure.get("reason")
-            }
-
-        # ❌ NO CONFLUENCE
         return {
             "signal": "NO TRADE",
-            "confidence": 0,
-            "quality": "NO SMART MONEY SETUP",
-            "reason": "No Liquidity + OrderBlock alignment"
-        }
+            "confidence": score,
+            "quality": "NO CONFLUENCE",
+            "reason": "Insufficient alignment between Liquidity + OB + Structure"
+            }
