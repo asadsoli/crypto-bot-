@@ -2,13 +2,22 @@ from telepot import Bot
 from telepot.loop import MessageLoop
 import time
 
-class TelegramPanel:
 
-    def __init__(self, token, signal_engine):
+class TelegramLayer:
+
+    def __init__(self, token, signal_engine, market=None, news=None, risk=None, time_engine=None):
 
         self.bot = Bot(token)
-        self.signal_engine = signal_engine
 
+        self.signal_engine = signal_engine
+        self.market = market
+        self.news = news
+        self.risk = risk
+        self.time_engine = time_engine
+
+        # =========================
+        # 🧠 CONTROL STATE
+        # =========================
         self.bot_active = True
         self.selected_asset = "BTCUSDT"
         self.risk_mode = "AUTO"
@@ -20,23 +29,23 @@ class TelegramPanel:
     def handle(self, msg):
 
         content_type, chat_type, chat_id = telepot.glance(msg)
-        text = msg.get("text", "")
+        text = msg.get("text", "").strip()
 
         # =========================
-        # 🟢 لوحة التحكم
+        # /start - لوحة التحكم
         # =========================
 
         if text == "/start":
 
             self.bot.sendMessage(chat_id,
-                "🤖 ULTRA V10 BOT\n\n"
+                "🤖 ULTRA V10 CONTROL PANEL\n\n"
                 "🟢 لوحة التحكم جاهزة\n\n"
-                "الأوامر:\n"
-                "▶ تشغيل البوت\n"
-                "⛔ إيقاف البوت\n"
-                "📊 تحليل السوق\n"
-                "💰 تغيير العملة BTC / ETH\n"
-                "⚙️ الحالة"
+                "📌 الأوامر:\n"
+                "▶ تشغيل\n"
+                "⛔ إيقاف\n"
+                "📊 تحليل\n"
+                "💰 عملة BTCUSDT / ETHUSDT\n"
+                "⚙️ حالة"
             )
 
         # =========================
@@ -67,21 +76,29 @@ class TelegramPanel:
                 self.bot.sendMessage(chat_id, "⛔ البوت متوقف")
                 return
 
-            result = self.signal_engine.analyze(
-                market_state={"state": "ACTIVE"},
-                news={"risk": "NORMAL"},
-                risk={"decision": "ALLOW"}
-            )
+            try:
+
+                result = self.signal_engine.analyze(
+                    market_state={"state": "ACTIVE"},
+                    news={"risk": "NORMAL"},
+                    risk={"decision": "ALLOW"}
+                )
+
+            except Exception as e:
+                self.bot.sendMessage(chat_id, f"❌ خطأ في التحليل: {str(e)}")
+                return
 
             self.bot.sendMessage(chat_id,
-                f"📊 النتيجة:\n"
-                f"📌 Signal: {result.get('signal')}\n"
-                f"🎯 Entry: {result.get('entry', 'N/A')}\n"
-                f"🛑 SL: {result.get('sl', 'N/A')}\n"
-                f"💰 TP: {result.get('tp', 'N/A')}\n"
-                f"💎 Confidence: {result.get('confidence', 0)}%\n"
-                f"🏆 Quality: {result.get('quality', 'N/A')}\n"
-                f"📍 Reason: {result.get('reason', '')}"
+                f"""📊 ANALYSIS RESULT
+
+📌 Signal: {result.get('signal')}
+🎯 Entry: {result.get('entry', 'N/A')}
+🛑 SL: {result.get('sl', 'N/A')}
+💰 TP: {result.get('tp', 'N/A')}
+💎 Confidence: {result.get('confidence', 0)}%
+🏆 Quality: {result.get('quality', 'N/A')}
+📍 Reason: {result.get('reason', '')}
+"""
             )
 
         # =========================
@@ -93,7 +110,13 @@ class TelegramPanel:
             try:
                 symbol = text.split(" ")[1].upper()
                 self.selected_asset = symbol
+
+                # 🔥 ربط العملة لاحقاً مع Market Data
+                if self.market:
+                    self.market.symbol = symbol
+
                 self.bot.sendMessage(chat_id, f"💰 تم تغيير العملة إلى: {symbol}")
+
             except:
                 self.bot.sendMessage(chat_id, "❌ مثال: عملة BTCUSDT")
 
@@ -104,10 +127,12 @@ class TelegramPanel:
         elif text == "حالة":
 
             self.bot.sendMessage(chat_id,
-                f"🤖 الحالة:\n"
-                f"🟢 البوت: {'شغال' if self.bot_active else 'متوقف'}\n"
-                f"💰 العملة: {self.selected_asset}\n"
-                f"⚙️ Risk Mode: {self.risk_mode}"
+                f"""⚙️ SYSTEM STATUS
+
+🤖 البوت: {'شغال' if self.bot_active else 'متوقف'}
+💰 العملة: {self.selected_asset}
+⚙️ Risk Mode: {self.risk_mode}
+"""
             )
 
     # =========================
@@ -118,7 +143,7 @@ class TelegramPanel:
 
         MessageLoop(self.bot, self.handle).run_as_thread()
 
-        print("🤖 Telegram Panel Running...")
+        print("🤖 Telegram Layer V1 PRO RUNNING...")
 
         while True:
             time.sleep(10)
