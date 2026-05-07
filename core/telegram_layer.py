@@ -1,11 +1,21 @@
-from telepot import Bot
+from telepot import Bot, glance
 from telepot.loop import MessageLoop
+from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
+
 import time
 
 
 class TelegramLayer:
 
-    def __init__(self, token, signal_engine, market=None, news=None, risk=None, time_engine=None):
+    def __init__(
+        self,
+        token,
+        signal_engine,
+        market=None,
+        news=None,
+        risk=None,
+        time_engine=None
+    ):
 
         self.bot = Bot(token)
 
@@ -18,132 +28,185 @@ class TelegramLayer:
         # =========================
         # 🧠 CONTROL STATE
         # =========================
+
         self.bot_active = True
         self.selected_asset = "BTCUSDT"
         self.risk_mode = "AUTO"
 
     # =========================
-    # 🧠 MAIN HANDLER
+    # 🎛 MAIN MENU
+    # =========================
+
+    def main_menu(self):
+
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[
+
+                [
+                    InlineKeyboardButton(
+                        text="📊 تحليل السوق",
+                        callback_data="analyze"
+                    )
+                ],
+
+                [
+                    InlineKeyboardButton(
+                        text="💰 BTC",
+                        callback_data="asset_BTCUSDT"
+                    ),
+
+                    InlineKeyboardButton(
+                        text="💎 ETH",
+                        callback_data="asset_ETHUSDT"
+                    )
+                ],
+
+                [
+                    InlineKeyboardButton(
+                        text="🟢 تشغيل",
+                        callback_data="bot_on"
+                    ),
+
+                    InlineKeyboardButton(
+                        text="🔴 إيقاف",
+                        callback_data="bot_off"
+                    )
+                ],
+
+                [
+                    InlineKeyboardButton(
+                        text="⚙️ الحالة",
+                        callback_data="status"
+                    )
+                ]
+            ]
+        )
+
+        return keyboard
+
+    # =========================
+    # 📊 FORMAT ANALYSIS
+    # =========================
+
+    def format_analysis(self, result):
+
+        return f"""🤖 ULTRA V10 ANALYSIS
+
+💰 ASSET: {self.selected_asset}
+
+📊 Signal:
+{result.get('signal')}
+
+🎯 Entry:
+{result.get('entry', 'N/A')}
+
+🛑 Stop Loss:
+{result.get('sl', 'N/A')}
+
+💰 Take Profit:
+{result.get('tp', 'N/A')}
+
+💎 Confidence:
+{result.get('confidence', 0)}%
+
+🏆 Quality:
+{result.get('quality', 'N/A')}
+
+📍 Reason:
+{result.get('reason', '')}
+"""
+
+    # =========================
+    # ⚙️ STATUS MESSAGE
+    # =========================
+
+    def format_status(self):
+
+        return f"""⚙️ ULTRA V10 STATUS
+
+🤖 البوت:
+{'🟢 يعمل' if self.bot_active else '🔴 متوقف'}
+
+💰 العملة الحالية:
+{self.selected_asset}
+
+⚙️ Risk Mode:
+{self.risk_mode}
+"""
+
+    # =========================
+    # 🧠 MESSAGE HANDLER
     # =========================
 
     def handle(self, msg):
 
-        content_type, chat_type, chat_id = telepot.glance(msg)
-        text = msg.get("text", "").strip()
+        try:
 
-        # =========================
-        # /start - لوحة التحكم
-        # =========================
+            flavor = msg.get("flavor")
 
-        if text == "/start":
+            # =========================
+            # 📩 NORMAL MESSAGE
+            # =========================
 
-            self.bot.sendMessage(chat_id,
-                "🤖 ULTRA V10 CONTROL PANEL\n\n"
-                "🟢 لوحة التحكم جاهزة\n\n"
-                "📌 الأوامر:\n"
-                "▶ تشغيل\n"
-                "⛔ إيقاف\n"
-                "📊 تحليل\n"
-                "💰 عملة BTCUSDT / ETHUSDT\n"
-                "⚙️ حالة"
-            )
+            if flavor != "callback_query":
 
-        # =========================
-        # ▶ تشغيل البوت
-        # =========================
+                content_type, chat_type, chat_id = glance(msg)
 
-        elif text == "تشغيل":
+                text = msg.get("text", "").strip()
 
-            self.bot_active = True
-            self.bot.sendMessage(chat_id, "🟢 تم تشغيل البوت")
+                # =========================
+                # /start
+                # =========================
 
-        # =========================
-        # ⛔ إيقاف البوت
-        # =========================
+                if text == "/start":
 
-        elif text == "إيقاف":
+                    self.bot.sendMessage(
+                        chat_id,
 
-            self.bot_active = False
-            self.bot.sendMessage(chat_id, "🔴 تم إيقاف البوت")
+                        "🤖 ULTRA V10 CONTROL PANEL\n\n"
+                        "🔥 Institutional Smart Money System\n\n"
+                        "اختر من لوحة التحكم:",
 
-        # =========================
-        # 📊 تحليل مباشر
-        # =========================
+                        reply_markup=self.main_menu()
+                    )
 
-        elif text == "تحليل":
+            # =========================
+            # 🎛 CALLBACK BUTTONS
+            # =========================
 
-            if not self.bot_active:
-                self.bot.sendMessage(chat_id, "⛔ البوت متوقف")
-                return
+            else:
 
-            try:
-
-                result = self.signal_engine.analyze(
-                    market_state={"state": "ACTIVE"},
-                    news={"risk": "NORMAL"},
-                    risk={"decision": "ALLOW"}
+                query_id, chat_id, query_data = glance(
+                    msg,
+                    flavor="callback_query"
                 )
 
-            except Exception as e:
-                self.bot.sendMessage(chat_id, f"❌ خطأ في التحليل: {str(e)}")
-                return
+                # =========================
+                # 📊 ANALYZE
+                # =========================
 
-            self.bot.sendMessage(chat_id,
-                f"""📊 ANALYSIS RESULT
+                if query_data == "analyze":
 
-📌 Signal: {result.get('signal')}
-🎯 Entry: {result.get('entry', 'N/A')}
-🛑 SL: {result.get('sl', 'N/A')}
-💰 TP: {result.get('tp', 'N/A')}
-💎 Confidence: {result.get('confidence', 0)}%
-🏆 Quality: {result.get('quality', 'N/A')}
-📍 Reason: {result.get('reason', '')}
-"""
-            )
+                    if not self.bot_active:
 
-        # =========================
-        # 💰 تغيير العملة
-        # =========================
+                        self.bot.sendMessage(
+                            chat_id,
+                            "⛔ البوت متوقف حالياً"
+                        )
 
-        elif text.startswith("عملة"):
+                        return
 
-            try:
-                symbol = text.split(" ")[1].upper()
-                self.selected_asset = symbol
+                    try:
 
-                # 🔥 ربط العملة لاحقاً مع Market Data
-                if self.market:
-                    self.market.symbol = symbol
+                        result = self.signal_engine.analyze(
+                            market_state={"state": "ACTIVE"},
+                            news={"risk": "NORMAL"},
+                            risk={"decision": "ALLOW"}
+                        )
 
-                self.bot.sendMessage(chat_id, f"💰 تم تغيير العملة إلى: {symbol}")
+                        self.bot.sendMessage(
+                            chat_id,
+                            self.format_analysis(result)
+                        )
 
-            except:
-                self.bot.sendMessage(chat_id, "❌ مثال: عملة BTCUSDT")
-
-        # =========================
-        # ⚙️ الحالة
-        # =========================
-
-        elif text == "حالة":
-
-            self.bot.sendMessage(chat_id,
-                f"""⚙️ SYSTEM STATUS
-
-🤖 البوت: {'شغال' if self.bot_active else 'متوقف'}
-💰 العملة: {self.selected_asset}
-⚙️ Risk Mode: {self.risk_mode}
-"""
-            )
-
-    # =========================
-    # 🚀 START BOT
-    # =========================
-
-    def run(self):
-
-        MessageLoop(self.bot, self.handle).run_as_thread()
-
-        print("🤖 Telegram Layer V1 PRO RUNNING...")
-
-        while True:
-            time.sleep(10)
+                    except Exception
