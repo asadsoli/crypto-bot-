@@ -11,7 +11,6 @@ class SignalEngine:
         self.orderflow_engine = OrderFlowEngine()
         self.smart_money = SmartMoneyEngine()
 
-        # 💰 Live Market Data
         self.market_data = MarketData("BTCUSDT", "1m")
 
     def analyze(self, market_state, news, risk):
@@ -47,66 +46,84 @@ class SignalEngine:
             }
 
         # =========================
-        # 🧠 CORE ANALYSIS
+        # 🧠 CORE DATA
         # =========================
 
         structure = self.smart_money.analyze_structure(candles)
         liquidity = self.liquidity_engine.analyze(candles)
         orderflow = self.orderflow_engine.analyze(candles)
 
-        score = 0
+        # =========================
+        # 💧 LIQUIDITY STATE
+        # =========================
+
+        liquidity_sweep = liquidity.get("signal") == "LIQUIDITY_SWEEP"
+        wait_sweep = liquidity.get("signal_hint") == "WAIT_SWEEP"
+
+        # =========================
+        # 🧱 ORDER BLOCK STATE
+        # =========================
+
+        ob_valid = orderflow.get("type", "").endswith("OB")
+        fvg_valid = orderflow.get("type", "").endswith("FVG")
+
+        # =========================
+        # 🔥 CONFLUENCE ENGINE
+        # =========================
+
         reasons = []
 
-        # 🧱 Structure
-        if structure["bias"] == "REVERSAL":
-            score += 35
-            reasons.append("Structure Reversal")
+        # 💣 CASE 1: STRONG ENTRY (Liquidity + Order Block)
+        if liquidity_sweep and ob_valid:
 
-        elif structure["bias"] == "TREND":
-            score += 25
-            reasons.append("Trend Structure")
+            reasons.append("Liquidity Sweep Confirmed")
+            reasons.append("Order Block Aligned")
 
-        # 💧 Liquidity
-        if liquidity["signal_hint"] == "WAIT_SWEEP":
-            score += 35
-            reasons.append("Liquidity Sweep Setup")
-
-        # 💎 OrderFlow
-        if orderflow.get("confidence", 0) >= 90:
-            score += 40
-            reasons.append("Order Block / FVG Strong")
-
-        elif orderflow.get("confidence", 0) >= 75:
-            score += 25
-            reasons.append("Moderate Order Flow")
-
-        # =========================
-        # 📊 FINAL DECISION
-        # =========================
-
-        if score >= 85:
             return {
                 "signal": "INSTITUTIONAL ENTRY",
+                "type": "LIQUIDITY + OB",
                 "direction": structure.get("direction", "BUY/SELL"),
                 "entry": orderflow.get("entry", "MARKET"),
                 "sl": orderflow.get("sl", "AUTO"),
                 "tp": orderflow.get("tp", "AUTO"),
-                "confidence": score,
-                "quality": "ULTRA SMART MONEY",
+                "confidence": 95,
+                "quality": "SMART MONEY CONFLUENCE",
                 "reason": " + ".join(reasons)
             }
 
-        elif score >= 60:
+        # 💣 CASE 2: LIQUIDITY + FVG
+        if liquidity_sweep and fvg_valid:
+
+            reasons.append("Liquidity Sweep Confirmed")
+            reasons.append("FVG Imbalance Zone")
+
             return {
-                "signal": "WATCH ZONE",
-                "confidence": score,
-                "quality": "MID SETUP",
+                "signal": "INSTITUTIONAL ENTRY",
+                "type": "LIQUIDITY + FVG",
+                "entry": orderflow.get("entry"),
+                "sl": orderflow.get("sl"),
+                "tp": orderflow.get("tp"),
+                "confidence": 90,
+                "quality": "SMART MONEY IMBALANCE",
                 "reason": " + ".join(reasons)
             }
 
+        # ⚠️ CASE 3: SETUP READY (waiting liquidity)
+        if wait_sweep and (ob_valid or fvg_valid):
+
+            return {
+                "signal": "SETUP READY",
+                "type": "PRE-LIQUIDITY",
+                "entry": orderflow.get("entry"),
+                "confidence": 75,
+                "quality": "WAITING CONFIRMATION",
+                "reason": "Liquidity building near smart money zone"
+            }
+
+        # ❌ NO CONFLUENCE
         return {
             "signal": "NO TRADE",
-            "confidence": score,
-            "quality": "LOW PROBABILITY",
-            "reason": "No confluence detected"
-        }
+            "confidence": 0,
+            "quality": "NO SMART MONEY SETUP",
+            "reason": "Liquidity + OrderBlock not aligned"
+            }
