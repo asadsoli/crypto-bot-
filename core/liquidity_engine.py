@@ -1,9 +1,15 @@
 class LiquidityEngine:
 
     def __init__(self, debug=False):
+
         self.recent_swing_highs = []
         self.recent_swing_lows = []
-        self.debug = debug  # 🟢 تشغيل/إيقاف الطباعة
+        self.debug = debug
+
+        # =========================
+        # 🧠 SCANNER SUPPORT (NEW)
+        # =========================
+        self.last_analysis = None
 
     # =========================
     # 📊 LOAD SWINGS
@@ -55,7 +61,6 @@ class LiquidityEngine:
 
         if self.debug:
             print("📍 Zones Found:", len(liquidity_zones))
-            print("📍 Zones Data:", liquidity_zones)
 
         return liquidity_zones
 
@@ -75,7 +80,9 @@ class LiquidityEngine:
         last_low = last["low"]
 
         for swing in self.recent_swing_highs:
+
             if last_high > swing["price"] and last_close < swing["price"]:
+
                 result = {
                     "signal_hint": "WAIT_SELL_CONFIRMATION",
                     "type": "BUY_SIDE_SWEEP",
@@ -84,12 +91,14 @@ class LiquidityEngine:
                 }
 
                 if self.debug:
-                    print("⚡ Sweep Detected:", result)
+                    print("⚡ Sweep:", result)
 
                 return result
 
         for swing in self.recent_swing_lows:
+
             if last_low < swing["price"] and last_close > swing["price"]:
+
                 result = {
                     "signal_hint": "WAIT_BUY_CONFIRMATION",
                     "type": "SELL_SIDE_SWEEP",
@@ -98,7 +107,7 @@ class LiquidityEngine:
                 }
 
                 if self.debug:
-                    print("⚡ Sweep Detected:", result)
+                    print("⚡ Sweep:", result)
 
                 return result
 
@@ -119,31 +128,56 @@ class LiquidityEngine:
         liquidity_zones = self.detect_liquidity_zones()
         sweep = self.detect_sweep(candles)
 
-        if self.debug:
-            print("💧 Liquidity V2 ACTIVE")
-            print("⚡ Sweep:", sweep)
+        result = None
 
         # =========================
-        # 🎯 DECISION
+        # 🎯 DECISION ENGINE
         # =========================
 
         if sweep["signal_hint"] in ["WAIT_BUY_CONFIRMATION", "WAIT_SELL_CONFIRMATION"]:
-            return {
+
+            result = {
                 "signal_hint": "WAIT_SWEEP",
                 "sweep": sweep,
                 "zones": liquidity_zones,
                 "reason": sweep["reason"]
             }
 
-        if liquidity_zones:
-            return {
+        elif liquidity_zones:
+
+            result = {
                 "signal_hint": "LIQUIDITY_PRESENT",
                 "zones": liquidity_zones,
                 "reason": "Liquidity pools detected"
             }
 
-        return {
-            "signal_hint": "NO_LIQUIDITY",
-            "zones": [],
-            "reason": "No meaningful liquidity zones"
-        }
+        else:
+
+            result = {
+                "signal_hint": "NO_LIQUIDITY",
+                "zones": [],
+                "reason": "No meaningful liquidity zones"
+            }
+
+        # =========================
+        # 🔥 CACHE (NEW FOR SCANNER)
+        # =========================
+
+        self.last_analysis = result
+
+        if self.debug:
+            print("💧 Liquidity Result:", result)
+
+        return result
+
+    # =========================
+    # 🔥 SCANNER SUPPORT METHOD (NEW)
+    # =========================
+
+    def get_last(self):
+
+        """
+        🔥 يستخدمه Scanner V3 للحصول على آخر تحليل بدون إعادة حساب
+        """
+
+        return self.last_analysis
