@@ -8,6 +8,8 @@ class MarketData:
 
     def safe_float(self, x):
         try:
+            if x is None:
+                return None
             return float(x)
         except:
             return None
@@ -25,40 +27,52 @@ class MarketData:
         try:
             response = requests.get(url, params=params, timeout=10)
 
-            # 🛡 تأكد من status code
+            # 🛡 HTTP check
             if response.status_code != 200:
                 print(f"❌ HTTP Error: {response.status_code}")
                 return []
 
-            data = response.json()
+            # 🛡 JSON decode safe
+            try:
+                data = response.json()
+            except Exception:
+                print("❌ JSON Decode Error from Binance")
+                return []
 
-            # 🛡 Binance error check
+            # 🛡 Binance API error (dict response)
             if isinstance(data, dict):
                 print(f"❌ Binance API Error: {data}")
                 return []
 
+            # 🛡 invalid type
             if not isinstance(data, list):
-                print(f"❌ Unexpected response: {data}")
+                print(f"❌ Invalid response type: {type(data)}")
                 return []
 
             candles = []
 
             for c in data:
 
+                # 🛡 structure check
                 if not isinstance(c, list):
                     continue
 
                 if len(c) < 6:
                     continue
 
+                # 🧠 safe parsing
                 o = self.safe_float(c[1])
                 h = self.safe_float(c[2])
                 l = self.safe_float(c[3])
                 cl = self.safe_float(c[4])
                 v = self.safe_float(c[5])
 
-                # 🛡 إذا أي قيمة خربانة تجاهل الشمعة
+                # 🛡 ignore broken candles
                 if None in (o, h, l, cl, v):
+                    continue
+
+                # 🧠 extra sanity check (prevents 'o' type bugs)
+                if not all(isinstance(x, (int, float)) for x in (o, h, l, cl, v)):
                     continue
 
                 candles.append({
