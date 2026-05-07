@@ -10,27 +10,37 @@ class SignalEngine:
         self.liquidity_engine = LiquidityEngine()
         self.orderflow_engine = OrderFlowEngine()
         self.smart_money = SmartMoneyEngine()
+
+        # =========================
+        # 🧠 DEFAULT MARKET DATA
+        # =========================
         self.market_data = MarketData("BTCUSDT", "1m")
 
     # =====================================================
-    # 🧠 MULTI-ASSET ENTRY (NEW - SAFE ADDITION)
+    # 🧠 MULTI-ASSET ENTRY (SAFE ADDITION - NO BREAKING)
     # =====================================================
 
     def analyze_asset(self, asset):
 
         try:
+            # 🔥 تغيير الأداة بدون كسر النظام
             self.market_data.symbol = asset
+
             return self.analyze(
                 market_state={"state": "ACTIVE"},
                 news={"risk": "NORMAL"},
                 risk={"decision": "ALLOW"}
             )
+
         except Exception as e:
             print(f"❌ analyze_asset error ({asset}):", e)
-            return None
+            return {
+                "signal": "ERROR",
+                "reason": f"Asset analysis failed: {asset}"
+            }
 
     # =====================================================
-    # 🧠 MAIN ENGINE (UNCHANGED - 100% SAFE)
+    # 🧠 MAIN ENGINE (CORE - FULLY PRESERVED)
     # =====================================================
 
     def analyze(self, market_state, news, risk):
@@ -83,7 +93,7 @@ class SignalEngine:
         fvg_valid = "FVG" in ob_type
 
         # =========================
-        # 🔒 CONFLUENCE GATE
+        # 🔒 CONFLUENCE GATE (STABILITY LAYER)
         # =========================
 
         structure_ok = structure.get("bias") in ["TREND", "REVERSAL"]
@@ -96,7 +106,7 @@ class SignalEngine:
         )
 
         # =========================
-        # 💣 1) LIQUIDITY + OB
+        # 💣 1) LIQUIDITY + OB (STRONGEST)
         # =========================
 
         if confirmed_sweep and ob_valid and structure_ok:
