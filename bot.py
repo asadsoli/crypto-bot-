@@ -22,17 +22,27 @@ TOKEN = os.environ.get("TELEGRAM_TOKEN")
 
 print("🔑 TOKEN LOADED:", TOKEN is not None)
 
+# 🛑 حماية من انهيار البوت
+if not TOKEN:
+    raise Exception("TELEGRAM_TOKEN is missing!")
+
 bot = telepot.Bot(TOKEN)
 
 
 # =========================
-# 🤖 TELEGRAM LAYER (NEW ADDITION - SAFE)
+# 🤖 TELEGRAM LAYER
 # =========================
 class TelegramLayer:
 
-    def __init__(self, token, signal_engine):
+    def __init__(self, token, signal_engine, market, news_engine, risk_manager, time_engine):
+
         self.bot = telepot.Bot(token)
+
         self.signal_engine = signal_engine
+        self.market = market
+        self.news_engine = news_engine
+        self.risk_manager = risk_manager
+        self.time_engine = time_engine
 
     def send_message(self, chat_id, text):
         try:
@@ -70,7 +80,17 @@ class TelegramLayer:
 """
 
 
-telegram_layer = TelegramLayer(TOKEN, signal_engine)
+# =========================
+# 🔥 INIT LAYER (FIXED)
+# =========================
+telegram_layer = TelegramLayer(
+    TOKEN,
+    signal_engine,
+    market,
+    news_engine,
+    risk_manager,
+    time_engine
+)
 
 
 # =========================
@@ -84,65 +104,50 @@ def telegram_webhook():
 
         print("📩 UPDATE RECEIVED:", data)
 
-        if not data:
-            return "OK"
-
-        if "message" not in data:
+        if not data or "message" not in data:
             return "OK"
 
         chat_id = data["message"]["chat"]["id"]
         text = data["message"].get("text", "")
 
-        # 📌 /start command
+        # =========================
+        # /start
+        # =========================
         if text == "/start":
 
             current_time = time_engine.get_current_time()
             session = time_engine.get_session()
 
-            # 📰 NEWS ENGINE
             try:
                 news = news_engine.analyze_news()
-
-            except Exception as e:
-                print("❌ NEWS ENGINE ERROR:", str(e))
+            except:
                 news = {"risk": "UNKNOWN", "impact_score": 0}
 
-            # 🧠 MARKET STATE
             try:
                 state = market.get_market_state(news_risk=news["risk"])
-
-            except Exception as e:
-                print("❌ MARKET STATE ERROR:", str(e))
+            except:
                 state = {"state": "UNKNOWN", "reason": "Fallback mode"}
 
-            # 🛡 RISK MANAGER
             try:
                 risk = risk_manager.evaluate(
                     market_state=state,
                     news=news,
                     volatility=0
                 )
-
-            except Exception as e:
-                print("❌ RISK MANAGER ERROR:", str(e))
+            except:
                 risk = {
                     "decision": "ALLOW",
                     "score": 0,
                     "reason": "Fallback protection"
                 }
 
-            # 💰 SIGNAL ENGINE
             try:
                 signal = signal_engine.analyze(
                     market_state=state,
                     news=news,
                     risk=risk
                 )
-
-            except Exception as e:
-                print("❌ SIGNAL ENGINE ERROR:", str(e))
-                traceback.print_exc()
-
+            except:
                 signal = {
                     "signal": "SYSTEM ERROR",
                     "entry": "N/A",
@@ -152,7 +157,6 @@ def telegram_webhook():
                     "quality": "SAFE MODE"
                 }
 
-            # 📤 SEND RESPONSE (via Telegram Layer)
             message = telegram_layer.format_signal(
                 current_time,
                 session,
