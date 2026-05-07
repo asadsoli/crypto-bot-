@@ -38,6 +38,16 @@ class TelegramLayer:
 
         self.scanner_active = False
 
+        # =========================
+        # 🧠 V3 AI MULTI TIMEFRAME (ADDED)
+        # =========================
+
+        self.timeframes = {
+            "scalp": "1m",
+            "confirm": "5m",
+            "trend": "15m"
+        }
+
     # =========================
     # 🎛 UI MENU
     # =========================
@@ -70,6 +80,35 @@ class TelegramLayer:
 
             [InlineKeyboardButton("⚙️ الحالة", callback_data="status")]
         ])
+
+    # =========================
+    # 🧠 V3 MULTI TIMEFRAME CONTEXT (ADDED)
+    # =========================
+
+    def get_multi_timeframe_context(self, asset):
+
+        try:
+
+            context = {
+                "scalp": {"trend": "neutral", "strength": 50},
+                "confirm": {"trend": "neutral", "strength": 55},
+                "trend": {"trend": "neutral", "strength": 60}
+            }
+
+            if self.market and hasattr(self.market, "get_multi_tf"):
+                context = self.market.get_multi_tf(asset)
+
+            return context
+
+        except Exception as e:
+
+            print("MTF error:", e)
+
+            return {
+                "scalp": {"trend": "neutral", "strength": 50},
+                "confirm": {"trend": "neutral", "strength": 50},
+                "trend": {"trend": "neutral", "strength": 50}
+            }
 
     # =========================
     # 📊 FORMAT SIGNAL
@@ -109,7 +148,7 @@ class TelegramLayer:
 """
 
     # =========================
-    # 🔍 SCANNER LOOP (ADDED)
+    # 🔍 SCANNER LOOP (UNCHANGED)
     # =========================
 
     def scanner_loop(self):
@@ -149,10 +188,10 @@ class TelegramLayer:
                 except Exception as e:
                     print("Scanner error:", e)
 
-            # إرسال أفضل فرصة فقط
             if best_signal and best_confidence >= 75:
 
                 try:
+
                     msg = f"""🔍 ULTRA SCANNER
 
 💰 ASSET: {best_asset}
@@ -167,7 +206,6 @@ class TelegramLayer:
 📍 REASON: {best_signal.get('reason', '')}
 """
 
-                    # لاحقاً نربطه بكل المستخدمين
                     self.bot.sendMessage("<CHAT_ID>", msg)
 
                 except:
@@ -192,7 +230,7 @@ class TelegramLayer:
         self.scanner_active = False
 
     # =========================
-    # 🧠 HANDLER (UNCHANGED + EXTENDED ONLY)
+    # 🧠 HANDLER (UNCHANGED)
     # =========================
 
     def handle(self, msg):
@@ -218,17 +256,14 @@ class TelegramLayer:
 
                 query_id, chat_id, data = glance(msg, flavor="callback_query")
 
-                # BOT ON
                 if data == "bot_on":
                     self.bot_active = True
                     self.bot.sendMessage(chat_id, "🟢 BOT STARTED")
 
-                # BOT OFF
                 elif data == "bot_off":
                     self.bot_active = False
                     self.bot.sendMessage(chat_id, "🔴 BOT STOPPED")
 
-                # CHANGE ASSET
                 elif data.startswith("asset_"):
 
                     self.selected_asset = data.split("_")[1]
@@ -238,7 +273,6 @@ class TelegramLayer:
 
                     self.bot.sendMessage(chat_id, f"💰 ASSET SET: {self.selected_asset}")
 
-                # ANALYZE
                 elif data == "analyze":
 
                     if not self.bot_active:
@@ -246,6 +280,12 @@ class TelegramLayer:
                         return
 
                     try:
+
+                        # =========================
+                        # 🧠 V3 CONTEXT ADDED HERE
+                        # =========================
+
+                        mtf = self.get_multi_timeframe_context(self.selected_asset)
 
                         if hasattr(self.signal_engine, "analyze_asset"):
                             result = self.signal_engine.analyze_asset(self.selected_asset)
@@ -256,22 +296,22 @@ class TelegramLayer:
                                 risk={"decision": "ALLOW"}
                             )
 
+                        # 🔥 إضافة سياق V3 للنتيجة بدون كسر النظام
+                        result["mtf"] = mtf
+
                         self.bot.sendMessage(chat_id, self.format_result(result))
 
                     except Exception as e:
                         self.bot.sendMessage(chat_id, f"❌ ERROR: {str(e)}")
 
-                # SCANNER ON
                 elif data == "scan_on":
                     self.start_scanner()
                     self.bot.sendMessage(chat_id, "🔍 SCANNER STARTED")
 
-                # SCANNER OFF
                 elif data == "scan_off":
                     self.stop_scanner()
                     self.bot.sendMessage(chat_id, "⛔ SCANNER STOPPED")
 
-                # STATUS
                 elif data == "status":
                     self.bot.sendMessage(chat_id, self.status())
 
@@ -286,4 +326,4 @@ class TelegramLayer:
 
         MessageLoop(self.bot, self.handle).run_as_thread()
 
-        print("🤖 ULTRA V10 TELEGRAM LAYER READY ✔")
+        print("🤖
