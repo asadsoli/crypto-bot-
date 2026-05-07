@@ -62,10 +62,23 @@ class SignalEngine:
         fvg_valid = "FVG" in ob_type
 
         # =========================
+        # 🔒 CONFLUENCE GATE (NEW STABILITY LAYER)
+        # =========================
+
+        structure_ok = structure.get("bias") in ["TREND", "REVERSAL"]
+
+        liquidity_ok = confirmed_sweep or liquidity_setup
+
+        orderflow_ok = (
+            (ob_valid or fvg_valid)
+            and ob_conf >= 75
+        )
+
+        # =========================
         # 💣 1) LIQUIDITY + ORDER BLOCK (STRONGEST ENTRY)
         # =========================
 
-        if confirmed_sweep and ob_valid:
+        if confirmed_sweep and ob_valid and structure_ok:
 
             return {
                 "signal": "INSTITUTIONAL ENTRY",
@@ -76,14 +89,14 @@ class SignalEngine:
                 "tp": orderflow.get("tp", "AUTO"),
                 "confidence": 95,
                 "quality": "ULTRA SMART MONEY",
-                "reason": "Liquidity Sweep + Order Block alignment"
+                "reason": "Liquidity Sweep + Order Block + Structure aligned"
             }
 
         # =========================
         # 💣 2) LIQUIDITY + FVG
         # =========================
 
-        if confirmed_sweep and fvg_valid:
+        if confirmed_sweep and fvg_valid and structure_ok:
 
             return {
                 "signal": "INSTITUTIONAL ENTRY",
@@ -94,7 +107,7 @@ class SignalEngine:
                 "tp": orderflow.get("tp", "AUTO"),
                 "confidence": 90,
                 "quality": "SMART MONEY IMBALANCE",
-                "reason": "Liquidity Sweep + FVG imbalance"
+                "reason": "Liquidity Sweep + FVG + Structure aligned"
             }
 
         # =========================
@@ -137,4 +150,4 @@ class SignalEngine:
             "confidence": 0,
             "quality": "NO CONFLUENCE",
             "reason": "No Liquidity + OrderBlock + Structure alignment"
-        }
+            }
