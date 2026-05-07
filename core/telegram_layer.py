@@ -39,6 +39,12 @@ class TelegramLayer:
         self.scanner_active = False
 
         # =========================
+        # 🔗 SCANNER LINK (NEW - SAFE ADDITION)
+        # =========================
+
+        self.scanner = None
+
+        # =========================
         # 🧠 V3 MULTI TIMEFRAME
         # =========================
 
@@ -60,6 +66,15 @@ class TelegramLayer:
         }
 
         self.block_high_news = True
+
+    # =========================
+    # 🔗 LINK SCANNER (NEW)
+    # =========================
+
+    def set_scanner(self, scanner):
+
+        self.scanner = scanner
+        print("🔗 Scanner linked to TelegramLayer")
 
     # =========================
     # 🎛 MENU
@@ -144,7 +159,7 @@ class TelegramLayer:
             return {"session": "UNKNOWN", "bias": "NORMAL"}
 
     # =========================
-    # 📊 RESULT FORMAT
+    # 📊 FORMAT RESULT
     # =========================
 
     def format_result(self, r):
@@ -317,14 +332,9 @@ class TelegramLayer:
 
                     try:
 
-                        # =========================
-                        # 🧠 V3 PHASE 2 AI
-                        # =========================
-
                         news_ai = self.get_news_ai()
                         session_ai = self.get_session_ai()
 
-                        # ❌ BLOCK HIGH NEWS
                         if self.block_high_news and news_ai["risk"] == "HIGH":
                             self.bot.sendMessage(chat_id, "⛔ BLOCKED: HIGH IMPACT NEWS")
                             return
@@ -338,14 +348,12 @@ class TelegramLayer:
                                 risk={"decision": "ALLOW"}
                             )
 
-                        # 🔥 AI CONTEXT
                         result["ai_context"] = {
                             "news_risk": news_ai["risk"],
                             "session": session_ai["session"],
                             "bias": session_ai["bias"]
                         }
 
-                        # 🔥 AI BOOST
                         if news_ai["risk"] == "HIGH":
                             result["confidence"] = max(0, result.get("confidence", 0) - 30)
 
@@ -355,11 +363,21 @@ class TelegramLayer:
                         self.bot.sendMessage(chat_id, f"❌ ERROR: {str(e)}")
 
                 elif data == "scan_on":
-                    self.start_scanner()
+
+                    if self.scanner:
+                        self.scanner.start()
+                    else:
+                        self.start_scanner()
+
                     self.bot.sendMessage(chat_id, "🔍 SCANNER STARTED")
 
                 elif data == "scan_off":
-                    self.stop_scanner()
+
+                    if self.scanner:
+                        self.scanner.stop()
+                    else:
+                        self.stop_scanner()
+
                     self.bot.sendMessage(chat_id, "⛔ SCANNER STOPPED")
 
                 elif data == "status":
