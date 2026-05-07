@@ -1,41 +1,60 @@
 class OrderFlowEngine:
-    def __init__(self):
-        pass
 
-    def analyze(self, ohlc=None):
+    def analyze(self, candles):
 
-        """
-        لاحقًا نربطه ببيانات حقيقية من Binance / TradingView
-        الآن Logic مؤسسي جاهز
-        """
-
-        # 🧱 Order Block (هيكل)
-        order_block = {
-            "valid": True,
-            "zone": "DEMAND / SUPPLY AREA"
-        }
-
-        # ⚡ Fair Value Gap (FVG)
-        fvg = {
-            "exists": True,
-            "direction": "UP / DOWN"
-        }
-
-        # 🧠 منطق مؤسسي
-        if order_block["valid"] and fvg["exists"]:
-
+        if not candles or len(candles) < 20:
             return {
-                "setup": "INSTITUTIONAL ENTRY ZONE",
-                "type": "ORDER BLOCK + FVG",
-                "entry": "ZONE RETEST",
-                "sl": "BEYOND ORDER BLOCK",
-                "tp": "NEXT LIQUIDITY POOL",
-                "confidence": 90,
-                "reason": "Liquidity + Structure confluence"
+                "confidence": 0,
+                "reason": "Not enough data"
             }
 
+        bullish_ob = None
+        bearish_ob = None
+
+        # 🔍 البحث عن Order Blocks
+        for i in range(2, len(candles) - 2):
+
+            prev = candles[i - 1]
+            curr = candles[i]
+            nxt = candles[i + 1]
+
+            # 🚀 Bullish Order Block
+            # آخر شمعة هابطة قبل صعود قوي
+            if (
+                prev["close"] < prev["open"] and
+                nxt["close"] > curr["high"] and
+                (nxt["close"] - nxt["open"]) > (curr["high"] - curr["low"])
+            ):
+                bullish_ob = {
+                    "entry": curr["low"],
+                    "sl": curr["low"] - (curr["high"] - curr["low"]),
+                    "tp": nxt["close"],
+                    "confidence": 90,
+                    "reason": "Bullish Order Block detected"
+                }
+
+            # 🔻 Bearish Order Block
+            if (
+                prev["close"] > prev["open"] and
+                nxt["close"] < curr["low"] and
+                (nxt["open"] - nxt["close"]) > (curr["high"] - curr["low"])
+            ):
+                bearish_ob = {
+                    "entry": curr["high"],
+                    "sl": curr["high"] + (curr["high"] - curr["low"]),
+                    "tp": nxt["close"],
+                    "confidence": 90,
+                    "reason": "Bearish Order Block detected"
+                }
+
+        # 📊 القرار النهائي
+        if bullish_ob:
+            return bullish_ob
+
+        if bearish_ob:
+            return bearish_ob
+
         return {
-            "setup": "NO STRUCTURE",
             "confidence": 0,
-            "reason": "No OB or FVG detected"
-        }
+            "reason": "No valid Order Block found"
+                }
