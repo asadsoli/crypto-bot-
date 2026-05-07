@@ -1,20 +1,21 @@
 from core.liquidity_engine import LiquidityEngine
-from core.market_structure import MarketStructure
 from core.orderflow_engine import OrderFlowEngine
-from core.market_data import MarketData  # 💰 NEW: Live Market Data
+from core.market_data import MarketData
+from core.smart_money import SmartMoneyEngine  # 🔥 NEW CORE
 
 class SignalEngine:
+
     def __init__(self):
         self.liquidity_engine = LiquidityEngine()
-        self.structure_engine = MarketStructure()
         self.orderflow_engine = OrderFlowEngine()
+        self.smart_money = SmartMoneyEngine()
 
-        # 💰 LIVE MARKET DATA (NEW)
+        # 💰 Live Market Data
         self.market_data = MarketData("BTCUSDT", "1m")
 
     def analyze(self, market_state, news, risk):
 
-        # 📊 🔥 جلب بيانات السوق الحقيقية
+        # 📊 Live candles
         candles = self.market_data.get_candles()
 
         # ❌ Risk Block
@@ -24,61 +25,61 @@ class SignalEngine:
                 "reason": "Risk Manager blocked trading"
             }
 
-        # 🧠 High Risk Market
+        # 🧠 Market Risk
         if market_state["state"] == "HIGH_RISK":
             return {
                 "signal": "NO TRADE",
                 "reason": "Market too risky"
             }
 
-        # 📰 High Impact News
+        # 📰 News Risk
         if news["risk"] == "HIGH":
             return {
                 "signal": "NO TRADE",
                 "reason": "High impact news"
             }
 
-        # 💧 Liquidity Analysis (الآن يمكن ترقيته لاحقًا باستخدام candles)
-        liquidity = self.liquidity_engine.analyze(candles)
+        # 🧠 SMART MONEY STRUCTURE (NEW CORE)
+        structure = self.smart_money.analyze_structure(candles)
 
-        # 🧱 Market Structure (حقيقي مع البيانات)
-        structure = self.structure_engine.analyze(candles)
+        # 💧 Liquidity
+        liquidity = self.liquidity_engine.analyze(candles)
 
         # 💎 Order Flow (OB + FVG)
         orderflow = self.orderflow_engine.analyze(candles)
 
-        # ⚪ Range Market → لا دخول
+        # ⚪ Range
         if structure["bias"] == "RANGE":
             return {
                 "signal": "NO TRADE",
-                "reason": "Market ranging - no structure"
+                "reason": "No Smart Money structure"
             }
 
-        # 🔄 Reversal Setup (CHoCH)
+        # 🔄 Reversal (CHoCH)
         if structure["bias"] == "REVERSAL":
             return {
                 "signal": "REVERSAL TRADE",
-                "entry": "CHoCH CONFIRMATION ZONE",
+                "entry": "CHoCH CONFIRMATION",
                 "sl": "BEYOND STRUCTURE",
-                "tp": "NEXT LIQUIDITY POOL",
-                "confidence": structure["confidence"],
+                "tp": "LIQUIDITY POOL",
+                "confidence": 85,
                 "quality": "SMART MONEY REVERSAL",
                 "reason": structure["reason"]
             }
 
-        # 💧 Liquidity Sweep Setup
+        # 💧 Liquidity Sweep
         if liquidity["signal_hint"] == "WAIT_SWEEP":
             return {
-                "signal": "WAIT FOR LIQUIDITY SWEEP",
-                "entry": "AFTER SWEEP CONFIRMATION",
-                "sl": "BEYOND LIQUIDITY ZONE",
-                "tp": "NEXT LIQUIDITY POOL",
+                "signal": "WAIT SWEEP",
+                "entry": "AFTER SWEEP",
+                "sl": "LIQUIDITY ZONE",
+                "tp": "NEXT POOL",
                 "confidence": 85,
-                "quality": "SMART MONEY LIQUIDITY",
+                "quality": "LIQUIDITY",
                 "reason": liquidity["reason"]
             }
 
-        # 💎 Order Block + FVG (Elite Entry)
+        # 💎 Order Block / FVG Elite Entry
         if orderflow["confidence"] >= 90:
             return {
                 "signal": "INSTITUTIONAL ENTRY",
@@ -90,13 +91,13 @@ class SignalEngine:
                 "reason": orderflow["reason"]
             }
 
-        # 📈 Final Institutional Trend Trade
+        # 📈 Default Institutional
         return {
             "signal": "INSTITUTIONAL ENTRY",
-            "entry": "ORDER BLOCK / FVG ZONE",
-            "sl": "BELOW STRUCTURE",
-            "tp": "NEXT LIQUIDITY ZONE",
+            "entry": "ORDER BLOCK / FVG",
+            "sl": "STRUCTURE",
+            "tp": "LIQUIDITY ZONE",
             "confidence": 80,
-            "quality": "INSTITUTIONAL SMART MONEY",
-            "reason": "Structure + Liquidity aligned (LIVE DATA)"
+            "quality": "SMART MONEY",
+            "reason": "Structure + Liquidity aligned"
         }
