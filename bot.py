@@ -1,6 +1,8 @@
 import os
 import traceback
 import telepot
+import threading
+import time
 
 from flask import Flask, request
 
@@ -9,6 +11,9 @@ from core.market_state import MarketStateEngine
 from core.news_engine import NewsEngine
 from core.risk_manager import RiskManager
 from core.signal_engine import SignalEngine
+
+# 🆕 SCANNER ENGINE (PHASE 2 ADD)
+from core.scanner_engine import ScannerEngine
 
 # =========================
 # 🧠 ENGINES
@@ -19,6 +24,9 @@ market = MarketStateEngine()
 news_engine = NewsEngine()
 risk_manager = RiskManager()
 signal_engine = SignalEngine()
+
+# 🆕 INIT SCANNER
+scanner = ScannerEngine(signal_engine)
 
 # =========================
 # 🔑 TOKEN
@@ -74,7 +82,10 @@ class TelegramLayer:
                 [{"text": "📊 تحليل السوق"}],
                 [{"text": "💰 BTCUSDT"}, {"text": "💰 ETHUSDT"}],
                 [{"text": "🟢 تشغيل البوت"}, {"text": "🔴 إيقاف البوت"}],
-                [{"text": "⚙️ الحالة"}]
+                [{"text": "⚙️ الحالة"}],
+
+                # 🆕 SCANNER BUTTONS (PHASE 2)
+                [{"text": "🔍 تشغيل Scanner"}, {"text": "⛔ إيقاف Scanner"}]
             ],
             "resize_keyboard": True
         }
@@ -107,6 +118,44 @@ class TelegramLayer:
 # =========================
 
 telegram_layer = TelegramLayer(TOKEN)
+
+# =========================
+# 🆕 SCANNER CALLBACK (PHASE 2)
+# =========================
+
+def scanner_callback(best_signal):
+
+    try:
+
+        msg = f"""🔍 ULTRA SCANNER SIGNAL
+
+💰 ASSET: {best_signal['asset']}
+📊 SIGNAL: {best_signal['signal']}
+🎯 ENTRY: {best_signal['entry']}
+🛑 SL: {best_signal['sl']}
+💰 TP: {best_signal['tp']}
+💎 CONF: {best_signal['confidence']}%
+🏆 QUALITY: {best_signal['quality']}
+📍 REASON: {best_signal['reason']}
+"""
+
+        # ⚠️ لاحقاً نربطه بكل المستخدمين
+        telegram_layer.bot.sendMessage("<CHAT_ID>", msg)
+
+    except Exception as e:
+        print("❌ Scanner Callback Error:", e)
+
+# =========================
+# 🆕 SCANNER THREAD (NO BLOCK FLASK)
+# =========================
+
+def start_scanner_thread():
+
+    def run():
+        scanner.start(callback=scanner_callback)
+
+    thread = threading.Thread(target=run, daemon=True)
+    thread.start()
 
 # =========================
 # 🌐 FLASK APP
@@ -156,6 +205,20 @@ def telegram_webhook():
             telegram_layer.send(chat_id, "🔴 BOT OFF")
 
         # =========================
+        # SCANNER CONTROL 🆕
+        # =========================
+
+        elif text == "🔍 تشغيل Scanner":
+
+            start_scanner_thread()
+            telegram_layer.send(chat_id, "🔍 SCANNER STARTED")
+
+        elif text == "⛔ إيقاف Scanner":
+
+            scanner.stop()
+            telegram_layer.send(chat_id, "⛔ SCANNER STOPPED")
+
+        # =========================
         # ASSET SWITCH
         # =========================
 
@@ -193,19 +256,16 @@ def telegram_webhook():
                 return "OK"
 
             try:
-
                 news = news_engine.analyze_news()
             except:
                 news = {"risk": "UNKNOWN"}
 
             try:
-
                 state = market.get_market_state(news_risk=news["risk"])
             except:
                 state = {"state": "UNKNOWN"}
 
             try:
-
                 risk = risk_manager.evaluate(
                     market_state=state,
                     news=news,
@@ -215,17 +275,14 @@ def telegram_webhook():
                 risk = {"decision": "ALLOW"}
 
             try:
-
                 signal = signal_engine.analyze(
                     market_state=state,
                     news=news,
                     risk=risk
                 )
             except Exception as e:
-
                 print("SIGNAL ERROR:", e)
                 traceback.print_exc()
-
                 signal = {"signal": "NO TRADE"}
 
             response = telegram_layer.format(signal, state, risk, news)
@@ -259,10 +316,10 @@ def webhook():
 
 if __name__ == "__main__":
 
-    # 🔥 هنا سنربط Scanner في المرحلة التالية فقط (Phase 2)
-    # scanner.start()
+    # 🆕 START SCANNER AUTOMATIC (OPTIONAL SAFE MODE)
+    print("🔍 Scanner Ready (Phase 2 Loaded)")
 
     app.run(
         host="0.0.0.0",
         port=int(os.environ.get("PORT", 10000))
-)
+        )
