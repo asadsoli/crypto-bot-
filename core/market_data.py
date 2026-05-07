@@ -1,5 +1,6 @@
 import requests
 
+
 class MarketData:
     def __init__(self, symbol="BTCUSDT", interval="1m"):
         self.symbol = symbol
@@ -15,18 +16,47 @@ class MarketData:
             "limit": limit
         }
 
-        response = requests.get(url, params=params)
-        data = response.json()
+        try:
+            response = requests.get(
+                url,
+                params=params,
+                timeout=10
+            )
 
-        candles = []
+            data = response.json()
 
-        for c in data:
-            candles.append({
-                "open": float(c[1]),
-                "high": float(c[2]),
-                "low": float(c[3]),
-                "close": float(c[4]),
-                "volume": float(c[5])
-            })
+            # 🛡 حماية إذا Binance رجع Error JSON
+            if not isinstance(data, list):
+                print(f"❌ Binance Error: {data}")
+                return []
 
-        return candles
+            candles = []
+
+            for c in data:
+
+                # 🛡 حماية إضافية
+                if not isinstance(c, list):
+                    continue
+
+                # 🛡 تأكد أن البيانات كاملة
+                if len(c) < 6:
+                    continue
+
+                try:
+                    candles.append({
+                        "open": float(c[1]),
+                        "high": float(c[2]),
+                        "low": float(c[3]),
+                        "close": float(c[4]),
+                        "volume": float(c[5])
+                    })
+
+                except Exception as e:
+                    print(f"❌ Candle Parse Error: {e}")
+                    continue
+
+            return candles
+
+        except Exception as e:
+            print(f"❌ MarketData Error: {e}")
+            return []
