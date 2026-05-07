@@ -7,24 +7,44 @@ from core.smart_money import SmartMoneyEngine
 class SignalEngine:
 
     def __init__(self):
+
         self.liquidity_engine = LiquidityEngine()
         self.orderflow_engine = OrderFlowEngine()
         self.smart_money = SmartMoneyEngine()
 
         # =========================
-        # 🧠 DEFAULT MARKET DATA
+        # 🧠 MARKET DATA (DEFAULT)
         # =========================
         self.market_data = MarketData("BTCUSDT", "1m")
 
     # =====================================================
-    # 🧠 MULTI-ASSET ENTRY (SAFE ADDITION - NO BREAKING)
+    # 🔥 SCANNER SUPPORT LAYER (NEW - SAFE ADDITION)
+    # =====================================================
+
+    def set_asset(self, asset):
+
+        """
+        🔥 هذه أهم إضافة للـ Scanner
+        بدونها Scanner ما يشتغل صح
+        """
+
+        try:
+            self.market_data.symbol = asset
+            return True
+        except Exception as e:
+            print("❌ set_asset error:", e)
+            return False
+
+    # =====================================================
+    # 🧠 MULTI-ASSET ENTRY (SAFE)
     # =====================================================
 
     def analyze_asset(self, asset):
 
         try:
-            # 🔥 تغيير الأداة بدون كسر النظام
-            self.market_data.symbol = asset
+
+            # 🔥 ربط آمن مع السوق
+            self.set_asset(asset)
 
             return self.analyze(
                 market_state={"state": "ACTIVE"},
@@ -33,14 +53,17 @@ class SignalEngine:
             )
 
         except Exception as e:
+
             print(f"❌ analyze_asset error ({asset}):", e)
+
             return {
                 "signal": "ERROR",
-                "reason": f"Asset analysis failed: {asset}"
+                "reason": f"Asset failed: {asset}",
+                "confidence": 0
             }
 
     # =====================================================
-    # 🧠 MAIN ENGINE (CORE - FULLY PRESERVED)
+    # 🧠 CORE ENGINE (UNCHANGED - SAFE)
     # =====================================================
 
     def analyze(self, market_state, news, risk):
@@ -50,11 +73,12 @@ class SignalEngine:
         # =========================
         # 🛡 SAFETY LAYER
         # =========================
+
         if not candles or len(candles) < 30:
             return {"signal": "NO TRADE", "reason": "Insufficient market data"}
 
         if risk.get("decision") == "BLOCK":
-            return {"signal": "NO TRADE", "reason": "Risk Manager blocked trading"}
+            return {"signal": "NO TRADE", "reason": "Risk blocked trading"}
 
         if market_state.get("state") == "HIGH_RISK":
             return {"signal": "NO TRADE", "reason": "Market too risky"}
@@ -63,7 +87,7 @@ class SignalEngine:
             return {"signal": "NO TRADE", "reason": "High impact news"}
 
         # =========================
-        # 🧠 CORE ENGINE
+        # 🧠 CORE ANALYSIS
         # =========================
 
         structure = self.smart_money.analyze_structure(candles)
@@ -71,7 +95,7 @@ class SignalEngine:
         orderflow = self.orderflow_engine.analyze(candles)
 
         # =========================
-        # 🔥 SAFE EXTRACTION
+        # 🔥 EXTRACTION SAFE
         # =========================
 
         liquidity_hint = liquidity.get("signal_hint", "NONE")
@@ -83,7 +107,7 @@ class SignalEngine:
         ob_conf = orderflow.get("confidence", 0)
 
         # =========================
-        # 💧 STATES
+        # 💧 CONDITIONS
         # =========================
 
         confirmed_sweep = sweep_type in ["BUY_SIDE_SWEEP", "SELL_SIDE_SWEEP"]
@@ -92,58 +116,47 @@ class SignalEngine:
         ob_valid = "OB" in ob_type
         fvg_valid = "FVG" in ob_type
 
-        # =========================
-        # 🔒 CONFLUENCE GATE (STABILITY LAYER)
-        # =========================
-
         structure_ok = structure.get("bias") in ["TREND", "REVERSAL"]
 
-        liquidity_ok = confirmed_sweep or liquidity_setup
-
-        orderflow_ok = (
-            (ob_valid or fvg_valid)
-            and ob_conf >= 75
-        )
-
-        # =========================
-        # 💣 1) LIQUIDITY + OB (STRONGEST)
-        # =========================
+        # =====================================================
+        # 💣 1) STRONG ENTRY (LIQUIDITY + OB)
+        # =====================================================
 
         if confirmed_sweep and ob_valid and structure_ok:
 
             return {
                 "signal": "INSTITUTIONAL ENTRY",
-                "type": "LIQUIDITY + OB CONFLUENCE",
+                "type": "LIQUIDITY + OB",
                 "direction": structure.get("direction", "BUY/SELL"),
                 "entry": orderflow.get("entry", "MARKET"),
                 "sl": orderflow.get("sl", "AUTO"),
                 "tp": orderflow.get("tp", "AUTO"),
                 "confidence": 95,
                 "quality": "ULTRA SMART MONEY",
-                "reason": "Liquidity Sweep + Order Block + Structure aligned"
+                "reason": "Liquidity Sweep + OrderBlock + Structure"
             }
 
-        # =========================
+        # =====================================================
         # 💣 2) LIQUIDITY + FVG
-        # =========================
+        # =====================================================
 
         if confirmed_sweep and fvg_valid and structure_ok:
 
             return {
                 "signal": "INSTITUTIONAL ENTRY",
-                "type": "LIQUIDITY + FVG CONFLUENCE",
+                "type": "LIQUIDITY + FVG",
                 "direction": structure.get("direction", "BUY/SELL"),
                 "entry": orderflow.get("entry", "MARKET"),
                 "sl": orderflow.get("sl", "AUTO"),
                 "tp": orderflow.get("tp", "AUTO"),
                 "confidence": 90,
-                "quality": "SMART MONEY IMBALANCE",
-                "reason": "Liquidity Sweep + FVG + Structure aligned"
+                "quality": "IMBALANCE",
+                "reason": "Liquidity Sweep + FVG + Structure"
             }
 
-        # =========================
+        # =====================================================
         # ⚠️ 3) SETUP READY
-        # =========================
+        # =====================================================
 
         if liquidity_setup and (ob_valid or fvg_valid):
 
@@ -153,13 +166,13 @@ class SignalEngine:
                 "direction": structure.get("direction", "WAIT"),
                 "entry": orderflow.get("entry", "WAIT"),
                 "confidence": 75,
-                "quality": "WAITING CONFIRMATION",
-                "reason": "Liquidity building near Smart Money zone"
+                "quality": "WAIT CONFIRMATION",
+                "reason": "Liquidity building zone"
             }
 
-        # =========================
+        # =====================================================
         # 📊 4) STRUCTURE ONLY
-        # =========================
+        # =====================================================
 
         if structure.get("bias") in ["TREND", "REVERSAL"]:
 
@@ -168,17 +181,17 @@ class SignalEngine:
                 "type": structure.get("bias"),
                 "direction": structure.get("direction"),
                 "confidence": structure.get("confidence", 60),
-                "quality": "STRUCTURE SIGNAL",
+                "quality": "STRUCTURE",
                 "reason": structure.get("reason")
             }
 
-        # =========================
+        # =====================================================
         # ❌ NO TRADE
-        # =========================
+        # =====================================================
 
         return {
             "signal": "NO TRADE",
             "confidence": 0,
             "quality": "NO CONFLUENCE",
-            "reason": "No Liquidity + OrderBlock + Structure alignment"
+            "reason": "No valid setup"
         }
