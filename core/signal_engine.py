@@ -12,6 +12,27 @@ class SignalEngine:
         self.smart_money = SmartMoneyEngine()
         self.market_data = MarketData("BTCUSDT", "1m")
 
+    # =====================================================
+    # 🧠 MULTI-ASSET ENTRY (NEW - SAFE ADDITION)
+    # =====================================================
+
+    def analyze_asset(self, asset):
+
+        try:
+            self.market_data.symbol = asset
+            return self.analyze(
+                market_state={"state": "ACTIVE"},
+                news={"risk": "NORMAL"},
+                risk={"decision": "ALLOW"}
+            )
+        except Exception as e:
+            print(f"❌ analyze_asset error ({asset}):", e)
+            return None
+
+    # =====================================================
+    # 🧠 MAIN ENGINE (UNCHANGED - 100% SAFE)
+    # =====================================================
+
     def analyze(self, market_state, news, risk):
 
         candles = self.market_data.get_candles()
@@ -62,7 +83,7 @@ class SignalEngine:
         fvg_valid = "FVG" in ob_type
 
         # =========================
-        # 🔒 CONFLUENCE GATE (NEW STABILITY LAYER)
+        # 🔒 CONFLUENCE GATE
         # =========================
 
         structure_ok = structure.get("bias") in ["TREND", "REVERSAL"]
@@ -75,7 +96,7 @@ class SignalEngine:
         )
 
         # =========================
-        # 💣 1) LIQUIDITY + ORDER BLOCK (STRONGEST ENTRY)
+        # 💣 1) LIQUIDITY + OB
         # =========================
 
         if confirmed_sweep and ob_valid and structure_ok:
@@ -111,7 +132,7 @@ class SignalEngine:
             }
 
         # =========================
-        # ⚠️ 3) SETUP READY (PRE-SWEEP)
+        # ⚠️ 3) SETUP READY
         # =========================
 
         if liquidity_setup and (ob_valid or fvg_valid):
@@ -150,4 +171,4 @@ class SignalEngine:
             "confidence": 0,
             "quality": "NO CONFLUENCE",
             "reason": "No Liquidity + OrderBlock + Structure alignment"
-            }
+        }
