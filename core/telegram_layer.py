@@ -26,7 +26,7 @@ class TelegramLayer:
         self.risk_mode = "AUTO"
 
         # =========================
-        # 🔍 SCANNER (ADDED - SAFE EXTENSION)
+        # 🔍 SCANNER (SAFE)
         # =========================
 
         self.scan_assets = [
@@ -39,7 +39,7 @@ class TelegramLayer:
         self.scanner_active = False
 
         # =========================
-        # 🧠 V3 AI MULTI TIMEFRAME (ADDED)
+        # 🧠 V3 MULTI TIMEFRAME
         # =========================
 
         self.timeframes = {
@@ -48,8 +48,21 @@ class TelegramLayer:
             "trend": "15m"
         }
 
+        # =========================
+        # 📰 V3 NEWS AI
+        # =========================
+
+        self.news_block_level = {
+            "LOW": 0,
+            "NORMAL": 10,
+            "MEDIUM": 25,
+            "HIGH": 100
+        }
+
+        self.block_high_news = True
+
     # =========================
-    # 🎛 UI MENU
+    # 🎛 MENU
     # =========================
 
     def menu(self):
@@ -82,36 +95,56 @@ class TelegramLayer:
         ])
 
     # =========================
-    # 🧠 V3 MULTI TIMEFRAME CONTEXT (ADDED)
+    # 🧠 NEWS AI ENGINE
     # =========================
 
-    def get_multi_timeframe_context(self, asset):
+    def get_news_ai(self):
 
         try:
 
-            context = {
-                "scalp": {"trend": "neutral", "strength": 50},
-                "confirm": {"trend": "neutral", "strength": 55},
-                "trend": {"trend": "neutral", "strength": 60}
+            if not self.news:
+                return {"risk": "NORMAL", "score": 10, "impact": 0}
+
+            news = self.news.analyze_news()
+
+            risk = news.get("risk", "NORMAL")
+
+            return {
+                "risk": risk,
+                "score": self.news_block_level.get(risk, 10),
+                "impact": news.get("impact_score", 0)
             }
-
-            if self.market and hasattr(self.market, "get_multi_tf"):
-                context = self.market.get_multi_tf(asset)
-
-            return context
 
         except Exception as e:
 
-            print("MTF error:", e)
+            print("NEWS AI ERROR:", e)
 
-            return {
-                "scalp": {"trend": "neutral", "strength": 50},
-                "confirm": {"trend": "neutral", "strength": 50},
-                "trend": {"trend": "neutral", "strength": 50}
-            }
+            return {"risk": "NORMAL", "score": 10, "impact": 0}
 
     # =========================
-    # 📊 FORMAT SIGNAL
+    # 🌍 SESSION AI ENGINE
+    # =========================
+
+    def get_session_ai(self):
+
+        try:
+
+            if not self.time_engine:
+                return {"session": "UNKNOWN", "bias": "NORMAL"}
+
+            session = self.time_engine.get_session()
+
+            if session in ["LONDON", "NEW YORK"]:
+                return {"session": session, "bias": "HIGH_VOLATILITY"}
+
+            return {"session": session, "bias": "LOW_VOLATILITY"}
+
+        except:
+
+            return {"session": "UNKNOWN", "bias": "NORMAL"}
+
+    # =========================
+    # 📊 RESULT FORMAT
     # =========================
 
     def format_result(self, r):
@@ -127,6 +160,9 @@ class TelegramLayer:
 
 💎 CONFIDENCE: {r.get('confidence', 0)}%
 🏆 QUALITY: {r.get('quality', 'N/A')}
+
+🧠 NEWS: {r.get('ai_context', {}).get('news_risk', 'N/A')}
+🌍 SESSION: {r.get('ai_context', {}).get('session', 'N/A')}
 
 📍 REASON:
 {r.get('reason', '')}
@@ -148,7 +184,7 @@ class TelegramLayer:
 """
 
     # =========================
-    # 🔍 SCANNER LOOP (UNCHANGED)
+    # 🔍 SCANNER LOOP
     # =========================
 
     def scanner_loop(self):
@@ -214,7 +250,7 @@ class TelegramLayer:
             time.sleep(60)
 
     # =========================
-    # 🚀 SCANNER CONTROL
+    # 🚀 CONTROL SCANNER
     # =========================
 
     def start_scanner(self):
@@ -230,7 +266,7 @@ class TelegramLayer:
         self.scanner_active = False
 
     # =========================
-    # 🧠 HANDLER (UNCHANGED)
+    # 🧠 HANDLER
     # =========================
 
     def handle(self, msg):
@@ -282,10 +318,16 @@ class TelegramLayer:
                     try:
 
                         # =========================
-                        # 🧠 V3 CONTEXT ADDED HERE
+                        # 🧠 V3 PHASE 2 AI
                         # =========================
 
-                        mtf = self.get_multi_timeframe_context(self.selected_asset)
+                        news_ai = self.get_news_ai()
+                        session_ai = self.get_session_ai()
+
+                        # ❌ BLOCK HIGH NEWS
+                        if self.block_high_news and news_ai["risk"] == "HIGH":
+                            self.bot.sendMessage(chat_id, "⛔ BLOCKED: HIGH IMPACT NEWS")
+                            return
 
                         if hasattr(self.signal_engine, "analyze_asset"):
                             result = self.signal_engine.analyze_asset(self.selected_asset)
@@ -296,8 +338,16 @@ class TelegramLayer:
                                 risk={"decision": "ALLOW"}
                             )
 
-                        # 🔥 إضافة سياق V3 للنتيجة بدون كسر النظام
-                        result["mtf"] = mtf
+                        # 🔥 AI CONTEXT
+                        result["ai_context"] = {
+                            "news_risk": news_ai["risk"],
+                            "session": session_ai["session"],
+                            "bias": session_ai["bias"]
+                        }
+
+                        # 🔥 AI BOOST
+                        if news_ai["risk"] == "HIGH":
+                            result["confidence"] = max(0, result.get("confidence", 0) - 30)
 
                         self.bot.sendMessage(chat_id, self.format_result(result))
 
@@ -326,4 +376,4 @@ class TelegramLayer:
 
         MessageLoop(self.bot, self.handle).run_as_thread()
 
-        print("🤖
+        print("🤖 ULTRA V10 TELEGRAM LAYER READY ✔")
