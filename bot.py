@@ -2,7 +2,7 @@ import os
 import traceback
 import telepot
 
-from flask import request
+from flask import Flask, request
 
 from core.time_engine import TimeEngine
 from core.market_state import MarketStateEngine
@@ -34,7 +34,7 @@ if not TOKEN:
 bot = telepot.Bot(TOKEN)
 
 # =========================
-# 🤖 TELEGRAM LAYER PRO
+# 🤖 TELEGRAM LAYER CORE
 # =========================
 
 class TelegramLayer:
@@ -43,35 +43,31 @@ class TelegramLayer:
 
         self.bot = telepot.Bot(token)
 
+        # 🧠 STATE
         self.bot_active = True
         self.selected_asset = "BTCUSDT"
 
     # =========================
-    # 📤 SEND MESSAGE
+    # 📤 SEND SAFE
     # =========================
 
-    def send_message(self, chat_id, text, keyboard=None):
+    def send(self, chat_id, text, keyboard=None):
 
         try:
 
             if keyboard:
-                self.bot.sendMessage(
-                    chat_id,
-                    text,
-                    reply_markup=keyboard
-                )
-
+                self.bot.sendMessage(chat_id, text, reply_markup=keyboard)
             else:
                 self.bot.sendMessage(chat_id, text)
 
         except Exception as e:
-            print("❌ Telegram Send Error:", e)
+            print("❌ SEND ERROR:", e)
 
     # =========================
-    # 🎛 MAIN PANEL
+    # 🎛 KEYBOARD
     # =========================
 
-    def main_keyboard(self):
+    def keyboard(self):
 
         return {
             "keyboard": [
@@ -84,52 +80,39 @@ class TelegramLayer:
         }
 
     # =========================
-    # 📊 FORMAT SIGNAL
+    # 📊 FORMAT
     # =========================
 
-    def format_signal(
-        self,
-        current_time,
-        session,
-        news,
-        state,
-        risk,
-        signal
-    ):
+    def format(self, signal, state, risk, news):
 
-        return f"""🤖 ULTRA V10 CORE ACTIVE ✔
+        return f"""🤖 ULTRA V10 CORE
 
-🕒 الوقت: {current_time}
-🌍 الجلسة: {session}
+💰 ASSET: {self.selected_asset}
 
-📰 NEWS ENGINE
-⚠️ Risk: {news['risk']}
-📊 Impact: {news['impact_score']}
-
-📊 MARKET STATE
-⚡ الحالة: {state['state']}
-🧠 السبب: {state['reason']}
-
-🛡 RISK MANAGER
-⚡ القرار: {risk['decision']}
-📊 SCORE: {risk['score']}
-
-💰 SIGNAL ENGINE
-📊 القرار: {signal['signal']}
-📈 Entry: {signal.get('entry', 'N/A')}
+📊 SIGNAL: {signal.get('signal')}
+🎯 ENTRY: {signal.get('entry', 'N/A')}
 🛑 SL: {signal.get('sl', 'N/A')}
-🎯 TP: {signal.get('tp', 'N/A')}
-💎 Confidence: {signal.get('confidence', 'N/A')}%
-🏆 Quality: {signal.get('quality', 'N/A')}
+💰 TP: {signal.get('tp', 'N/A')}
 
-📍 ASSET: {self.selected_asset}
+💎 CONF: {signal.get('confidence', 0)}%
+🏆 QUALITY: {signal.get('quality', 'N/A')}
+
+📊 MARKET: {state.get('state')}
+🛡 RISK: {risk.get('decision')}
+📰 NEWS: {news.get('risk')}
 """
 
 # =========================
-# 🚀 INIT TELEGRAM LAYER
+# 🚀 INIT LAYER
 # =========================
 
 telegram_layer = TelegramLayer(TOKEN)
+
+# =========================
+# 🌐 FLASK APP
+# =========================
+
+app = Flask(__name__)
 
 # =========================
 # 🌐 WEBHOOK
@@ -141,166 +124,85 @@ def telegram_webhook():
 
         data = request.get_json()
 
-        print("📩 UPDATE:", data)
-
-        if not data:
+        if not data or "message" not in data:
             return "OK"
 
-        if "message" not in data:
-            return "OK"
-
-        message = data["message"]
-
-        chat_id = message["chat"]["id"]
-
-        text = message.get("text", "")
+        msg = data["message"]
+        chat_id = msg["chat"]["id"]
+        text = msg.get("text", "")
 
         # =========================
-        # 🚀 START
+        # START
         # =========================
 
         if text == "/start":
 
-            telegram_layer.send_message(
+            telegram_layer.send(
                 chat_id,
-                "🤖 ULTRA V10 PANEL READY",
-                telegram_layer.main_keyboard()
+                "🤖 ULTRA V10 READY",
+                telegram_layer.keyboard()
             )
 
-            return "OK"
-
         # =========================
-        # 🟢 START BOT
+        # BOT CONTROL
         # =========================
 
-        if text == "🟢 تشغيل البوت":
-
+        elif text == "🟢 تشغيل البوت":
             telegram_layer.bot_active = True
+            telegram_layer.send(chat_id, "🟢 BOT ON")
 
-            telegram_layer.send_message(
-                chat_id,
-                "🟢 تم تشغيل البوت"
-            )
-
-            return "OK"
-
-        # =========================
-        # 🔴 STOP BOT
-        # =========================
-
-        if text == "🔴 إيقاف البوت":
-
+        elif text == "🔴 إيقاف البوت":
             telegram_layer.bot_active = False
-
-            telegram_layer.send_message(
-                chat_id,
-                "🔴 تم إيقاف البوت"
-            )
-
-            return "OK"
+            telegram_layer.send(chat_id, "🔴 BOT OFF")
 
         # =========================
-        # 💰 ASSET SWITCH
+        # ASSET SWITCH
         # =========================
 
-        if text == "💰 BTCUSDT":
+        elif text in ["💰 BTCUSDT", "💰 ETHUSDT"]:
 
-            telegram_layer.selected_asset = "BTCUSDT"
-
-            telegram_layer.send_message(
-                chat_id,
-                "💰 تم اختيار BTCUSDT"
-            )
-
-            return "OK"
-
-        if text == "💰 ETHUSDT":
-
-            telegram_layer.selected_asset = "ETHUSDT"
-
-            telegram_layer.send_message(
-                chat_id,
-                "💰 تم اختيار ETHUSDT"
-            )
-
-            return "OK"
+            asset = text.split(" ")[1]
+            telegram_layer.selected_asset = asset
+            telegram_layer.send(chat_id, f"💰 {asset} SELECTED")
 
         # =========================
-        # ⚙️ STATUS
+        # STATUS
         # =========================
 
-        if text == "⚙️ الحالة":
+        elif text == "⚙️ الحالة":
 
-            status = "🟢 يعمل" if telegram_layer.bot_active else "🔴 متوقف"
+            status = "🟢 RUNNING" if telegram_layer.bot_active else "🔴 STOPPED"
 
-            telegram_layer.send_message(
+            telegram_layer.send(
                 chat_id,
-                f"""⚙️ ULTRA V10 STATUS
+                f"""⚙️ STATUS
 
-🤖 البوت: {status}
-
-💰 العملة الحالية:
-{telegram_layer.selected_asset}
+🤖 BOT: {status}
+💰 ASSET: {telegram_layer.selected_asset}
 """
             )
 
-            return "OK"
-
         # =========================
-        # 📊 MARKET ANALYSIS
+        # ANALYSIS CORE
         # =========================
 
-        if text == "📊 تحليل السوق":
+        elif text == "📊 تحليل السوق":
 
             if not telegram_layer.bot_active:
-
-                telegram_layer.send_message(
-                    chat_id,
-                    "🔴 البوت متوقف"
-                )
-
+                telegram_layer.send(chat_id, "🔴 BOT STOPPED")
                 return "OK"
 
-            current_time = time_engine.get_current_time()
-            session = time_engine.get_session()
-
-            # =========================
-            # 📰 NEWS
-            # =========================
-
             try:
+
                 news = news_engine.analyze_news()
-
-            except Exception as e:
-
-                print("❌ NEWS ERROR:", e)
-
-                news = {
-                    "risk": "UNKNOWN",
-                    "impact_score": 0
-                }
-
-            # =========================
-            # 📊 MARKET STATE
-            # =========================
+            except:
+                news = {"risk": "UNKNOWN"}
 
             try:
-                state = market.get_market_state(
-                    news_risk=news["risk"]
-                )
 
-            except Exception as e:
-
-                print("❌ MARKET ERROR:", e)
-
-                state = {
-                    "state": "UNKNOWN",
-                    "reason": "Fallback"
-                }
-
-            # =========================
-            # 🛡 RISK
-            # =========================
+                state = market.get_market_state(news_risk=news["risk"])
+            except:
+                state = {"state": "UNKNOWN"}
 
             try:
 
@@ -309,20 +211,8 @@ def telegram_webhook():
                     news=news,
                     volatility=0
                 )
-
-            except Exception as e:
-
-                print("❌ RISK ERROR:", e)
-
-                risk = {
-                    "decision": "ALLOW",
-                    "score": 0,
-                    "reason": "Fallback"
-                }
-
-            # =========================
-            # 💰 SIGNAL
-            # =========================
+            except:
+                risk = {"decision": "ALLOW"}
 
             try:
 
@@ -331,39 +221,48 @@ def telegram_webhook():
                     news=news,
                     risk=risk
                 )
-
             except Exception as e:
 
-                print("❌ SIGNAL ERROR:", e)
+                print("SIGNAL ERROR:", e)
                 traceback.print_exc()
 
-                signal = {
-                    "signal": "SYSTEM ERROR",
-                    "entry": "N/A",
-                    "sl": "N/A",
-                    "tp": "N/A",
-                    "confidence": 0,
-                    "quality": "SAFE MODE"
-                }
+                signal = {"signal": "NO TRADE"}
 
-            response = telegram_layer.format_signal(
-                current_time,
-                session,
-                news,
-                state,
-                risk,
-                signal
-            )
+            response = telegram_layer.format(signal, state, risk, news)
 
-            telegram_layer.send_message(chat_id, response)
-
-            return "OK"
+            telegram_layer.send(chat_id, response)
 
         return "OK"
 
     except Exception as e:
 
-        print("❌ WEBHOOK CRASH:", e)
+        print("❌ WEBHOOK ERROR:", e)
         traceback.print_exc()
 
         return "OK"
+
+# =========================
+# ROUTES
+# =========================
+
+@app.route("/")
+def home():
+    return "ULTRA V10 ACTIVE ✔"
+
+@app.route("/webhook", methods=["POST"])
+def webhook():
+    return telegram_webhook()
+
+# =========================
+# 🚀 START
+# =========================
+
+if __name__ == "__main__":
+
+    # 🔥 هنا سنربط Scanner في المرحلة التالية فقط (Phase 2)
+    # scanner.start()
+
+    app.run(
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", 10000))
+)
