@@ -15,7 +15,21 @@ class ScannerEngine:
         ]
 
         self.active = False
-        self.scan_interval = 60  # كل دقيقة
+        self.scan_interval = 60
+
+        # =========================
+        # 🤖 TELEGRAM INTEGRATION (NEW)
+        # =========================
+        self.telegram = None
+        self.last_sent_asset = None
+
+    # =========================
+    # 🔗 CONNECT TELEGRAM
+    # =========================
+
+    def set_telegram(self, telegram):
+
+        self.telegram = telegram
 
     # =========================
     # 🔍 SCAN SINGLE ASSET
@@ -65,14 +79,13 @@ class ScannerEngine:
                 continue
 
             if result["confidence"] > best_conf:
-
                 best = result
                 best_conf = result["confidence"]
 
         return best
 
     # =========================
-    # 🔁 LOOP SCANNER
+    # 🔁 MAIN LOOP
     # =========================
 
     def start(self, callback=None):
@@ -87,11 +100,51 @@ class ScannerEngine:
 
                 best = self.find_best()
 
+                # =========================
+                # 🎯 FILTER STRONG SIGNALS
+                # =========================
+
                 if best and best["confidence"] >= 75:
+
+                    # ❌ منع التكرار
+                    if self.last_sent_asset == best["asset"]:
+                        time.sleep(self.scan_interval)
+                        continue
+
+                    self.last_sent_asset = best["asset"]
 
                     print("🔥 BEST SIGNAL FOUND:", best)
 
-                    # إذا تريد ربط لاحقاً مع Telegram
+                    # =========================
+                    # 🤖 TELEGRAM SENDING
+                    # =========================
+
+                    if self.telegram:
+
+                        try:
+
+                            self.telegram.send_message(
+                                "<CHAT_ID>",
+                                f"""🔍 ULTRA SCANNER V3
+
+💰 ASSET: {best['asset']}
+📊 SIGNAL: {best['signal']}
+🎯 ENTRY: {best['entry']}
+🛑 SL: {best['sl']}
+💰 TP: {best['tp']}
+💎 CONFIDENCE: {best['confidence']}%
+🏆 QUALITY: {best['quality']}
+📍 REASON: {best['reason']}
+"""
+                            )
+
+                        except Exception as e:
+                            print("❌ Telegram send error:", e)
+
+                    # =========================
+                    # 🔗 CALLBACK (OPTIONAL)
+                    # =========================
+
                     if callback:
                         callback(best)
 
@@ -101,7 +154,7 @@ class ScannerEngine:
             time.sleep(self.scan_interval)
 
     # =========================
-    # ⛔ STOP SCANNER
+    # ⛔ STOP
     # =========================
 
     def stop(self):
