@@ -3,9 +3,13 @@ import time
 
 class ScannerEngine:
 
-    def __init__(self, signal_engine, assets=None):
+    def __init__(self, brain, assets=None):
 
-        self.signal_engine = signal_engine
+        # =========================
+        # 🧠 BRAIN CORE
+        # =========================
+
+        self.brain = brain
 
         self.assets = assets or [
             "BTCUSDT",
@@ -18,8 +22,9 @@ class ScannerEngine:
         self.scan_interval = 60
 
         # =========================
-        # 🤖 TELEGRAM INTEGRATION (NEW)
+        # 🤖 TELEGRAM INTEGRATION
         # =========================
+
         self.telegram = None
         self.last_sent_asset = None
 
@@ -39,26 +44,45 @@ class ScannerEngine:
 
         try:
 
-            result = self.signal_engine.analyze_asset(asset)
+            # =========================
+            # 🧠 BRAIN ANALYSIS
+            # =========================
 
-            if not result:
+            brain_result = self.brain.analyze(asset)
+
+            if not brain_result:
                 return None
 
-            if result.get("signal") in ["NO TRADE", "ERROR", "NO_DATA"]:
+            signal = brain_result.get("signal")
+
+            if not signal:
+                return None
+
+            # =========================
+            # ❌ FILTER BAD SIGNALS
+            # =========================
+
+            if signal.get("signal") in [
+                "NO TRADE",
+                "ERROR",
+                "NO_DATA"
+            ]:
                 return None
 
             return {
                 "asset": asset,
-                "signal": result.get("signal"),
-                "entry": result.get("entry"),
-                "sl": result.get("sl"),
-                "tp": result.get("tp"),
-                "confidence": result.get("confidence", 0),
-                "quality": result.get("quality", ""),
-                "reason": result.get("reason", "")
+                "decision": brain_result.get("decision"),
+                "signal": signal.get("signal"),
+                "entry": signal.get("entry"),
+                "sl": signal.get("sl"),
+                "tp": signal.get("tp"),
+                "confidence": signal.get("confidence", 0),
+                "quality": signal.get("quality", ""),
+                "reason": brain_result.get("reason", "")
             }
 
         except Exception as e:
+
             print(f"❌ Scanner error ({asset}):", e)
             return None
 
@@ -78,9 +102,12 @@ class ScannerEngine:
             if not result:
                 continue
 
-            if result["confidence"] > best_conf:
+            confidence = result.get("confidence", 0)
+
+            if confidence > best_conf:
+
                 best = result
-                best_conf = result["confidence"]
+                best_conf = confidence
 
         return best
 
@@ -108,6 +135,7 @@ class ScannerEngine:
 
                     # ❌ منع التكرار
                     if self.last_sent_asset == best["asset"]:
+
                         time.sleep(self.scan_interval)
                         continue
 
@@ -128,27 +156,35 @@ class ScannerEngine:
                                 f"""🔍 ULTRA SCANNER V3
 
 💰 ASSET: {best['asset']}
+
+🧠 DECISION: {best['decision']}
 📊 SIGNAL: {best['signal']}
+
 🎯 ENTRY: {best['entry']}
 🛑 SL: {best['sl']}
 💰 TP: {best['tp']}
+
 💎 CONFIDENCE: {best['confidence']}%
 🏆 QUALITY: {best['quality']}
-📍 REASON: {best['reason']}
+
+📍 REASON:
+{best['reason']}
 """
                             )
 
                         except Exception as e:
+
                             print("❌ Telegram send error:", e)
 
                     # =========================
-                    # 🔗 CALLBACK (OPTIONAL)
+                    # 🔗 CALLBACK
                     # =========================
 
                     if callback:
                         callback(best)
 
             except Exception as e:
+
                 print("❌ Scanner Loop Error:", e)
 
             time.sleep(self.scan_interval)
@@ -160,4 +196,5 @@ class ScannerEngine:
     def stop(self):
 
         self.active = False
+
         print("⛔ Scanner Stopped")
