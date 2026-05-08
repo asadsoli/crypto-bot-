@@ -8,43 +8,91 @@ class BrainCore:
         self.risk = risk
 
     # =========================
-    # 🧠 COLLECT DATA
+    # 🧠 COLLECT CONTEXT
     # =========================
 
     def collect_context(self, asset):
 
-        # 📊 Market State
-        try:
-            market_state = self.market.get_market_state() if self.market else {"state": "UNKNOWN"}
-        except:
-            market_state = {"state": "UNKNOWN"}
+        # =========================
+        # 📊 MARKET STATE
+        # =========================
 
-        # 📰 News
         try:
-            news = self.news.analyze_news() if self.news else {"risk": "NORMAL", "impact_score": 0}
-        except:
-            news = {"risk": "NORMAL", "impact_score": 0}
 
-        # 🛡 Risk
-        try:
-            risk = self.risk.evaluate(
-                market_state=market_state,
-                news=news,
-                volatility=0
-            ) if self.risk else {"decision": "ALLOW", "score": 0}
+            if self.market:
+                market_state = self.market.get_market_state()
+
+            else:
+                market_state = {
+                    "state": "UNKNOWN"
+                }
+
         except:
-            risk = {"decision": "ALLOW", "score": 0}
+
+            market_state = {
+                "state": "UNKNOWN"
+            }
+
+        # =========================
+        # 📰 NEWS
+        # =========================
+
+        try:
+
+            if self.news:
+                news = self.news.analyze_news()
+
+            else:
+                news = {
+                    "risk": "NORMAL",
+                    "impact_score": 0
+                }
+
+        except:
+
+            news = {
+                "risk": "NORMAL",
+                "impact_score": 0
+            }
+
+        # =========================
+        # 🛡 RISK
+        # =========================
+
+        try:
+
+            if self.risk:
+
+                risk = self.risk.evaluate(
+                    market_state=market_state,
+                    news=news,
+                    volatility=0
+                )
+
+            else:
+
+                risk = {
+                    "decision": "ALLOW",
+                    "score": 0
+                }
+
+        except:
+
+            risk = {
+                "decision": "ALLOW",
+                "score": 0
+            }
 
         return market_state, news, risk
 
     # =========================
-    # 🧠 MAIN DECISION ENGINE
+    # 🧠 MAIN AI ENGINE
     # =========================
 
     def analyze(self, asset):
 
         # =========================
-        # 📦 COLLECT CONTEXT
+        # 📦 CONTEXT
         # =========================
 
         market_state, news, risk = self.collect_context(asset)
@@ -54,21 +102,44 @@ class BrainCore:
         # =========================
 
         if risk.get("decision") == "BLOCK":
+
             return {
                 "decision": "NO TRADE",
+                "signal": {
+                    "signal": "NO TRADE",
+                    "confidence": 0
+                },
                 "reason": "Risk Manager blocked trading"
             }
 
+        # =========================
+        # 📰 HIGH IMPACT NEWS
+        # =========================
+
         if news.get("risk") == "HIGH":
+
             return {
-                "decision": "NO TRADE",
-                "reason": "High impact news"
+                "decision": "WAIT NEWS",
+                "signal": {
+                    "signal": "HIGH NEWS",
+                    "confidence": 0
+                },
+                "reason": "High impact news detected"
             }
 
+        # =========================
+        # ⚠️ MARKET RISK
+        # =========================
+
         if market_state.get("state") == "HIGH_RISK":
+
             return {
                 "decision": "WAIT",
-                "reason": "Market too volatile"
+                "signal": {
+                    "signal": "HIGH RISK",
+                    "confidence": 0
+                },
+                "reason": "Market volatility too high"
             }
 
         # =========================
@@ -76,49 +147,69 @@ class BrainCore:
         # =========================
 
         try:
-            signal = self.signal_engine.analyze(
-                market_state=market_state,
-                news=news,
-                risk=risk
-            )
+
+            # 🔥 MULTI ASSET SUPPORT
+            signal = self.signal_engine.analyze_asset(asset)
+
         except Exception as e:
+
             return {
-                "decision": "NO TRADE",
+                "decision": "ERROR",
+                "signal": {
+                    "signal": "ERROR",
+                    "confidence": 0
+                },
                 "reason": f"Signal error: {str(e)}"
             }
 
         # =========================
-        # 🧠 FINAL FILTER (BALANCED MODE)
+        # 🧠 AI FILTER
         # =========================
 
         confidence = signal.get("confidence", 0)
 
-        # 🟡 WAIT ZONE
+        # =========================
+        # 🔴 LOW CONFIDENCE
+        # =========================
+
         if confidence < 75:
+
             return {
                 "decision": "WAIT",
                 "signal": signal,
                 "reason": "Low confidence setup"
             }
 
-        # 🟢 GOOD TRADE
-        if confidence >= 75 and confidence < 90:
+        # =========================
+        # 🟡 VALID SETUP
+        # =========================
+
+        if 75 <= confidence < 90:
+
             return {
                 "decision": signal.get("signal", "WAIT"),
                 "signal": signal,
-                "reason": "Valid setup (Balanced mode)"
+                "reason": "Balanced setup confirmed"
             }
 
-        # 🔥 STRONG TRADE
+        # =========================
+        # 🔥 HIGH QUALITY
+        # =========================
+
         if confidence >= 90:
+
             return {
                 "decision": signal.get("signal", "BUY/SELL"),
                 "signal": signal,
-                "reason": "High quality institutional setup"
+                "reason": "Institutional setup confirmed"
             }
+
+        # =========================
+        # ⚠️ FALLBACK
+        # =========================
 
         return {
             "decision": "WAIT",
             "signal": signal,
             "reason": "Fallback state"
-            }
+        }
