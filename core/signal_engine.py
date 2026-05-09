@@ -116,7 +116,18 @@ class SignalEngine:
         ob_valid = "OB" in ob_type
         fvg_valid = "FVG" in ob_type
 
-        structure_ok = structure.get("bias") in ["TREND", "REVERSAL"]
+        # =========================
+        # 🧠 FIX: SmartMoney Compatibility Patch
+        # =========================
+
+        structure_bias = structure.get("bias")
+        direction = structure.get("trend", "NEUTRAL")  # 🔥 FIX ADDED
+
+        structure_ok = structure_bias in [
+            "BULLISH",
+            "BEARISH",
+            "REVERSAL"
+        ]
 
         # =====================================================
         # 💣 1) STRONG ENTRY (LIQUIDITY + OB)
@@ -127,7 +138,7 @@ class SignalEngine:
             return {
                 "signal": "INSTITUTIONAL ENTRY",
                 "type": "LIQUIDITY + OB",
-                "direction": structure.get("direction", "BUY/SELL"),
+                "direction": direction,
                 "entry": orderflow.get("entry", "MARKET"),
                 "sl": orderflow.get("sl", "AUTO"),
                 "tp": orderflow.get("tp", "AUTO"),
@@ -145,7 +156,7 @@ class SignalEngine:
             return {
                 "signal": "INSTITUTIONAL ENTRY",
                 "type": "LIQUIDITY + FVG",
-                "direction": structure.get("direction", "BUY/SELL"),
+                "direction": direction,
                 "entry": orderflow.get("entry", "MARKET"),
                 "sl": orderflow.get("sl", "AUTO"),
                 "tp": orderflow.get("tp", "AUTO"),
@@ -163,7 +174,7 @@ class SignalEngine:
             return {
                 "signal": "SETUP READY",
                 "type": "PRE-LIQUIDITY",
-                "direction": structure.get("direction", "WAIT"),
+                "direction": direction,
                 "entry": orderflow.get("entry", "WAIT"),
                 "confidence": 75,
                 "quality": "WAIT CONFIRMATION",
@@ -174,12 +185,12 @@ class SignalEngine:
         # 📊 4) STRUCTURE ONLY
         # =====================================================
 
-        if structure.get("bias") in ["TREND", "REVERSAL"]:
+        if structure_ok:
 
             return {
                 "signal": "STRUCTURE ONLY",
-                "type": structure.get("bias"),
-                "direction": structure.get("direction"),
+                "type": structure_bias,
+                "direction": direction,
                 "confidence": structure.get("confidence", 60),
                 "quality": "STRUCTURE",
                 "reason": structure.get("reason")
@@ -194,4 +205,4 @@ class SignalEngine:
             "confidence": 0,
             "quality": "NO CONFLUENCE",
             "reason": "No valid setup"
-        }
+            }
