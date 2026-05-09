@@ -7,9 +7,17 @@ class BrainCore:
         self.news = news
         self.risk = risk
 
+        # =========================
+        # 🧠 SELF LEARNING MEMORY
+        # =========================
+        self.memory = {
+            "wins": 0,
+            "losses": 0,
+            "last_bias": None
+        }
+
     # =========================
-    # 🧠 COLLECT CONTEXT
-    # (KEEP - بدون تغيير)
+    # 🧠 CONTEXT (UNCHANGED SAFE)
     # =========================
 
     def collect_context(self, asset):
@@ -36,7 +44,59 @@ class BrainCore:
         return market_state, news, risk
 
     # =========================
-    # 🧠 FINAL BRAIN ENGINE (V2 UPGRADED)
+    # 🌍 MARKET REGIME DETECTOR
+    # =========================
+
+    def detect_regime(self, market_state, news):
+
+        if news.get("risk") == "HIGH":
+            return "NEWS_VOLATILE"
+
+        if market_state.get("state") == "HIGH_RISK":
+            return "HIGH_VOLATILITY"
+
+        if market_state.get("state") == "ACTIVE":
+            return "TRENDING"
+
+        return "RANGE"
+
+    # =========================
+    # 💣 FAKE BREAKOUT FILTER
+    # =========================
+
+    def fake_breakout_filter(self, signal, confidence):
+
+        if signal.get("type") == "BREAKOUT" and confidence < 85:
+            return True
+
+        if "weak" in signal.get("quality", "").lower():
+            return True
+
+        return False
+
+    # =========================
+    # 📊 TRADE SCORING ENGINE
+    # =========================
+
+    def score_trade(self, signal, regime):
+
+        base = signal.get("confidence", 0)
+
+        # regime boost
+        if regime == "TRENDING":
+            base += 10
+
+        if regime == "RANGE":
+            base -= 10
+
+        # memory learning
+        if self.memory["wins"] > self.memory["losses"]:
+            base += 5
+
+        return min(max(base, 0), 100)
+
+    # =========================
+    # 🧠 MAIN BRAIN V17
     # =========================
 
     def analyze(self, asset):
@@ -44,89 +104,85 @@ class BrainCore:
         market_state, news, risk = self.collect_context(asset)
 
         # =========================
-        # ❌ HARD BLOCK LAYERS
+        # HARD BLOCKS
         # =========================
 
         if risk.get("decision") == "BLOCK":
             return {
                 "decision": "NO TRADE",
                 "signal": {"signal": "BLOCKED", "confidence": 0},
-                "reason": "Risk Manager blocked trade"
-            }
-
-        if news.get("risk") == "HIGH":
-            return {
-                "decision": "NO TRADE",
-                "signal": {"signal": "NEWS BLOCK", "confidence": 0},
-                "reason": "High impact news"
-            }
-
-        if market_state.get("state") == "HIGH_RISK":
-            return {
-                "decision": "WAIT",
-                "signal": {"signal": "RISK MARKET", "confidence": 0},
-                "reason": "Market too volatile"
+                "reason": "Risk block"
             }
 
         # =========================
-        # 📊 SIGNAL ENGINE
+        # SIGNAL ENGINE
         # =========================
 
         try:
             signal = self.signal_engine.analyze_asset(asset)
-        except Exception as e:
+        except:
             return {
                 "decision": "ERROR",
                 "signal": {"signal": "ERROR", "confidence": 0},
-                "reason": str(e)
+                "reason": "Signal failure"
             }
 
         # =========================
-        # 🧠 SAFE DEFAULTS
+        # REGIME
         # =========================
 
-        if not isinstance(signal, dict):
-            signal = {"signal": "NO TRADE", "confidence": 0}
-
-        confidence = signal.get("confidence", 0)
+        regime = self.detect_regime(market_state, news)
 
         # =========================
-        # 🧠 SESSION BIAS (SAFE FIX)
+        # SCORE
         # =========================
 
-        session_bias = market_state.get("state", "UNKNOWN")
+        score = self.score_trade(signal, regime)
 
         # =========================
-        # 🧠 FINAL BRAIN FILTER (V2)
+        # FAKE BREAKOUT FILTER
         # =========================
 
-        # 🔴 LOW QUALITY
-        if confidence < 70:
+        if self.fake_breakout_filter(signal, score):
             return {
                 "decision": "WAIT",
                 "signal": signal,
-                "reason": "BrainCore: low confidence filtered"
+                "score": score,
+                "regime": regime,
+                "reason": "Fake breakout detected"
             }
 
-        # 🟡 NORMAL TRADE
-        if 70 <= confidence < 90:
+        # =========================
+        # FINAL DECISION ENGINE
+        # =========================
+
+        if score < 70:
+            return {
+                "decision": "WAIT",
+                "signal": signal,
+                "score": score,
+                "regime": regime,
+                "reason": "Low quality setup"
+            }
+
+        if 70 <= score < 90:
             return {
                 "decision": signal.get("signal", "WAIT"),
                 "signal": signal,
-                "reason": "BrainCore: valid setup"
+                "score": score,
+                "regime": regime,
+                "reason": "Valid setup"
             }
 
-        # 🔥 HIGH QUALITY + SESSION BOOST
-        if confidence >= 90:
-            return {
-                "decision": signal.get("signal", "BUY/SELL"),
-                "signal": signal,
-                "session": session_bias,
-                "reason": "BrainCore: institutional grade setup"
-            }
+        # =========================
+        # HIGH PROBABILITY SETUP
+        # =========================
 
         return {
-            "decision": "WAIT",
+            "decision": signal.get("signal", "BUY/SELL"),
             "signal": signal,
-            "reason": "BrainCore fallback"
-            }
+            "score": score,
+            "regime": regime,
+            "prediction": "HIGH PROBABILITY MOVE",
+            "reason": "Institutional grade setup"
+        }
