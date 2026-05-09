@@ -26,7 +26,7 @@ class TelegramLayer:
         self.risk_mode = "AUTO"
 
         # =========================
-        # 🔍 SCANNER (SAFE)
+        # 🔍 SCANNER
         # =========================
 
         self.scan_assets = [
@@ -37,15 +37,10 @@ class TelegramLayer:
         ]
 
         self.scanner_active = False
-
-        # =========================
-        # 🔗 SCANNER LINK (NEW - SAFE ADDITION)
-        # =========================
-
         self.scanner = None
 
         # =========================
-        # 🧠 V3 MULTI TIMEFRAME
+        # 🧠 TIMEFRAMES
         # =========================
 
         self.timeframes = {
@@ -55,7 +50,7 @@ class TelegramLayer:
         }
 
         # =========================
-        # 📰 V3 NEWS AI
+        # 📰 NEWS AI
         # =========================
 
         self.news_block_level = {
@@ -68,13 +63,12 @@ class TelegramLayer:
         self.block_high_news = True
 
     # =========================
-    # 🔗 LINK SCANNER (NEW)
+    # 🔗 SCANNER LINK
     # =========================
 
     def set_scanner(self, scanner):
-
         self.scanner = scanner
-        print("🔗 Scanner linked to TelegramLayer")
+        print("🔗 Scanner linked")
 
     # =========================
     # 🎛 MENU
@@ -110,40 +104,33 @@ class TelegramLayer:
         ])
 
     # =========================
-    # 🧠 NEWS AI ENGINE
+    # 🧠 NEWS
     # =========================
 
     def get_news_ai(self):
 
         try:
-
             if not self.news:
-                return {"risk": "NORMAL", "score": 10, "impact": 0}
+                return {"risk": "NORMAL", "score": 10}
 
             news = self.news.analyze_news()
 
-            risk = news.get("risk", "NORMAL")
-
             return {
-                "risk": risk,
-                "score": self.news_block_level.get(risk, 10),
+                "risk": news.get("risk", "NORMAL"),
+                "score": self.news_block_level.get(news.get("risk", "NORMAL"), 10),
                 "impact": news.get("impact_score", 0)
             }
 
-        except Exception as e:
-
-            print("NEWS AI ERROR:", e)
-
-            return {"risk": "NORMAL", "score": 10, "impact": 0}
+        except:
+            return {"risk": "NORMAL", "score": 10}
 
     # =========================
-    # 🌍 SESSION AI ENGINE
+    # 🌍 SESSION
     # =========================
 
     def get_session_ai(self):
 
         try:
-
             if not self.time_engine:
                 return {"session": "UNKNOWN", "bias": "NORMAL"}
 
@@ -155,11 +142,10 @@ class TelegramLayer:
             return {"session": session, "bias": "LOW_VOLATILITY"}
 
         except:
-
             return {"session": "UNKNOWN", "bias": "NORMAL"}
 
     # =========================
-    # 📊 FORMAT RESULT
+    # 📊 FORMAT
     # =========================
 
     def format_result(self, r):
@@ -189,22 +175,20 @@ class TelegramLayer:
 
     def status(self):
 
-        return f"""⚙️ ULTRA V10 STATUS
+        return f"""⚙️ STATUS
 
-🤖 BOT: {'🟢 RUNNING' if self.bot_active else '🔴 STOPPED'}
-
-💰 ASSET: {self.selected_asset}
-⚙️ MODE: {self.risk_mode}
-🔍 SCANNER: {'🟢 ACTIVE' if self.scanner_active else '🔴 OFF'}
+BOT: {'ON' if self.bot_active else 'OFF'}
+ASSET: {self.selected_asset}
+SCANNER: {'ON' if self.scanner_active else 'OFF'}
 """
 
     # =========================
-    # 🔍 SCANNER LOOP
+    # 🔍 SCANNER LOOP (FIXED)
     # =========================
 
     def scanner_loop(self):
 
-        print("🔍 SCANNER STARTED")
+        print("🔍 Scanner started")
 
         while self.scanner_active:
 
@@ -215,7 +199,6 @@ class TelegramLayer:
             for asset in self.scan_assets:
 
                 try:
-
                     if hasattr(self.signal_engine, "analyze_asset"):
                         result = self.signal_engine.analyze_asset(asset)
                     else:
@@ -228,33 +211,24 @@ class TelegramLayer:
                     if not result:
                         continue
 
-                    confidence = result.get("confidence", 0)
+                    conf = result.get("confidence", 0)
 
-                    if confidence > best_confidence and result.get("signal") != "NO TRADE":
-
+                    if conf > best_confidence and result.get("signal") != "NO TRADE":
                         best_signal = result
                         best_asset = asset
-                        best_confidence = confidence
+                        best_confidence = conf
 
-                except Exception as e:
-                    print("Scanner error:", e)
+                except:
+                    pass
 
             if best_signal and best_confidence >= 75:
 
                 try:
+                    msg = f"""🔍 SCANNER
 
-                    msg = f"""🔍 ULTRA SCANNER
-
-💰 ASSET: {best_asset}
-
-📊 SIGNAL: {best_signal.get('signal')}
-🎯 ENTRY: {best_signal.get('entry', 'N/A')}
-🛑 SL: {best_signal.get('sl', 'N/A')}
-💰 TP: {best_signal.get('tp', 'N/A')}
-
-💎 CONF: {best_signal.get('confidence', 0)}%
-🏆 QUALITY: {best_signal.get('quality', '')}
-📍 REASON: {best_signal.get('reason', '')}
+ASSET: {best_asset}
+SIGNAL: {best_signal.get('signal')}
+CONF: {best_confidence}
 """
 
                     self.bot.sendMessage("<CHAT_ID>", msg)
@@ -265,7 +239,7 @@ class TelegramLayer:
             time.sleep(60)
 
     # =========================
-    # 🚀 CONTROL SCANNER
+    # 🚀 CONTROL
     # =========================
 
     def start_scanner(self):
@@ -274,7 +248,7 @@ class TelegramLayer:
             return
 
         self.scanner_active = True
-        threading.Thread(target=self.scanner_loop).start()
+        threading.Thread(target=self.scanner_loop, daemon=True).start()
 
     def stop_scanner(self):
 
@@ -293,15 +267,10 @@ class TelegramLayer:
             if flavor != "callback_query":
 
                 content_type, chat_type, chat_id = glance(msg)
-                text = msg.get("text", "").strip()
+                text = msg.get("text", "")
 
                 if text == "/start":
-
-                    self.bot.sendMessage(
-                        chat_id,
-                        "🤖 ULTRA V10 SYSTEM\n\nاختر من اللوحة:",
-                        reply_markup=self.menu()
-                    )
+                    self.bot.sendMessage(chat_id, "READY", reply_markup=self.menu())
 
             else:
 
@@ -309,82 +278,24 @@ class TelegramLayer:
 
                 if data == "bot_on":
                     self.bot_active = True
-                    self.bot.sendMessage(chat_id, "🟢 BOT STARTED")
 
                 elif data == "bot_off":
                     self.bot_active = False
-                    self.bot.sendMessage(chat_id, "🔴 BOT STOPPED")
 
                 elif data.startswith("asset_"):
-
                     self.selected_asset = data.split("_")[1]
 
-                    if self.market:
-                        self.market.symbol = self.selected_asset
-
-                    self.bot.sendMessage(chat_id, f"💰 ASSET SET: {self.selected_asset}")
-
-                elif data == "analyze":
-
-                    if not self.bot_active:
-                        self.bot.sendMessage(chat_id, "⛔ BOT STOPPED")
-                        return
-
-                    try:
-
-                        news_ai = self.get_news_ai()
-                        session_ai = self.get_session_ai()
-
-                        if self.block_high_news and news_ai["risk"] == "HIGH":
-                            self.bot.sendMessage(chat_id, "⛔ BLOCKED: HIGH IMPACT NEWS")
-                            return
-
-                        if hasattr(self.signal_engine, "analyze_asset"):
-                            result = self.signal_engine.analyze_asset(self.selected_asset)
-                        else:
-                            result = self.signal_engine.analyze(
-                                market_state={"state": "ACTIVE"},
-                                news={"risk": "NORMAL"},
-                                risk={"decision": "ALLOW"}
-                            )
-
-                        result["ai_context"] = {
-                            "news_risk": news_ai["risk"],
-                            "session": session_ai["session"],
-                            "bias": session_ai["bias"]
-                        }
-
-                        if news_ai["risk"] == "HIGH":
-                            result["confidence"] = max(0, result.get("confidence", 0) - 30)
-
-                        self.bot.sendMessage(chat_id, self.format_result(result))
-
-                    except Exception as e:
-                        self.bot.sendMessage(chat_id, f"❌ ERROR: {str(e)}")
-
                 elif data == "scan_on":
-
-                    if self.scanner:
-                        self.scanner.start()
-                    else:
-                        self.start_scanner()
-
-                    self.bot.sendMessage(chat_id, "🔍 SCANNER STARTED")
+                    self.start_scanner()
 
                 elif data == "scan_off":
-
-                    if self.scanner:
-                        self.scanner.stop()
-                    else:
-                        self.stop_scanner()
-
-                    self.bot.sendMessage(chat_id, "⛔ SCANNER STOPPED")
+                    self.stop_scanner()
 
                 elif data == "status":
                     self.bot.sendMessage(chat_id, self.status())
 
         except Exception as e:
-            print("Telegram Layer Crash:", e)
+            print("Telegram error:", e)
 
     # =========================
     # 🚀 RUN
@@ -394,4 +305,4 @@ class TelegramLayer:
 
         MessageLoop(self.bot, self.handle).run_as_thread()
 
-        print("🤖 ULTRA V10 TELEGRAM LAYER READY ✔")
+        print("ULTRA V10 READY")
