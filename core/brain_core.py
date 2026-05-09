@@ -9,207 +9,114 @@ class BrainCore:
 
     # =========================
     # 🧠 COLLECT CONTEXT
+    # (KEEP - بدون تغيير)
     # =========================
 
     def collect_context(self, asset):
 
-        # =========================
-        # 📊 MARKET STATE
-        # =========================
+        try:
+            market_state = self.market.get_market_state() if self.market else {"state": "UNKNOWN"}
+        except:
+            market_state = {"state": "UNKNOWN"}
 
         try:
-
-            if self.market:
-                market_state = self.market.get_market_state()
-
-            else:
-                market_state = {
-                    "state": "UNKNOWN"
-                }
-
+            news = self.news.analyze_news() if self.news else {"risk": "NORMAL", "impact_score": 0}
         except:
-
-            market_state = {
-                "state": "UNKNOWN"
-            }
-
-        # =========================
-        # 📰 NEWS
-        # =========================
+            news = {"risk": "NORMAL", "impact_score": 0}
 
         try:
-
-            if self.news:
-                news = self.news.analyze_news()
-
-            else:
-                news = {
-                    "risk": "NORMAL",
-                    "impact_score": 0
-                }
-
+            risk = self.risk.evaluate(
+                market_state=market_state,
+                news=news,
+                volatility=0
+            ) if self.risk else {"decision": "ALLOW", "score": 0}
         except:
-
-            news = {
-                "risk": "NORMAL",
-                "impact_score": 0
-            }
-
-        # =========================
-        # 🛡 RISK
-        # =========================
-
-        try:
-
-            if self.risk:
-
-                risk = self.risk.evaluate(
-                    market_state=market_state,
-                    news=news,
-                    volatility=0
-                )
-
-            else:
-
-                risk = {
-                    "decision": "ALLOW",
-                    "score": 0
-                }
-
-        except:
-
-            risk = {
-                "decision": "ALLOW",
-                "score": 0
-            }
+            risk = {"decision": "ALLOW", "score": 0}
 
         return market_state, news, risk
 
     # =========================
-    # 🧠 MAIN AI ENGINE
+    # 🧠 FINAL BRAIN ENGINE (UPGRADED)
     # =========================
 
     def analyze(self, asset):
 
-        # =========================
-        # 📦 CONTEXT
-        # =========================
-
         market_state, news, risk = self.collect_context(asset)
 
         # =========================
-        # 🛡 SAFETY FILTER
+        # ❌ HARD BLOCK LAYERS
         # =========================
 
         if risk.get("decision") == "BLOCK":
-
             return {
                 "decision": "NO TRADE",
-                "signal": {
-                    "signal": "NO TRADE",
-                    "confidence": 0
-                },
-                "reason": "Risk Manager blocked trading"
+                "signal": {"signal": "BLOCKED", "confidence": 0},
+                "reason": "Risk Manager blocked trade"
             }
-
-        # =========================
-        # 📰 HIGH IMPACT NEWS
-        # =========================
 
         if news.get("risk") == "HIGH":
-
             return {
-                "decision": "WAIT NEWS",
-                "signal": {
-                    "signal": "HIGH NEWS",
-                    "confidence": 0
-                },
-                "reason": "High impact news detected"
+                "decision": "NO TRADE",
+                "signal": {"signal": "NEWS BLOCK", "confidence": 0},
+                "reason": "High impact news"
             }
-
-        # =========================
-        # ⚠️ MARKET RISK
-        # =========================
 
         if market_state.get("state") == "HIGH_RISK":
-
             return {
                 "decision": "WAIT",
-                "signal": {
-                    "signal": "HIGH RISK",
-                    "confidence": 0
-                },
-                "reason": "Market volatility too high"
+                "signal": {"signal": "RISK MARKET", "confidence": 0},
+                "reason": "Market too volatile"
             }
 
         # =========================
-        # 💰 SIGNAL ENGINE
+        # 📊 SIGNAL ENGINE
         # =========================
 
         try:
-
-            # 🔥 MULTI ASSET SUPPORT
             signal = self.signal_engine.analyze_asset(asset)
-
         except Exception as e:
-
             return {
                 "decision": "ERROR",
-                "signal": {
-                    "signal": "ERROR",
-                    "confidence": 0
-                },
-                "reason": f"Signal error: {str(e)}"
+                "signal": {"signal": "ERROR", "confidence": 0},
+                "reason": str(e)
             }
-
-        # =========================
-        # 🧠 AI FILTER
-        # =========================
 
         confidence = signal.get("confidence", 0)
 
         # =========================
-        # 🔴 LOW CONFIDENCE
+        # 🧠 FINAL BRAIN FILTER (NEW IMPORTANT LAYER)
         # =========================
 
-        if confidence < 75:
+        session_bias = market_state.get("state", "UNKNOWN")
 
+        # 🔴 LOW QUALITY
+        if confidence < 70:
             return {
                 "decision": "WAIT",
                 "signal": signal,
-                "reason": "Low confidence setup"
+                "reason": "BrainCore: low confidence filtered"
             }
 
-        # =========================
-        # 🟡 VALID SETUP
-        # =========================
-
-        if 75 <= confidence < 90:
-
+        # 🟡 NORMAL TRADE
+        if 70 <= confidence < 90:
             return {
                 "decision": signal.get("signal", "WAIT"),
                 "signal": signal,
-                "reason": "Balanced setup confirmed"
+                "reason": "BrainCore: valid setup"
             }
 
-        # =========================
-        # 🔥 HIGH QUALITY
-        # =========================
-
+        # 🔥 HIGH QUALITY + SESSION BOOST
         if confidence >= 90:
 
             return {
                 "decision": signal.get("signal", "BUY/SELL"),
                 "signal": signal,
-                "reason": "Institutional setup confirmed"
+                "session": session_bias,
+                "reason": "BrainCore: institutional grade setup"
             }
-
-        # =========================
-        # ⚠️ FALLBACK
-        # =========================
 
         return {
             "decision": "WAIT",
             "signal": signal,
-            "reason": "Fallback state"
+            "reason": "BrainCore fallback"
         }
