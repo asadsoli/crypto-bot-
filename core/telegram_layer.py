@@ -4,7 +4,6 @@ from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
 import threading
 import time
 
-# 🧠 BRAIN IMPORT
 from core.brain_core import BrainCore
 
 
@@ -21,7 +20,7 @@ class TelegramLayer:
         self.time_engine = time_engine
 
         # =========================
-        # 🧠 BRAIN CORE CONNECT
+        # 🧠 BRAIN CORE
         # =========================
         self.brain = BrainCore(
             signal_engine=self.signal_engine,
@@ -31,7 +30,7 @@ class TelegramLayer:
         )
 
         # =========================
-        # 🧠 STATE CONTROL
+        # 🧠 STATE
         # =========================
         self.bot_active = True
         self.selected_asset = "BTCUSDT"
@@ -45,7 +44,7 @@ class TelegramLayer:
         self.scanner = None
 
     # =========================
-    # 🔗 LINK SCANNER
+    # 🔗 SCANNER LINK
     # =========================
     def set_scanner(self, scanner):
         self.scanner = scanner
@@ -86,84 +85,4 @@ class TelegramLayer:
 💰 ASSET: {self.selected_asset}
 
 📊 SIGNAL: {r.get('signal')}
-🎯 ENTRY: {r.get('entry', 'N/A')}
-🛑 SL: {r.get('sl', 'N/A')}
-💰 TP: {r.get('tp', 'N/A')}
-
-💎 CONFIDENCE: {r.get('confidence', 0)}%
-🏆 QUALITY: {r.get('quality', 'N/A')}
-
-📍 REASON:
-{r.get('reason', '')}
-"""
-
-    # =========================
-    # 🔍 ANALYZE (🔥 BRAIN USED HERE)
-    # =========================
-    def analyze_asset(self):
-
-        return self.brain.analyze(self.selected_asset)
-
-    # =========================
-    # 🧠 HANDLER (IMPORTANT CHANGE)
-    # =========================
-    def handle(self, msg):
-
-        try:
-
-            flavor = msg.get("flavor")
-
-            if flavor != "callback_query":
-
-                content_type, chat_type, chat_id = glance(msg)
-                text = msg.get("text", "").strip()
-
-                if text == "/start":
-
-                    self.bot.sendMessage(
-                        chat_id,
-                        "🤖 ULTRA V10 SYSTEM",
-                        reply_markup=self.menu()
-                    )
-
-            else:
-
-                query_id, chat_id, data = glance(msg, flavor="callback_query")
-
-                # =========================
-                # 📊 ANALYZE (🔥 BRAIN CALL)
-                # =========================
-                if data == "analyze":
-
-                    if not self.bot_active:
-                        self.bot.sendMessage(chat_id, "⛔ BOT STOPPED")
-                        return
-
-                    result = self.brain.analyze(self.selected_asset)
-
-                    self.bot.sendMessage(chat_id, self.format_result(result))
-
-                elif data == "bot_on":
-                    self.bot_active = True
-                    self.bot.sendMessage(chat_id, "🟢 BOT STARTED")
-
-                elif data == "bot_off":
-                    self.bot_active = False
-                    self.bot.sendMessage(chat_id, "🔴 BOT STOPPED")
-
-                elif data.startswith("asset_"):
-                    self.selected_asset = data.split("_")[1]
-                    self.bot.sendMessage(chat_id, f"💰 {self.selected_asset}")
-
-                elif data == "status":
-                    self.bot.sendMessage(chat_id, "⚙️ SYSTEM ACTIVE")
-
-        except Exception as e:
-            print("Telegram Layer Crash:", e)
-
-    # =========================
-    # 🚀 RUN
-    # =========================
-    def run(self):
-        MessageLoop(self.bot, self.handle).run_as_thread()
-        print("🤖 ULTRA V10 READY WITH BRAIN ✔")
+🎯 ENTRY: {r.get('entry', '
