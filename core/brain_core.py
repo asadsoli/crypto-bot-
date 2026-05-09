@@ -36,7 +36,7 @@ class BrainCore:
         return market_state, news, risk
 
     # =========================
-    # 🧠 FINAL BRAIN ENGINE (UPGRADED)
+    # 🧠 FINAL BRAIN ENGINE (V2 UPGRADED)
     # =========================
 
     def analyze(self, asset):
@@ -81,13 +81,24 @@ class BrainCore:
                 "reason": str(e)
             }
 
+        # =========================
+        # 🧠 SAFE DEFAULTS
+        # =========================
+
+        if not isinstance(signal, dict):
+            signal = {"signal": "NO TRADE", "confidence": 0}
+
         confidence = signal.get("confidence", 0)
 
         # =========================
-        # 🧠 FINAL BRAIN FILTER (NEW IMPORTANT LAYER)
+        # 🧠 SESSION BIAS (SAFE FIX)
         # =========================
 
         session_bias = market_state.get("state", "UNKNOWN")
+
+        # =========================
+        # 🧠 FINAL BRAIN FILTER (V2)
+        # =========================
 
         # 🔴 LOW QUALITY
         if confidence < 70:
@@ -107,7 +118,6 @@ class BrainCore:
 
         # 🔥 HIGH QUALITY + SESSION BOOST
         if confidence >= 90:
-
             return {
                 "decision": signal.get("signal", "BUY/SELL"),
                 "signal": signal,
@@ -119,4 +129,4 @@ class BrainCore:
             "decision": "WAIT",
             "signal": signal,
             "reason": "BrainCore fallback"
-        }
+            }
