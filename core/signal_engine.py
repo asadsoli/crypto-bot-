@@ -3,6 +3,8 @@ from core.orderflow_engine import OrderFlowEngine
 from core.market_data import MarketData
 from core.smart_money import SmartMoneyEngine
 
+from datetime import datetime
+
 
 class SignalEngine:
 
@@ -12,21 +14,13 @@ class SignalEngine:
         self.orderflow_engine = OrderFlowEngine()
         self.smart_money = SmartMoneyEngine()
 
-        # =========================
-        # 🧠 MARKET DATA (DEFAULT)
-        # =========================
         self.market_data = MarketData("BTCUSDT", "1m")
 
-    # =====================================================
-    # 🔥 SCANNER SUPPORT LAYER (NEW - SAFE ADDITION)
-    # =====================================================
+    # =========================
+    # 🔥 SCANNER SUPPORT
+    # =========================
 
     def set_asset(self, asset):
-
-        """
-        🔥 هذه أهم إضافة للـ Scanner
-        بدونها Scanner ما يشتغل صح
-        """
 
         try:
             self.market_data.symbol = asset
@@ -35,47 +29,61 @@ class SignalEngine:
             print("❌ set_asset error:", e)
             return False
 
-    # =====================================================
-    # 🧠 MULTI-ASSET ENTRY (SAFE)
-    # =====================================================
+    # =========================
+    # 🧠 MULTI ASSET
+    # =========================
 
     def analyze_asset(self, asset):
 
         try:
 
-            # 🔥 ربط آمن مع السوق
             self.set_asset(asset)
 
-            return self.analyze(
+            result = self.analyze(
                 market_state={"state": "ACTIVE"},
                 news={"risk": "NORMAL"},
                 risk={"decision": "ALLOW"}
             )
 
-        except Exception as e:
+            # 🆕 FIX: إضافة سياق دائم
+            result["asset"] = asset
+            result["timestamp"] = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
 
-            print(f"❌ analyze_asset error ({asset}):", e)
+            return result
+
+        except Exception as e:
 
             return {
                 "signal": "ERROR",
-                "reason": f"Asset failed: {asset}",
+                "reason": str(e),
                 "confidence": 0
             }
 
-    # =====================================================
-    # 🧠 CORE ENGINE (UNCHANGED - SAFE)
-    # =====================================================
+    # =========================
+    # 🧠 CORE ENGINE
+    # =========================
 
     def analyze(self, market_state, news, risk):
 
         candles = self.market_data.get_candles()
 
         # =========================
-        # 🛡 SAFETY LAYER
+        # 🧠 FIXED SAFETY LOGIC
         # =========================
 
-        if not candles or len(candles) < 30:
-            return {"signal": "NO TRADE", "reason": "Insufficient market data"}
+        if not candles:
+            return {
+                "signal": "NO DATA",
+                "reason": "No candles received",
+                "confidence": 0
+            }
+
+        if len(candles) < 30:
+            return {
+                "signal": "WAIT",
+                "reason": "Market still warming up (low candles)",
+                "confidence": 10
+            }
 
         if risk.get("decision") == "BLOCK":
             return {"signal": "NO TRADE", "reason": "Risk blocked trading"}
@@ -87,28 +95,18 @@ class SignalEngine:
             return {"signal": "NO TRADE", "reason": "High impact news"}
 
         # =========================
-        # 🧠 CORE ANALYSIS
+        # 🧠 ANALYSIS CORE
         # =========================
 
         structure = self.smart_money.analyze_structure(candles)
         liquidity = self.liquidity_engine.analyze(candles)
         orderflow = self.orderflow_engine.analyze(candles)
 
-        # =========================
-        # 🔥 EXTRACTION SAFE
-        # =========================
-
         liquidity_hint = liquidity.get("signal_hint", "NONE")
-
         sweep_data = liquidity.get("sweep") or {}
         sweep_type = sweep_data.get("type", "")
 
         ob_type = orderflow.get("type", "")
-        ob_conf = orderflow.get("confidence", 0)
-
-        # =========================
-        # 💧 CONDITIONS
-        # =========================
 
         confirmed_sweep = sweep_type in ["BUY_SIDE_SWEEP", "SELL_SIDE_SWEEP"]
         liquidity_setup = liquidity_hint == "WAIT_SWEEP"
@@ -116,93 +114,99 @@ class SignalEngine:
         ob_valid = "OB" in ob_type
         fvg_valid = "FVG" in ob_type
 
+        structure_ok = structure.get("bias") in ["TREND", "REVERSAL"]
+
         # =========================
-        # 🧠 FIX: SmartMoney Compatibility Patch
+        # 🧠 NEW CONTEXT LAYER (IMPORTANT FIX)
         # =========================
 
-        structure_bias = structure.get("bias")
-        direction = structure.get("trend", "NEUTRAL")  # 🔥 FIX ADDED
+        context = {
+            "session": "ASIA",
+            "time": datetime.utcnow().strftime("%H:%M:%S"),
+            "market": market_state.get("state"),
+            "risk": risk.get("decision"),
+            "news": news.get("risk")
+        }
 
-        structure_ok = structure_bias in [
-            "BULLISH",
-            "BEARISH",
-            "REVERSAL"
-        ]
-
-        # =====================================================
-        # 💣 1) STRONG ENTRY (LIQUIDITY + OB)
-        # =====================================================
+        # =========================
+        # 💣 STRONG ENTRY
+        # =========================
 
         if confirmed_sweep and ob_valid and structure_ok:
 
             return {
                 "signal": "INSTITUTIONAL ENTRY",
                 "type": "LIQUIDITY + OB",
-                "direction": direction,
+                "direction": structure.get("direction", "BUY/SELL"),
                 "entry": orderflow.get("entry", "MARKET"),
                 "sl": orderflow.get("sl", "AUTO"),
                 "tp": orderflow.get("tp", "AUTO"),
                 "confidence": 95,
                 "quality": "ULTRA SMART MONEY",
-                "reason": "Liquidity Sweep + OrderBlock + Structure"
+                "reason": "Liquidity Sweep + OrderBlock + Structure",
+                "context": context
             }
 
-        # =====================================================
-        # 💣 2) LIQUIDITY + FVG
-        # =====================================================
+        # =========================
+        # 💣 FVG ENTRY
+        # =========================
 
         if confirmed_sweep and fvg_valid and structure_ok:
 
             return {
                 "signal": "INSTITUTIONAL ENTRY",
                 "type": "LIQUIDITY + FVG",
-                "direction": direction,
+                "direction": structure.get("direction", "BUY/SELL"),
                 "entry": orderflow.get("entry", "MARKET"),
                 "sl": orderflow.get("sl", "AUTO"),
                 "tp": orderflow.get("tp", "AUTO"),
                 "confidence": 90,
                 "quality": "IMBALANCE",
-                "reason": "Liquidity Sweep + FVG + Structure"
+                "reason": "Liquidity Sweep + FVG + Structure",
+                "context": context
             }
 
-        # =====================================================
-        # ⚠️ 3) SETUP READY
-        # =====================================================
+        # =========================
+        # ⚠️ SETUP READY
+        # =========================
 
         if liquidity_setup and (ob_valid or fvg_valid):
 
             return {
                 "signal": "SETUP READY",
                 "type": "PRE-LIQUIDITY",
-                "direction": direction,
+                "direction": structure.get("direction", "WAIT"),
                 "entry": orderflow.get("entry", "WAIT"),
                 "confidence": 75,
                 "quality": "WAIT CONFIRMATION",
-                "reason": "Liquidity building zone"
+                "reason": "Liquidity building zone",
+                "context": context
             }
 
-        # =====================================================
-        # 📊 4) STRUCTURE ONLY
-        # =====================================================
+        # =========================
+        # 📊 STRUCTURE ONLY
+        # =========================
 
-        if structure_ok:
+        if structure.get("bias") in ["TREND", "REVERSAL"]:
 
             return {
                 "signal": "STRUCTURE ONLY",
-                "type": structure_bias,
-                "direction": direction,
+                "type": structure.get("bias"),
+                "direction": structure.get("direction"),
                 "confidence": structure.get("confidence", 60),
                 "quality": "STRUCTURE",
-                "reason": structure.get("reason")
+                "reason": structure.get("reason"),
+                "context": context
             }
 
-        # =====================================================
-        # ❌ NO TRADE
-        # =====================================================
+        # =========================
+        # ❌ NO TRADE FIXED
+        # =========================
 
         return {
             "signal": "NO TRADE",
             "confidence": 0,
             "quality": "NO CONFLUENCE",
-            "reason": "No valid setup"
-            }
+            "reason": "Market conditions not aligned",
+            "context": context
+        }
