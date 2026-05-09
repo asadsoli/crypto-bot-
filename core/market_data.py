@@ -14,6 +14,17 @@ class MarketData:
         self.last_candles = []
 
     # =========================
+    # 🔗 SYNC SYMBOL (NEW - IMPORTANT LINK)
+    # =========================
+
+    def set_symbol(self, symbol):
+
+        """
+        🔥 مهم جداً للربط مع SignalEngine / Brain / Telegram
+        """
+        self.symbol = symbol
+
+    # =========================
     # 🔧 SAFE CONVERTER
     # =========================
 
@@ -97,10 +108,6 @@ class MarketData:
                 if None in (o, h, l, cl, v):
                     continue
 
-                # =========================
-                # 🧠 SANITY CHECK
-                # =========================
-
                 if not all(isinstance(x, (int, float)) for x in (o, h, l, cl, v)):
                     continue
 
@@ -124,5 +131,5 @@ class MarketData:
         except Exception as e:
             print(f"❌ MarketData Exception: {e}")
 
-            # 🔥 fallback (لا يوقف النظام)
+            # 🔥 fallback
             return self.last_candles
