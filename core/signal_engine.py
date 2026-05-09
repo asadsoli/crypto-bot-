@@ -16,6 +16,20 @@ class SignalEngine:
 
         self.market_data = MarketData("BTCUSDT", "1m")
 
+        # 🧠 FIX: Brain reference (optional safe link)
+        self.brain = None
+
+    # =========================
+    # 🔗 BRAIN CONNECT (NEW SAFE ADDITION)
+    # =========================
+
+    def connect_brain(self, brain):
+
+        """
+        ربط Brain V17 مع SignalEngine
+        """
+        self.brain = brain
+
     # =========================
     # 🔥 SCANNER SUPPORT
     # =========================
@@ -24,7 +38,13 @@ class SignalEngine:
 
         try:
             self.market_data.symbol = asset
+
+            # 🧠 FIX IMPORTANT: sync brain asset if connected
+            if self.brain:
+                self.brain.last_asset = asset
+
             return True
+
         except Exception as e:
             print("❌ set_asset error:", e)
             return False
@@ -45,7 +65,7 @@ class SignalEngine:
                 risk={"decision": "ALLOW"}
             )
 
-            # 🆕 FIX: إضافة سياق دائم
+            # 🆕 FIX: context injection
             result["asset"] = asset
             result["timestamp"] = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -102,111 +122,4 @@ class SignalEngine:
         liquidity = self.liquidity_engine.analyze(candles)
         orderflow = self.orderflow_engine.analyze(candles)
 
-        liquidity_hint = liquidity.get("signal_hint", "NONE")
-        sweep_data = liquidity.get("sweep") or {}
-        sweep_type = sweep_data.get("type", "")
-
-        ob_type = orderflow.get("type", "")
-
-        confirmed_sweep = sweep_type in ["BUY_SIDE_SWEEP", "SELL_SIDE_SWEEP"]
-        liquidity_setup = liquidity_hint == "WAIT_SWEEP"
-
-        ob_valid = "OB" in ob_type
-        fvg_valid = "FVG" in ob_type
-
-        structure_ok = structure.get("bias") in ["TREND", "REVERSAL"]
-
-        # =========================
-        # 🧠 NEW CONTEXT LAYER (IMPORTANT FIX)
-        # =========================
-
-        context = {
-            "session": "ASIA",
-            "time": datetime.utcnow().strftime("%H:%M:%S"),
-            "market": market_state.get("state"),
-            "risk": risk.get("decision"),
-            "news": news.get("risk")
-        }
-
-        # =========================
-        # 💣 STRONG ENTRY
-        # =========================
-
-        if confirmed_sweep and ob_valid and structure_ok:
-
-            return {
-                "signal": "INSTITUTIONAL ENTRY",
-                "type": "LIQUIDITY + OB",
-                "direction": structure.get("direction", "BUY/SELL"),
-                "entry": orderflow.get("entry", "MARKET"),
-                "sl": orderflow.get("sl", "AUTO"),
-                "tp": orderflow.get("tp", "AUTO"),
-                "confidence": 95,
-                "quality": "ULTRA SMART MONEY",
-                "reason": "Liquidity Sweep + OrderBlock + Structure",
-                "context": context
-            }
-
-        # =========================
-        # 💣 FVG ENTRY
-        # =========================
-
-        if confirmed_sweep and fvg_valid and structure_ok:
-
-            return {
-                "signal": "INSTITUTIONAL ENTRY",
-                "type": "LIQUIDITY + FVG",
-                "direction": structure.get("direction", "BUY/SELL"),
-                "entry": orderflow.get("entry", "MARKET"),
-                "sl": orderflow.get("sl", "AUTO"),
-                "tp": orderflow.get("tp", "AUTO"),
-                "confidence": 90,
-                "quality": "IMBALANCE",
-                "reason": "Liquidity Sweep + FVG + Structure",
-                "context": context
-            }
-
-        # =========================
-        # ⚠️ SETUP READY
-        # =========================
-
-        if liquidity_setup and (ob_valid or fvg_valid):
-
-            return {
-                "signal": "SETUP READY",
-                "type": "PRE-LIQUIDITY",
-                "direction": structure.get("direction", "WAIT"),
-                "entry": orderflow.get("entry", "WAIT"),
-                "confidence": 75,
-                "quality": "WAIT CONFIRMATION",
-                "reason": "Liquidity building zone",
-                "context": context
-            }
-
-        # =========================
-        # 📊 STRUCTURE ONLY
-        # =========================
-
-        if structure.get("bias") in ["TREND", "REVERSAL"]:
-
-            return {
-                "signal": "STRUCTURE ONLY",
-                "type": structure.get("bias"),
-                "direction": structure.get("direction"),
-                "confidence": structure.get("confidence", 60),
-                "quality": "STRUCTURE",
-                "reason": structure.get("reason"),
-                "context": context
-            }
-
-        # =========================
-        # ❌ NO TRADE FIXED
-        # =========================
-
-        return {
-            "signal": "NO TRADE",
-            "confidence": 0,
-            "quality": "NO CONFLUENCE",
-            "reason": "Market conditions not aligned",
-            "context": context
-        }
+        liquidity_hint = liquidity.get("signal
