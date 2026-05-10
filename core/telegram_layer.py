@@ -1,5 +1,7 @@
 from telepot import Bot
 from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
+import threading
+import time
 
 from core.brain_core import BrainCore
 
@@ -8,8 +10,14 @@ class TelegramLayer:
 
     def __init__(self, token, signal_engine, market=None, news=None, risk=None, time_engine=None):
 
+        # =========================
+        # 🤖 TELEGRAM BOT CLIENT
+        # =========================
         self.bot = Bot(token)
 
+        # =========================
+        # 🧠 CORE DEPENDENCIES
+        # =========================
         self.signal_engine = signal_engine
         self.market = market
         self.news = news
@@ -17,7 +25,7 @@ class TelegramLayer:
         self.time_engine = time_engine
 
         # =========================
-        # 🧠 BRAIN CORE
+        # 🧠 BRAIN CORE (ORCHESTRATOR)
         # =========================
         self.brain = BrainCore(
             signal_engine=self.signal_engine,
@@ -27,16 +35,16 @@ class TelegramLayer:
         )
 
         # =========================
-        # 🧠 STATE
+        # ⚙️ BOT STATE CONTROL
         # =========================
-        self.bot_active = True
-        self.selected_asset = "BTCUSDT"
+        self.is_bot_active = True
+        self.current_asset = "BTCUSDT"
         self.risk_mode = "AUTO"
 
         # =========================
-        # 🔍 SCANNER ASSETS (MASTER LIST)
+        # 🔍 SCANNER WATCHLIST (SOURCE OF TRUTH)
         # =========================
-        self.scan_assets = [
+        self.watchlist_assets = [
             "BTCUSDT",
             "ETHUSDT",
             "BNBUSDT",
@@ -44,96 +52,104 @@ class TelegramLayer:
             "SOLUSDT"
         ]
 
+        # =========================
+        # 🔁 SCANNER CONTROL
+        # =========================
         self.scanner_active = False
         self.scanner = None
 
     # =========================
-    # 🔗 LINK SCANNER
+    # 🔗 LINK SCANNER ENGINE
     # =========================
     def set_scanner(self, scanner):
 
         self.scanner = scanner
 
-        # 🔥 force sync assets
+        # 🔥 SYNC WATCHLIST WITH SCANNER ENGINE
         if hasattr(scanner, "assets"):
-            scanner.assets = list(self.scan_assets)
+            scanner.assets = list(self.watchlist_assets)
 
     # =========================
-    # 🎛 TELEGRAM MENU
+    # 🎛 TELEGRAM INLINE MENU
     # =========================
     def menu(self):
 
         return InlineKeyboardMarkup(inline_keyboard=[
 
-            [
-                InlineKeyboardButton("📊 تحليل السوق", callback_data="analyze")
-            ],
+            # 📊 analysis
+            [InlineKeyboardButton("📊 تحليل السوق", callback_data="analyze")],
 
+            # 💰 major assets row
             [
                 InlineKeyboardButton("🥇 BTC", callback_data="asset_BTCUSDT"),
                 InlineKeyboardButton("💎 ETH", callback_data="asset_ETHUSDT")
             ],
 
+            # 💰 alt assets row
             [
                 InlineKeyboardButton("💰 BNB", callback_data="asset_BNBUSDT"),
                 InlineKeyboardButton("🏅 PAXG", callback_data="asset_PAXGUSDT")
             ],
 
+            # ⚡ SOL
             [
                 InlineKeyboardButton("⚡ SOL", callback_data="asset_SOLUSDT")
             ],
 
+            # ▶️ bot control
             [
                 InlineKeyboardButton("🟢 تشغيل", callback_data="bot_on"),
                 InlineKeyboardButton("🔴 إيقاف", callback_data="bot_off")
             ],
 
+            # 🔍 scanner control
             [
                 InlineKeyboardButton("🔍 Scanner ON", callback_data="scan_on"),
                 InlineKeyboardButton("⛔ Scanner OFF", callback_data="scan_off")
             ],
 
+            # ⚙️ status
             [
                 InlineKeyboardButton("⚙️ الحالة", callback_data="status")
             ]
         ])
 
     # =========================
-    # 📊 FORMAT RESULT
+    # 📊 FORMAT SIGNAL OUTPUT
     # =========================
-    def format_result(self, r):
+    def format_result(self, signal_data):
 
         return f"""🤖 ULTRA V10 AI CORE
 
-💰 ASSET: {self.selected_asset}
+💰 ASSET: {self.current_asset}
 
-📊 SIGNAL: {r.get('signal', 'N/A')}
-🎯 ENTRY: {r.get('entry', 'N/A')}
-🛑 SL: {r.get('sl', 'N/A')}
-💰 TP: {r.get('tp', 'N/A')}
+📊 SIGNAL: {signal_data.get('signal', 'N/A')}
+🎯 ENTRY: {signal_data.get('entry', 'N/A')}
+🛑 SL: {signal_data.get('sl', 'N/A')}
+💰 TP: {signal_data.get('tp', 'N/A')}
 
-💎 CONFIDENCE: {r.get('confidence', 0)}%
-🏆 QUALITY: {r.get('quality', 'N/A')}
+💎 CONFIDENCE: {signal_data.get('confidence', 0)}%
+🏆 QUALITY: {signal_data.get('quality', 'N/A')}
 
 📍 REASON:
-{r.get('reason', 'N/A')}
+{signal_data.get('reason', 'N/A')}
 """
 
     # =========================
-    # 📌 SAFE ASSET SWITCH
+    # 📌 CHANGE ACTIVE ASSET
     # =========================
-    def set_asset(self, asset):
+    def set_asset(self, asset_symbol):
 
-        # منع أي رمز غير موجود
-        if asset not in self.scan_assets:
+        # validate asset exists in watchlist
+        if asset_symbol not in self.watchlist_assets:
             return False
 
-        self.selected_asset = asset
+        self.current_asset = asset_symbol
 
-        # 🔥 sync with signal engine
+        # sync with signal engine if available
         if self.signal_engine and hasattr(self.signal_engine, "set_asset"):
             try:
-                self.signal_engine.set_asset(asset)
+                self.signal_engine.set_asset(asset_symbol)
             except:
                 pass
 
