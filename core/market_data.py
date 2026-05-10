@@ -11,7 +11,6 @@ class MarketDataV2:
 
         # =========================
         # 🧠 MULTI-ASSET CACHE
-        # key = symbol
         # =========================
         self.cache = {}
 
@@ -21,9 +20,14 @@ class MarketDataV2:
         self.last_update = {}
 
         # =========================
-        # 🔥 CACHE TTL (seconds)
+        # 🔥 CACHE TTL
         # =========================
         self.ttl = 10
+
+        # =========================
+        # 🧠 SAFE FALLBACK CACHE
+        # =========================
+        self.last_valid = {}
 
     # =========================
     # 🔧 SAFE FLOAT
@@ -51,11 +55,13 @@ class MarketDataV2:
             res = requests.get(url, params=params, timeout=10)
 
             if res.status_code != 200:
+                print(f"❌ HTTP ERROR {symbol}: {res.status_code}")
                 return None
 
             data = res.json()
 
             if not isinstance(data, list):
+                print(f"❌ INVALID DATA TYPE {symbol}")
                 return None
 
             candles = []
@@ -85,11 +91,11 @@ class MarketDataV2:
             return candles if candles else None
 
         except Exception as e:
-            print(f"❌ MarketData fetch error {symbol}:", e)
+            print(f"❌ MarketData Exception {symbol}: {e}")
             return None
 
     # =========================
-    # 🧠 GET CANDLES (MULTI-ASSET SMART)
+    # 🧠 GET CANDLES (MULTI-ASSET STABLE)
     # =========================
     def get_candles(self, symbol=None):
 
@@ -112,17 +118,18 @@ class MarketDataV2:
         # =========================
         candles = self.fetch_candles(symbol)
 
-        if candles:
+        if candles and len(candles) > 0:
 
             self.cache[symbol] = candles
             self.last_update[symbol] = now
+            self.last_valid[symbol] = candles
 
             return candles
 
         # =========================
-        # 🔁 FALLBACK (LAST GOOD DATA)
+        # 🔁 SAFE FALLBACK (CRITICAL FIX)
         # =========================
-        return self.cache.get(symbol, [])
+        return self.last_valid.get(symbol, [])
 
     # =========================
     # 🔄 SWITCH SYMBOL
@@ -130,3 +137,7 @@ class MarketDataV2:
     def set_symbol(self, symbol):
 
         self.symbol = symbol
+
+        # 🧠 RESET CACHE SAFELY
+        if symbol not in self.cache:
+            self.cache[symbol] = []
