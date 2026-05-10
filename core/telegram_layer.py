@@ -56,12 +56,12 @@ class TelegramLayer:
     def set_scanner(self, scanner):
         self.scanner = scanner
 
-        # 🔥 مهم: مزامنة نفس القائمة مع scanner
+        # 🔥 مزامنة قوية مع scanner (FIX)
         if hasattr(scanner, "assets"):
-            scanner.assets = self.scan_assets
+            scanner.assets = list(self.scan_assets)
 
     # =========================
-    # 🎛 MENU (FINAL FIXED)
+    # 🎛 MENU (FIXED UI SYNC)
     # =========================
     def menu(self):
 
@@ -119,11 +119,21 @@ class TelegramLayer:
 """
 
     # =========================
-    # 📌 ASSET SWITCH SAFE
+    # 📌 ASSET SWITCH SAFE (FIXED)
     # =========================
     def set_asset(self, asset):
 
+        # منع أي عملة غير موجودة
         if asset not in self.scan_assets:
-            return
+            return False
 
         self.selected_asset = asset
+
+        # 🔥 مزامنة مع signal engine إذا موجود
+        if self.signal_engine and hasattr(self.signal_engine, "set_asset"):
+            try:
+                self.signal_engine.set_asset(asset)
+            except:
+                pass
+
+        return True
