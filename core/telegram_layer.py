@@ -37,7 +37,7 @@ class TelegramLayer:
         self.risk_mode = "AUTO"
 
         # =========================
-        # 🔍 SCANNER (UPDATED WATCHLIST)
+        # 🔍 SCANNER ASSETS (FINAL SYNC)
         # =========================
         self.scan_assets = [
             "BTCUSDT",
@@ -56,37 +56,49 @@ class TelegramLayer:
     def set_scanner(self, scanner):
         self.scanner = scanner
 
+        # 🔥 مهم: مزامنة نفس القائمة مع scanner
+        if hasattr(scanner, "assets"):
+            scanner.assets = self.scan_assets
+
     # =========================
-    # 🎛 MENU
+    # 🎛 MENU (FINAL FIXED)
     # =========================
     def menu(self):
 
         return InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton("📊 تحليل السوق", callback_data="analyze")],
+
             [
                 InlineKeyboardButton("🥇 BTC", callback_data="asset_BTCUSDT"),
                 InlineKeyboardButton("💎 ETH", callback_data="asset_ETHUSDT")
             ],
+
             [
                 InlineKeyboardButton("💰 BNB", callback_data="asset_BNBUSDT"),
                 InlineKeyboardButton("🏅 PAXG", callback_data="asset_PAXGUSDT")
             ],
+
             [
                 InlineKeyboardButton("⚡ SOL", callback_data="asset_SOLUSDT")
             ],
+
             [
                 InlineKeyboardButton("🟢 تشغيل", callback_data="bot_on"),
                 InlineKeyboardButton("🔴 إيقاف", callback_data="bot_off")
             ],
+
             [
                 InlineKeyboardButton("🔍 Scanner ON", callback_data="scan_on"),
                 InlineKeyboardButton("⛔ Scanner OFF", callback_data="scan_off")
             ],
-            [InlineKeyboardButton("⚙️ الحالة", callback_data="status")]
+
+            [
+                InlineKeyboardButton("⚙️ الحالة", callback_data="status")
+            ]
         ])
 
     # =========================
-    # 📊 FORMAT RESULT
+    # 📊 FORMAT RESULT (SAFE)
     # =========================
     def format_result(self, r):
 
@@ -105,3 +117,13 @@ class TelegramLayer:
 📍 REASON:
 {r.get('reason', 'N/A')}
 """
+
+    # =========================
+    # 📌 ASSET SWITCH SAFE
+    # =========================
+    def set_asset(self, asset):
+
+        if asset not in self.scan_assets:
+            return
+
+        self.selected_asset = asset
