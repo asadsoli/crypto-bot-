@@ -20,26 +20,19 @@ class SignalEngine:
         self.brain = None
 
     # =========================
-    # 🔗 BRAIN CONNECT (NEW SAFE ADDITION)
+    # 🔗 BRAIN CONNECT
     # =========================
-
     def connect_brain(self, brain):
-
-        """
-        ربط Brain V17 مع SignalEngine
-        """
         self.brain = brain
 
     # =========================
     # 🔥 SCANNER SUPPORT
     # =========================
-
     def set_asset(self, asset):
 
         try:
             self.market_data.symbol = asset
 
-            # 🧠 FIX IMPORTANT: sync brain asset if connected
             if self.brain:
                 self.brain.last_asset = asset
 
@@ -52,7 +45,6 @@ class SignalEngine:
     # =========================
     # 🧠 MULTI ASSET
     # =========================
-
     def analyze_asset(self, asset):
 
         try:
@@ -65,9 +57,10 @@ class SignalEngine:
                 risk={"decision": "ALLOW"}
             )
 
-            # 🆕 FIX: context injection
-            result["asset"] = asset
-            result["timestamp"] = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+            # 🆕 SAFE CONTEXT
+            if isinstance(result, dict):
+                result["asset"] = asset
+                result["timestamp"] = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
 
             return result
 
@@ -82,15 +75,13 @@ class SignalEngine:
     # =========================
     # 🧠 CORE ENGINE
     # =========================
-
     def analyze(self, market_state, news, risk):
 
         candles = self.market_data.get_candles()
 
         # =========================
-        # 🧠 FIXED SAFETY LOGIC
+        # 🧠 SAFETY
         # =========================
-
         if not candles:
             return {
                 "signal": "NO DATA",
@@ -115,17 +106,15 @@ class SignalEngine:
             return {"signal": "NO TRADE", "reason": "High impact news"}
 
         # =========================
-        # 🧠 ANALYSIS CORE
+        # 🧠 CORE ANALYSIS
         # =========================
-
         structure = self.smart_money.analyze_structure(candles)
         liquidity = self.liquidity_engine.analyze(candles)
         orderflow = self.orderflow_engine.analyze(candles)
 
         # =========================
-        # 🔥 FIXED LINE (THE ERROR WAS HERE)
+        # 🔥 FIX SAFE ACCESS
         # =========================
-
         liquidity_hint = liquidity.get("signal_hint", "NONE")
 
         sweep_data = liquidity.get("sweep") or {}
@@ -144,7 +133,6 @@ class SignalEngine:
         # =========================
         # 💣 STRONG ENTRY
         # =========================
-
         if confirmed_sweep and ob_valid and structure_ok:
 
             return {
@@ -162,7 +150,6 @@ class SignalEngine:
         # =========================
         # 💣 FVG ENTRY
         # =========================
-
         if confirmed_sweep and fvg_valid and structure_ok:
 
             return {
@@ -180,7 +167,6 @@ class SignalEngine:
         # =========================
         # ⚠️ SETUP READY
         # =========================
-
         if liquidity_setup and (ob_valid or fvg_valid):
 
             return {
@@ -196,7 +182,6 @@ class SignalEngine:
         # =========================
         # 📊 STRUCTURE ONLY
         # =========================
-
         if structure.get("bias") in ["TREND", "REVERSAL"]:
 
             return {
@@ -209,12 +194,11 @@ class SignalEngine:
             }
 
         # =========================
-        # ❌ NO TRADE FIXED
+        # ❌ NO TRADE
         # =========================
-
         return {
             "signal": "NO TRADE",
             "confidence": 0,
             "quality": "NO CONFLUENCE",
             "reason": "Market conditions not aligned"
-            }
+        }
