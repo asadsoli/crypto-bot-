@@ -9,32 +9,23 @@ class ScannerV3:
         self.signal_engine = signal_engine
         self.telegram = telegram_layer
 
+        # 🔥 FIX: unified assets (no XAUUSD conflict)
         self.scan_assets = scan_assets or [
             "BTCUSDT",
             "ETHUSDT",
-            "XAUUSD",
+            "BNBUSDT",
+            "PAXGUSDT",
             "SOLUSDT"
         ]
 
-        # =========================
-        # 🧠 CONTROL STATE
-        # =========================
         self.active = False
 
-        # =========================
-        # ⛔ ANTI-SPAM MEMORY
-        # =========================
         self.last_signal = {}
-
-        self.cooldown = 300  # 5 minutes per asset
-
-    # =========================
-    # 🔍 CORE SCAN LOOP
-    # =========================
+        self.cooldown = 300
 
     def scan_loop(self):
 
-        print("🔍 ULTRA V3 SCANNER STARTED")
+        print("🔍 ULTRA SCANNER V3 STARTED")
 
         while self.active:
 
@@ -50,37 +41,23 @@ class ScannerV3:
                     signal = result.get("signal")
                     confidence = result.get("confidence", 0)
 
-                    # =========================
-                    # 🚫 FILTER 1: NO TRADE SKIP
-                    # =========================
                     if signal == "NO TRADE":
                         continue
 
-                    # =========================
-                    # 🚫 FILTER 2: CONFIDENCE
-                    # =========================
                     if confidence < 75:
                         continue
 
-                    # =========================
-                    # 🚫 FILTER 3: COOLDOWN
-                    # =========================
                     now = time.time()
-
                     last_time = self.last_signal.get(asset, 0)
 
                     if now - last_time < self.cooldown:
                         continue
 
-                    # =========================
-                    # 📡 SEND SIGNAL
-                    # =========================
-
                     msg = f"""🔍 ULTRA SCANNER V3
 
 💰 ASSET: {asset}
-
 📊 SIGNAL: {signal}
+
 🎯 ENTRY: {result.get('entry', 'N/A')}
 🛑 SL: {result.get('sl', 'N/A')}
 💰 TP: {result.get('tp', 'N/A')}
@@ -92,19 +69,21 @@ class ScannerV3:
 {result.get('reason', '')}
 """
 
-                    self.telegram.bot.sendMessage("<CHAT_ID>", msg)
+                    # 🔥 FIX: unified telegram call
+                    try:
+                        self.telegram.bot.sendMessage("<CHAT_ID>", msg)
+                    except:
+                        try:
+                            self.telegram.send_message("<CHAT_ID>", msg)
+                        except Exception as e:
+                            print("❌ Telegram send error:", e)
 
-                    # تحديث آخر إرسال
                     self.last_signal[asset] = now
 
             except Exception as e:
                 print("❌ Scanner Error:", e)
 
             time.sleep(60)
-
-    # =========================
-    # 🚀 START
-    # =========================
 
     def start(self):
 
@@ -117,10 +96,6 @@ class ScannerV3:
         thread.start()
 
         print("🟢 Scanner V3 Activated")
-
-    # =========================
-    # ⛔ STOP
-    # =========================
 
     def stop(self):
 
