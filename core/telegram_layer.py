@@ -37,9 +37,16 @@ class TelegramLayer:
         self.risk_mode = "AUTO"
 
         # =========================
-        # 🔍 SCANNER
+        # 🔍 SCANNER (FIXED ASSETS)
         # =========================
-        self.scan_assets = ["BTCUSDT", "ETHUSDT", "XAUUSD", "SOLUSDT"]
+        self.scan_assets = [
+            "BTCUSDT",
+            "ETHUSDT",
+            "BNBUSDT",
+            "PAXGUSDT",
+            "SOLUSDT"
+        ]
+
         self.scanner_active = False
         self.scanner = None
 
@@ -61,7 +68,7 @@ class TelegramLayer:
                 InlineKeyboardButton("💎 ETH", callback_data="asset_ETHUSDT")
             ],
             [
-                InlineKeyboardButton("💰 GOLD", callback_data="asset_XAUUSD"),
+                InlineKeyboardButton("💰 PAXG", callback_data="asset_PAXGUSDT"),
                 InlineKeyboardButton("⚡ SOL", callback_data="asset_SOLUSDT")
             ],
             [
@@ -76,7 +83,7 @@ class TelegramLayer:
         ])
 
     # =========================
-    # 📊 FORMAT
+    # 📊 FORMAT RESULT (FIXED)
     # =========================
     def format_result(self, r):
 
@@ -84,5 +91,14 @@ class TelegramLayer:
 
 💰 ASSET: {self.selected_asset}
 
-📊 SIGNAL: {r.get('signal')}
-🎯 ENTRY: {r.get('entry', '
+📊 SIGNAL: {r.get('signal', 'N/A')}
+🎯 ENTRY: {r.get('entry', 'N/A')}
+🛑 SL: {r.get('sl', 'N/A')}
+💰 TP: {r.get('tp', 'N/A')}
+
+💎 CONFIDENCE: {r.get('confidence', 0)}%
+🏆 QUALITY: {r.get('quality', 'N/A')}
+
+📍 REASON:
+{r.get('reason', 'N/A')}
+"""
