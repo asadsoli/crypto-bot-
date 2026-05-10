@@ -133,29 +133,23 @@ class MarketDataV2:
         # 🟢 VALID DATA
         # =========================
         if candles:
-
             self.cache[symbol] = candles
             self.last_update[symbol] = now
             self.last_good[symbol] = candles
-
             return candles
 
         # =========================
-        # 🔁 FALLBACK (CRITICAL FIX)
+        # 🔁 FALLBACK
         # =========================
         fallback = self.last_good.get(symbol)
 
         if fallback:
             return fallback
 
-        # =========================
-        # ❌ FINAL SAFE RETURN
-        # =========================
         return []
 
     # =========================
     # 🔄 SWITCH SYMBOL
     # =========================
     def set_symbol(self, symbol):
-
         self.symbol = symbol
