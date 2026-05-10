@@ -1,8 +1,5 @@
-from telepot import Bot, glance
-from telepot.loop import MessageLoop
+from telepot import Bot
 from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
-import threading
-import time
 
 from core.brain_core import BrainCore
 
@@ -37,7 +34,7 @@ class TelegramLayer:
         self.risk_mode = "AUTO"
 
         # =========================
-        # 🔍 SCANNER ASSETS (FINAL SYNC)
+        # 🔍 SCANNER ASSETS (MASTER LIST)
         # =========================
         self.scan_assets = [
             "BTCUSDT",
@@ -51,22 +48,26 @@ class TelegramLayer:
         self.scanner = None
 
     # =========================
-    # 🔗 SCANNER LINK
+    # 🔗 LINK SCANNER
     # =========================
     def set_scanner(self, scanner):
+
         self.scanner = scanner
 
-        # 🔥 مزامنة قوية مع scanner (FIX)
+        # 🔥 force sync assets
         if hasattr(scanner, "assets"):
             scanner.assets = list(self.scan_assets)
 
     # =========================
-    # 🎛 MENU (FIXED UI SYNC)
+    # 🎛 TELEGRAM MENU
     # =========================
     def menu(self):
 
         return InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton("📊 تحليل السوق", callback_data="analyze")],
+
+            [
+                InlineKeyboardButton("📊 تحليل السوق", callback_data="analyze")
+            ],
 
             [
                 InlineKeyboardButton("🥇 BTC", callback_data="asset_BTCUSDT"),
@@ -98,7 +99,7 @@ class TelegramLayer:
         ])
 
     # =========================
-    # 📊 FORMAT RESULT (SAFE)
+    # 📊 FORMAT RESULT
     # =========================
     def format_result(self, r):
 
@@ -119,17 +120,17 @@ class TelegramLayer:
 """
 
     # =========================
-    # 📌 ASSET SWITCH SAFE (FIXED)
+    # 📌 SAFE ASSET SWITCH
     # =========================
     def set_asset(self, asset):
 
-        # منع أي عملة غير موجودة
+        # منع أي رمز غير موجود
         if asset not in self.scan_assets:
             return False
 
         self.selected_asset = asset
 
-        # 🔥 مزامنة مع signal engine إذا موجود
+        # 🔥 sync with signal engine
         if self.signal_engine and hasattr(self.signal_engine, "set_asset"):
             try:
                 self.signal_engine.set_asset(asset)
