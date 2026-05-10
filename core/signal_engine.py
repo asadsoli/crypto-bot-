@@ -14,10 +14,10 @@ class SignalEngine:
         self.orderflow_engine = OrderFlowEngine()
         self.smart_money = SmartMoneyEngine()
 
-        # 🧠 FIX: now using MarketDataV2 correctly
+        # 🧠 FIX: using MarketDataV2 correctly
         self.market_data = MarketData("BTCUSDT", "1m")
 
-        # 🧠 Brain optional safe link
+        # 🧠 optional brain link
         self.brain = None
 
     # =========================
@@ -32,9 +32,8 @@ class SignalEngine:
     def set_asset(self, asset):
 
         try:
-            self.market_data.symbol = asset
+            self.market_data.set_symbol(asset)  # 🔥 FIX (important)
 
-            # sync brain if exists
             if self.brain:
                 self.brain.last_asset = asset
 
@@ -77,12 +76,13 @@ class SignalEngine:
     # =========================
     def analyze(self, market_state, news, risk):
 
-        candles = self.market_data.get_candles()
+        # 🔥 FIX: explicit symbol call (prevents empty data issues)
+        candles = self.market_data.get_candles(self.market_data.symbol)
 
         # =========================
         # 🧠 SAFE DATA CHECK
         # =========================
-        if not candles or len(candles) == 0:
+        if not candles or len(candles) < 5:
             return {
                 "signal": "NO DATA",
                 "reason": "No candles received",
@@ -109,7 +109,7 @@ class SignalEngine:
             return {"signal": "NO TRADE", "reason": "High impact news"}
 
         # =========================
-        # 🧠 MARKET ANALYSIS CORE
+        # 🧠 MARKET CORE
         # =========================
         structure = self.smart_money.analyze_structure(candles)
         liquidity = self.liquidity_engine.analyze(candles)
@@ -131,7 +131,7 @@ class SignalEngine:
         structure_ok = structure.get("bias") in ["TREND", "REVERSAL"]
 
         # =========================
-        # 💣 HIGH QUALITY ENTRY
+        # 💣 ENTRY 1
         # =========================
         if confirmed_sweep and ob_valid and structure_ok:
 
@@ -148,7 +148,7 @@ class SignalEngine:
             }
 
         # =========================
-        # 💣 FVG ENTRY
+        # 💣 ENTRY 2
         # =========================
         if confirmed_sweep and fvg_valid and structure_ok:
 
@@ -165,7 +165,7 @@ class SignalEngine:
             }
 
         # =========================
-        # ⚠️ SETUP READY
+        # ⚠️ SETUP
         # =========================
         if liquidity_setup and (ob_valid or fvg_valid):
 
