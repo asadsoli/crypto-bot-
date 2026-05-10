@@ -8,13 +8,16 @@ class ScannerEngine:
         # =========================
         # 🧠 BRAIN CORE
         # =========================
-
         self.brain = brain
 
+        # =========================
+        # 🔥 FIXED ASSETS LIST
+        # =========================
         self.assets = assets or [
             "BTCUSDT",
             "ETHUSDT",
-            "XAUUSD",
+            "BNBUSDT",
+            "PAXGUSDT",
             "SOLUSDT"
         ]
 
@@ -24,22 +27,18 @@ class ScannerEngine:
         # =========================
         # 🤖 TELEGRAM INTEGRATION
         # =========================
-
         self.telegram = None
         self.last_sent_asset = None
 
     # =========================
     # 🔗 CONNECT TELEGRAM
     # =========================
-
     def set_telegram(self, telegram):
-
         self.telegram = telegram
 
     # =========================
     # 🔍 SCAN SINGLE ASSET
     # =========================
-
     def scan_asset(self, asset):
 
         try:
@@ -47,7 +46,6 @@ class ScannerEngine:
             # =========================
             # 🧠 BRAIN ANALYSIS
             # =========================
-
             brain_result = self.brain.analyze(asset)
 
             if not brain_result:
@@ -61,11 +59,11 @@ class ScannerEngine:
             # =========================
             # ❌ FILTER BAD SIGNALS
             # =========================
-
             if signal.get("signal") in [
                 "NO TRADE",
                 "ERROR",
-                "NO_DATA"
+                "NO_DATA",
+                "NO DATA"
             ]:
                 return None
 
@@ -82,14 +80,12 @@ class ScannerEngine:
             }
 
         except Exception as e:
-
             print(f"❌ Scanner error ({asset}):", e)
             return None
 
     # =========================
     # 🔥 FIND BEST OPPORTUNITY
     # =========================
-
     def find_best(self):
 
         best = None
@@ -105,7 +101,6 @@ class ScannerEngine:
             confidence = result.get("confidence", 0)
 
             if confidence > best_conf:
-
                 best = result
                 best_conf = confidence
 
@@ -114,7 +109,6 @@ class ScannerEngine:
     # =========================
     # 🔁 MAIN LOOP
     # =========================
-
     def start(self, callback=None):
 
         self.active = True
@@ -130,12 +124,10 @@ class ScannerEngine:
                 # =========================
                 # 🎯 FILTER STRONG SIGNALS
                 # =========================
-
                 if best and best["confidence"] >= 75:
 
                     # ❌ منع التكرار
                     if self.last_sent_asset == best["asset"]:
-
                         time.sleep(self.scan_interval)
                         continue
 
@@ -146,11 +138,9 @@ class ScannerEngine:
                     # =========================
                     # 🤖 TELEGRAM SENDING
                     # =========================
-
                     if self.telegram:
 
                         try:
-
                             self.telegram.send_message(
                                 "<CHAT_ID>",
                                 f"""🔍 ULTRA SCANNER V3
@@ -173,18 +163,15 @@ class ScannerEngine:
                             )
 
                         except Exception as e:
-
                             print("❌ Telegram send error:", e)
 
                     # =========================
                     # 🔗 CALLBACK
                     # =========================
-
                     if callback:
                         callback(best)
 
             except Exception as e:
-
                 print("❌ Scanner Loop Error:", e)
 
             time.sleep(self.scan_interval)
@@ -192,9 +179,6 @@ class ScannerEngine:
     # =========================
     # ⛔ STOP
     # =========================
-
     def stop(self):
-
         self.active = False
-
         print("⛔ Scanner Stopped")
