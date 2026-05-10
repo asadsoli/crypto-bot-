@@ -2,7 +2,6 @@ from core.liquidity_engine import LiquidityEngine
 from core.orderflow_engine import OrderFlowEngine
 from core.market_data import MarketDataV2 as MarketData
 from core.smart_money import SmartMoneyEngine
-
 from datetime import datetime
 
 
@@ -10,30 +9,39 @@ class SignalEngine:
 
     def __init__(self):
 
+        # =========================
+        # 🧠 CORE ENGINES
+        # =========================
         self.liquidity_engine = LiquidityEngine()
         self.orderflow_engine = OrderFlowEngine()
         self.smart_money = SmartMoneyEngine()
 
-        # 🧠 FIX: using MarketDataV2 correctly
+        # =========================
+        # 📡 MARKET DATA (V2 MULTI-ASSET)
+        # =========================
         self.market_data = MarketData("BTCUSDT", "1m")
 
-        # 🧠 optional brain link
+        # =========================
+        # 🧠 OPTIONAL BRAIN LINK
+        # =========================
         self.brain = None
 
     # =========================
-    # 🔗 BRAIN CONNECT
+    # 🔗 CONNECT BRAIN CORE
     # =========================
     def connect_brain(self, brain):
         self.brain = brain
 
     # =========================
-    # 🔥 SCANNER SUPPORT
+    # 🔄 SET ACTIVE ASSET
     # =========================
     def set_asset(self, asset):
 
         try:
-            self.market_data.set_symbol(asset)  # 🔥 FIX (important)
+            # update market data symbol
+            self.market_data.symbol = asset
 
+            # sync with brain if exists
             if self.brain:
                 self.brain.last_asset = asset
 
@@ -44,12 +52,11 @@ class SignalEngine:
             return False
 
     # =========================
-    # 🧠 MULTI ASSET ENTRY
+    # 📊 ANALYZE SINGLE ASSET (ENTRY POINT)
     # =========================
     def analyze_asset(self, asset):
 
         try:
-
             self.set_asset(asset)
 
             result = self.analyze(
@@ -58,13 +65,13 @@ class SignalEngine:
                 risk={"decision": "ALLOW"}
             )
 
+            # attach metadata
             result["asset"] = asset
             result["timestamp"] = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
 
             return result
 
         except Exception as e:
-
             return {
                 "signal": "ERROR",
                 "reason": str(e),
@@ -72,23 +79,26 @@ class SignalEngine:
             }
 
     # =========================
-    # 🧠 CORE ENGINE
+    # 🧠 CORE ANALYSIS ENGINE
     # =========================
     def analyze(self, market_state, news, risk):
 
-        # 🔥 FIX: explicit symbol call (prevents empty data issues)
-        candles = self.market_data.get_candles(self.market_data.symbol)
+        # 📡 get candles safely
+        candles = self.market_data.get_candles()
 
         # =========================
-        # 🧠 SAFE DATA CHECK
+        # ❌ NO DATA CHECK
         # =========================
-        if not candles or len(candles) < 5:
+        if not candles:
             return {
                 "signal": "NO DATA",
                 "reason": "No candles received",
                 "confidence": 0
             }
 
+        # =========================
+        # ⏳ MARKET WARMUP CHECK
+        # =========================
         if len(candles) < 30:
             return {
                 "signal": "WAIT",
@@ -97,7 +107,7 @@ class SignalEngine:
             }
 
         # =========================
-        # 🛑 RISK FILTER
+        # 🛑 RISK FILTERS
         # =========================
         if risk.get("decision") == "BLOCK":
             return {"signal": "NO TRADE", "reason": "Risk blocked trading"}
@@ -109,16 +119,19 @@ class SignalEngine:
             return {"signal": "NO TRADE", "reason": "High impact news"}
 
         # =========================
-        # 🧠 MARKET CORE
+        # 🧠 MARKET STRUCTURE ANALYSIS
         # =========================
         structure = self.smart_money.analyze_structure(candles)
         liquidity = self.liquidity_engine.analyze(candles)
         orderflow = self.orderflow_engine.analyze(candles)
 
+        # =========================
+        # 🔍 SIGNAL COMPONENTS
+        # =========================
         liquidity_hint = liquidity.get("signal_hint", "NONE")
 
-        sweep_data = liquidity.get("sweep") or {}
-        sweep_type = sweep_data.get("type", "")
+        sweep = liquidity.get("sweep") or {}
+        sweep_type = sweep.get("type", "")
 
         ob_type = orderflow.get("type", "")
 
@@ -131,14 +144,14 @@ class SignalEngine:
         structure_ok = structure.get("bias") in ["TREND", "REVERSAL"]
 
         # =========================
-        # 💣 ENTRY 1
+        # 💣 STRONG ENTRY (OB)
         # =========================
         if confirmed_sweep and ob_valid and structure_ok:
 
             return {
                 "signal": "INSTITUTIONAL ENTRY",
                 "type": "LIQUIDITY + OB",
-                "direction": structure.get("direction", "BUY/SELL"),
+                "direction": structure.get("direction"),
                 "entry": orderflow.get("entry", "MARKET"),
                 "sl": orderflow.get("sl", "AUTO"),
                 "tp": orderflow.get("tp", "AUTO"),
@@ -148,14 +161,14 @@ class SignalEngine:
             }
 
         # =========================
-        # 💣 ENTRY 2
+        # 💣 STRONG ENTRY (FVG)
         # =========================
         if confirmed_sweep and fvg_valid and structure_ok:
 
             return {
                 "signal": "INSTITUTIONAL ENTRY",
                 "type": "LIQUIDITY + FVG",
-                "direction": structure.get("direction", "BUY/SELL"),
+                "direction": structure.get("direction"),
                 "entry": orderflow.get("entry", "MARKET"),
                 "sl": orderflow.get("sl", "AUTO"),
                 "tp": orderflow.get("tp", "AUTO"),
@@ -165,7 +178,7 @@ class SignalEngine:
             }
 
         # =========================
-        # ⚠️ SETUP
+        # ⚠️ EARLY SETUP
         # =========================
         if liquidity_setup and (ob_valid or fvg_valid):
 
