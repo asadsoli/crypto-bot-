@@ -1,6 +1,6 @@
 from core.liquidity_engine import LiquidityEngine
 from core.orderflow_engine import OrderFlowEngine
-from core.market_data import MarketData
+from core.market_data import MarketDataV2 as MarketData
 from core.smart_money import SmartMoneyEngine
 
 from datetime import datetime
@@ -14,9 +14,10 @@ class SignalEngine:
         self.orderflow_engine = OrderFlowEngine()
         self.smart_money = SmartMoneyEngine()
 
+        # 🧠 FIX: now using MarketDataV2 correctly
         self.market_data = MarketData("BTCUSDT", "1m")
 
-        # 🧠 FIX: Brain reference (optional safe link)
+        # 🧠 Brain optional safe link
         self.brain = None
 
     # =========================
@@ -33,6 +34,7 @@ class SignalEngine:
         try:
             self.market_data.symbol = asset
 
+            # sync brain if exists
             if self.brain:
                 self.brain.last_asset = asset
 
@@ -43,7 +45,7 @@ class SignalEngine:
             return False
 
     # =========================
-    # 🧠 MULTI ASSET
+    # 🧠 MULTI ASSET ENTRY
     # =========================
     def analyze_asset(self, asset):
 
@@ -57,10 +59,8 @@ class SignalEngine:
                 risk={"decision": "ALLOW"}
             )
 
-            # 🆕 SAFE CONTEXT
-            if isinstance(result, dict):
-                result["asset"] = asset
-                result["timestamp"] = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+            result["asset"] = asset
+            result["timestamp"] = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
 
             return result
 
@@ -80,9 +80,9 @@ class SignalEngine:
         candles = self.market_data.get_candles()
 
         # =========================
-        # 🧠 SAFETY
+        # 🧠 SAFE DATA CHECK
         # =========================
-        if not candles:
+        if not candles or len(candles) == 0:
             return {
                 "signal": "NO DATA",
                 "reason": "No candles received",
@@ -92,10 +92,13 @@ class SignalEngine:
         if len(candles) < 30:
             return {
                 "signal": "WAIT",
-                "reason": "Market still warming up (low candles)",
+                "reason": "Market still warming up",
                 "confidence": 10
             }
 
+        # =========================
+        # 🛑 RISK FILTER
+        # =========================
         if risk.get("decision") == "BLOCK":
             return {"signal": "NO TRADE", "reason": "Risk blocked trading"}
 
@@ -106,15 +109,12 @@ class SignalEngine:
             return {"signal": "NO TRADE", "reason": "High impact news"}
 
         # =========================
-        # 🧠 CORE ANALYSIS
+        # 🧠 MARKET ANALYSIS CORE
         # =========================
         structure = self.smart_money.analyze_structure(candles)
         liquidity = self.liquidity_engine.analyze(candles)
         orderflow = self.orderflow_engine.analyze(candles)
 
-        # =========================
-        # 🔥 FIX SAFE ACCESS
-        # =========================
         liquidity_hint = liquidity.get("signal_hint", "NONE")
 
         sweep_data = liquidity.get("sweep") or {}
@@ -131,7 +131,7 @@ class SignalEngine:
         structure_ok = structure.get("bias") in ["TREND", "REVERSAL"]
 
         # =========================
-        # 💣 STRONG ENTRY
+        # 💣 HIGH QUALITY ENTRY
         # =========================
         if confirmed_sweep and ob_valid and structure_ok:
 
