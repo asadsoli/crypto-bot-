@@ -37,7 +37,7 @@ class TelegramLayer:
         self.risk_mode = "AUTO"
 
         # =========================
-        # 🔍 SCANNER (FIXED ASSETS)
+        # 🔍 SCANNER (UPDATED WATCHLIST)
         # =========================
         self.scan_assets = [
             "BTCUSDT",
@@ -68,7 +68,10 @@ class TelegramLayer:
                 InlineKeyboardButton("💎 ETH", callback_data="asset_ETHUSDT")
             ],
             [
-                InlineKeyboardButton("💰 PAXG", callback_data="asset_PAXGUSDT"),
+                InlineKeyboardButton("💰 BNB", callback_data="asset_BNBUSDT"),
+                InlineKeyboardButton("🏅 PAXG", callback_data="asset_PAXGUSDT")
+            ],
+            [
                 InlineKeyboardButton("⚡ SOL", callback_data="asset_SOLUSDT")
             ],
             [
@@ -83,7 +86,7 @@ class TelegramLayer:
         ])
 
     # =========================
-    # 📊 FORMAT RESULT (FIXED)
+    # 📊 FORMAT RESULT
     # =========================
     def format_result(self, r):
 
