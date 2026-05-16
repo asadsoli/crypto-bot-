@@ -1,7 +1,5 @@
 from telepot import Bot
 from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
-import threading
-import time
 
 from core.brain_core import BrainCore
 
@@ -42,7 +40,7 @@ class TelegramLayer:
         self.risk_mode = "AUTO"
 
         # =========================
-        # 🔍 SCANNER WATCHLIST (SOURCE OF TRUTH)
+        # 🔍 SCANNER WATCHLIST
         # =========================
         self.watchlist_assets = [
             "BTCUSDT",
@@ -57,6 +55,11 @@ class TelegramLayer:
         # =========================
         self.scanner_active = False
         self.scanner = None
+
+        # =========================
+        # 🧠 SAFETY FLAGS (STABILITY)
+        # =========================
+        self.busy = False
 
     # =========================
     # 🔗 LINK SCANNER ENGINE
@@ -76,48 +79,44 @@ class TelegramLayer:
 
         return InlineKeyboardMarkup(inline_keyboard=[
 
-            # 📊 analysis
             [InlineKeyboardButton("📊 تحليل السوق", callback_data="analyze")],
 
-            # 💰 major assets row
             [
                 InlineKeyboardButton("🥇 BTC", callback_data="asset_BTCUSDT"),
                 InlineKeyboardButton("💎 ETH", callback_data="asset_ETHUSDT")
             ],
 
-            # 💰 alt assets row
             [
                 InlineKeyboardButton("💰 BNB", callback_data="asset_BNBUSDT"),
                 InlineKeyboardButton("🏅 PAXG", callback_data="asset_PAXGUSDT")
             ],
 
-            # ⚡ SOL
             [
                 InlineKeyboardButton("⚡ SOL", callback_data="asset_SOLUSDT")
             ],
 
-            # ▶️ bot control
             [
                 InlineKeyboardButton("🟢 تشغيل", callback_data="bot_on"),
                 InlineKeyboardButton("🔴 إيقاف", callback_data="bot_off")
             ],
 
-            # 🔍 scanner control
             [
                 InlineKeyboardButton("🔍 Scanner ON", callback_data="scan_on"),
                 InlineKeyboardButton("⛔ Scanner OFF", callback_data="scan_off")
             ],
 
-            # ⚙️ status
             [
                 InlineKeyboardButton("⚙️ الحالة", callback_data="status")
             ]
         ])
 
     # =========================
-    # 📊 FORMAT SIGNAL OUTPUT
+    # 📊 FORMAT SIGNAL OUTPUT (SAFE)
     # =========================
     def format_result(self, signal_data):
+
+        if not signal_data or not isinstance(signal_data, dict):
+            return "❌ No signal data"
 
         return f"""🤖 ULTRA V10 AI CORE
 
@@ -136,21 +135,31 @@ class TelegramLayer:
 """
 
     # =========================
-    # 📌 CHANGE ACTIVE ASSET
+    # 📌 CHANGE ACTIVE ASSET (STABLE)
     # =========================
     def set_asset(self, asset_symbol):
 
-        # validate asset exists in watchlist
-        if asset_symbol not in self.watchlist_assets:
+        try:
+
+            if not asset_symbol:
+                return False
+
+            asset_symbol = str(asset_symbol).upper().strip()
+
+            if asset_symbol not in self.watchlist_assets:
+                return False
+
+            self.current_asset = asset_symbol
+
+            # sync with signal engine safely
+            if self.signal_engine and hasattr(self.signal_engine, "set_asset"):
+                try:
+                    self.signal_engine.set_asset(asset_symbol)
+                except Exception:
+                    pass
+
+            return True
+
+        except Exception as e:
+            print("❌ set_asset error:", e)
             return False
-
-        self.current_asset = asset_symbol
-
-        # sync with signal engine if available
-        if self.signal_engine and hasattr(self.signal_engine, "set_asset"):
-            try:
-                self.signal_engine.set_asset(asset_symbol)
-            except:
-                pass
-
-        return True
