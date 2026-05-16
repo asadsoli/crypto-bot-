@@ -1,51 +1,93 @@
 from datetime import datetime
 import pytz
 
+
 class MarketStateEngine:
     def __init__(self):
-        self.timezone = pytz.timezone("Asia/Damascus")
+        # Safe timezone initialization
+        try:
+            self.timezone = pytz.timezone("Asia/Damascus")
+        except Exception:
+            self.timezone = pytz.utc
 
     def get_session(self):
-        hour = datetime.now(self.timezone).hour
+        """
+        Detect active trading session safely.
+        Returns:
+            ASIA / LONDON / NEW_YORK
+        """
 
-        if 0 <= hour < 8:
-            return "ASIA"
-        elif 8 <= hour < 16:
-            return "LONDON"
-        else:
-            return "NEW YORK"
+        try:
+            hour = datetime.now(self.timezone).hour
+
+            if 0 <= hour < 8:
+                return "ASIA"
+
+            elif 8 <= hour < 16:
+                return "LONDON"
+
+            else:
+                return "NEW_YORK"
+
+        except Exception as e:
+            print(f"[MarketStateEngine] Session Error: {e}")
+            return "UNKNOWN"
 
     def get_market_state(self, news_risk="NORMAL", volatility="NORMAL"):
         """
-        returns: ACTIVE / CAUTION / HIGH_RISK
+        Market condition classifier.
+
+        Returns:
+            {
+                "state": ACTIVE / CAUTION / HIGH_RISK,
+                "reason": str,
+                "session": str
+            }
         """
 
-        session = self.get_session()
+        try:
+            session = self.get_session()
 
-        # 🔴 قواعد السوق المؤسسية
-        if news_risk == "HIGH":
+            # Normalize inputs
+            news_risk = str(news_risk).upper()
+            volatility = str(volatility).upper()
+
+            # 🔴 High Risk News
+            if news_risk == "HIGH":
+                return {
+                    "state": "HIGH_RISK",
+                    "reason": "High impact news active",
+                    "session": session
+                }
+
+            # 🟡 Asian low liquidity
+            if session == "ASIA" and volatility == "LOW":
+                return {
+                    "state": "CAUTION",
+                    "reason": "Low liquidity Asian session",
+                    "session": session
+                }
+
+            # 🟠 High volatility protection
+            if volatility == "HIGH":
+                return {
+                    "state": "CAUTION",
+                    "reason": "High volatility detected",
+                    "session": session
+                }
+
+            # 🟢 Normal conditions
             return {
-                "state": "HIGH_RISK",
-                "reason": "High impact news active",
+                "state": "ACTIVE",
+                "reason": "Normal market conditions",
                 "session": session
             }
 
-        if session == "ASIA" and volatility == "LOW":
+        except Exception as e:
+            print(f"[MarketStateEngine] Market State Error: {e}")
+
             return {
                 "state": "CAUTION",
-                "reason": "Low liquidity Asian session",
-                "session": session
+                "reason": "Fallback protection triggered",
+                "session": "UNKNOWN"
             }
-
-        if volatility == "HIGH":
-            return {
-                "state": "CAUTION",
-                "reason": "High volatility detected",
-                "session": session
-            }
-
-        return {
-            "state": "ACTIVE",
-            "reason": "Normal market conditions",
-            "session": session
-        }
