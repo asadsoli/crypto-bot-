@@ -40,21 +40,24 @@ class ScannerEngine:
         self.telegram = telegram
 
     # =========================
-    # 🔍 SCAN SINGLE ASSET
+    # 🔍 SCAN SINGLE ASSET (STABILIZED)
     # =========================
     def scan_asset(self, asset):
 
         try:
 
+            if not asset:
+                return None
+
             # 🧠 BRAIN ANALYSIS
             result = self.brain.analyze(asset)
 
-            if not result:
+            if not result or not isinstance(result, dict):
                 return None
 
             signal = result.get("signal")
 
-            if not signal:
+            if not signal or not isinstance(signal, dict):
                 return None
 
             # ❌ FILTER BAD SIGNALS
@@ -62,7 +65,9 @@ class ScannerEngine:
                 "NO TRADE",
                 "ERROR",
                 "NO DATA",
-                "NO_DATA"
+                "NO_DATA",
+                "WAIT",
+                "BUSY"
             ]:
                 return None
 
@@ -123,14 +128,14 @@ class ScannerEngine:
                 # =========================
                 # 🎯 HIGH QUALITY FILTER
                 # =========================
-                if best and best["confidence"] >= 75:
+                if best and best.get("confidence", 0) >= 75:
 
                     # منع التكرار
-                    if self.last_sent_asset == best["asset"]:
+                    if self.last_sent_asset == best.get("asset"):
                         time.sleep(self.scan_interval)
                         continue
 
-                    self.last_sent_asset = best["asset"]
+                    self.last_sent_asset = best.get("asset")
 
                     print("🔥 BEST SIGNAL:", best)
 
@@ -144,19 +149,19 @@ class ScannerEngine:
                                 "<CHAT_ID>",
                                 f"""🔍 ULTRA SCANNER
 
-💰 ASSET: {best['asset']}
-📊 SIGNAL: {best['signal']}
-🧠 DECISION: {best['decision']}
+💰 ASSET: {best.get('asset')}
+📊 SIGNAL: {best.get('signal')}
+🧠 DECISION: {best.get('decision')}
 
-🎯 ENTRY: {best['entry']}
-🛑 SL: {best['sl']}
-💰 TP: {best['tp']}
+🎯 ENTRY: {best.get('entry')}
+🛑 SL: {best.get('sl')}
+💰 TP: {best.get('tp')}
 
-💎 CONFIDENCE: {best['confidence']}%
-🏆 QUALITY: {best['quality']}
+💎 CONFIDENCE: {best.get('confidence')}%
+🏆 QUALITY: {best.get('quality')}
 
 📍 REASON:
-{best['reason']}
+{best.get('reason')}
 """
                             )
 
@@ -167,7 +172,10 @@ class ScannerEngine:
                     # 🔗 CALLBACK
                     # =========================
                     if callback:
-                        callback(best)
+                        try:
+                            callback(best)
+                        except Exception as e:
+                            print("❌ Callback error:", e)
 
             except Exception as e:
                 print("❌ Scanner loop error:", e)
