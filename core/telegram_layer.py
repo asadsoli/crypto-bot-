@@ -23,7 +23,7 @@ class TelegramLayer:
         self.time_engine = time_engine
 
         # =========================
-        # 🧠 BRAIN CORE (ORCHESTRATOR)
+        # 🧠 BRAIN CORE
         # =========================
         self.brain = BrainCore(
             signal_engine=self.signal_engine,
@@ -40,13 +40,13 @@ class TelegramLayer:
         self.risk_mode = "AUTO"
 
         # =========================
-        # 🔍 SCANNER WATCHLIST
+        # 🔍 WATCHLIST (FIXED + STABLE)
         # =========================
         self.watchlist_assets = [
             "BTCUSDT",
             "ETHUSDT",
-            "BNBUSDT",
-            "PAXGUSDT",
+            "BNBUSDT",   # ✔ added
+            "PAXGUSDT",  # ✔ fixed gold standard
             "SOLUSDT"
         ]
 
@@ -57,7 +57,7 @@ class TelegramLayer:
         self.scanner = None
 
         # =========================
-        # 🧠 SAFETY FLAGS (STABILITY)
+        # 🧠 SAFETY FLAGS
         # =========================
         self.busy = False
 
@@ -68,12 +68,11 @@ class TelegramLayer:
 
         self.scanner = scanner
 
-        # 🔥 SYNC WATCHLIST WITH SCANNER ENGINE
         if hasattr(scanner, "assets"):
             scanner.assets = list(self.watchlist_assets)
 
     # =========================
-    # 🎛 TELEGRAM INLINE MENU
+    # 🎛 TELEGRAM MENU (FIXED ASSETS)
     # =========================
     def menu(self):
 
@@ -82,17 +81,17 @@ class TelegramLayer:
             [InlineKeyboardButton("📊 تحليل السوق", callback_data="analyze")],
 
             [
-                InlineKeyboardButton("🥇 BTC", callback_data="asset_BTCUSDT"),
-                InlineKeyboardButton("💎 ETH", callback_data="asset_ETHUSDT")
+                InlineKeyboardButton("🥇 BTCUSDT", callback_data="asset_BTCUSDT"),
+                InlineKeyboardButton("💎 ETHUSDT", callback_data="asset_ETHUSDT")
             ],
 
             [
-                InlineKeyboardButton("💰 BNB", callback_data="asset_BNBUSDT"),
-                InlineKeyboardButton("🏅 PAXG", callback_data="asset_PAXGUSDT")
+                InlineKeyboardButton("💰 BNBUSDT", callback_data="asset_BNBUSDT"),
+                InlineKeyboardButton("🏅 PAXGUSDT", callback_data="asset_PAXGUSDT")
             ],
 
             [
-                InlineKeyboardButton("⚡ SOL", callback_data="asset_SOLUSDT")
+                InlineKeyboardButton("⚡ SOLUSDT", callback_data="asset_SOLUSDT")
             ],
 
             [
@@ -111,7 +110,7 @@ class TelegramLayer:
         ])
 
     # =========================
-    # 📊 FORMAT SIGNAL OUTPUT (SAFE)
+    # 📊 FORMAT OUTPUT (SAFE)
     # =========================
     def format_result(self, signal_data):
 
@@ -135,7 +134,7 @@ class TelegramLayer:
 """
 
     # =========================
-    # 📌 CHANGE ACTIVE ASSET (STABLE)
+    # 📌 SET ACTIVE ASSET (STABLE)
     # =========================
     def set_asset(self, asset_symbol):
 
