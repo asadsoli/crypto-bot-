@@ -8,7 +8,7 @@ class BrainCore:
         self.risk = risk
 
         # =========================
-        # 🧠 SELF LEARNING MEMORY
+        # 🧠 MEMORY
         # =========================
         self.memory = {
             "wins": 0,
@@ -17,24 +17,24 @@ class BrainCore:
         }
 
         # =========================
-        # 🧠 SAFETY FLAGS (STABILITY LAYER)
+        # 🧠 SAFETY STATE
         # =========================
         self.last_asset = None
         self.busy = False
 
     # =========================
-    # 🧠 CONTEXT (SAFE)
+    # 🧠 CONTEXT SAFE
     # =========================
     def collect_context(self, asset):
 
         try:
             market_state = self.market.get_market_state() if self.market else {"state": "UNKNOWN"}
-        except Exception:
+        except:
             market_state = {"state": "UNKNOWN"}
 
         try:
             news = self.news.analyze_news() if self.news else {"risk": "NORMAL", "impact_score": 0}
-        except Exception:
+        except:
             news = {"risk": "NORMAL", "impact_score": 0}
 
         try:
@@ -43,13 +43,13 @@ class BrainCore:
                 news=news,
                 volatility=0
             ) if self.risk else {"decision": "ALLOW", "score": 0}
-        except Exception:
+        except:
             risk = {"decision": "ALLOW", "score": 0}
 
         return market_state, news, risk
 
     # =========================
-    # 🌍 MARKET REGIME DETECTOR
+    # 🌍 REGIME
     # =========================
     def detect_regime(self, market_state, news):
 
@@ -65,65 +65,57 @@ class BrainCore:
         return "RANGE"
 
     # =========================
-    # 💣 FAKE BREAKOUT FILTER
+    # 💣 FAKE BREAKOUT FILTER (STABLE)
     # =========================
     def fake_breakout_filter(self, signal, score):
 
-        # STABILITY FIX: protect None signal
-        if not signal or not isinstance(signal, dict):
+        if not isinstance(signal, dict):
             return True
 
-        signal_type = signal.get("type", "")
-        quality = signal.get("quality", "")
-
-        if signal_type == "BREAKOUT" and score < 85:
+        if signal.get("type") == "BREAKOUT" and score < 85:
             return True
 
-        if "weak" in str(quality).lower():
+        quality = str(signal.get("quality", "")).lower()
+        if "weak" in quality:
             return True
 
         return False
 
     # =========================
-    # 📊 TRADE SCORING ENGINE
+    # 📊 SCORING
     # =========================
     def score_trade(self, signal, regime):
 
-        if not signal or not isinstance(signal, dict):
+        if not isinstance(signal, dict):
             return 0
 
         base = signal.get("confidence", 0)
 
-        # regime boost / penalty
         if regime == "TRENDING":
             base += 10
         elif regime == "RANGE":
             base -= 10
 
-        # memory learning (safe)
-        try:
-            if self.memory.get("wins", 0) > self.memory.get("losses", 0):
-                base += 5
-        except Exception:
-            pass
+        if self.memory.get("wins", 0) > self.memory.get("losses", 0):
+            base += 5
 
         return max(0, min(base, 100))
 
     # =========================
-    # 🧠 MAIN BRAIN (STABILIZED)
+    # 🧠 MAIN BRAIN (LOCK SAFE)
     # =========================
     def analyze(self, asset):
 
         try:
 
             # =========================
-            # 🟡 PREVENT CONCURRENT RUNS
+            # LOCK PREVENTION
             # =========================
             if self.busy:
                 return {
                     "decision": "WAIT",
                     "signal": {"signal": "BUSY", "confidence": 0},
-                    "reason": "BrainCore already processing"
+                    "reason": "Brain is busy"
                 }
 
             self.busy = True
@@ -134,13 +126,13 @@ class BrainCore:
             market_state, news, risk = self.collect_context(asset)
 
             # =========================
-            # HARD BLOCKS
+            # HARD BLOCK
             # =========================
             if risk.get("decision") == "BLOCK":
                 return {
                     "decision": "NO TRADE",
                     "signal": {"signal": "BLOCKED", "confidence": 0},
-                    "reason": "Risk block"
+                    "reason": "Risk block active"
                 }
 
             # =========================
@@ -148,11 +140,11 @@ class BrainCore:
             # =========================
             try:
                 signal = self.signal_engine.analyze_asset(asset)
-            except Exception:
+            except:
                 return {
                     "decision": "ERROR",
                     "signal": {"signal": "ERROR", "confidence": 0},
-                    "reason": "Signal failure"
+                    "reason": "Signal engine failure"
                 }
 
             # =========================
@@ -166,7 +158,7 @@ class BrainCore:
             score = self.score_trade(signal, regime)
 
             # =========================
-            # FAKE BREAKOUT FILTER
+            # FILTER
             # =========================
             if self.fake_breakout_filter(signal, score):
                 return {
@@ -174,11 +166,11 @@ class BrainCore:
                     "signal": signal,
                     "score": score,
                     "regime": regime,
-                    "reason": "Fake breakout detected"
+                    "reason": "Fake breakout filter"
                 }
 
             # =========================
-            # FINAL DECISION ENGINE
+            # DECISION ENGINE
             # =========================
             if score < 70:
                 return {
@@ -186,7 +178,7 @@ class BrainCore:
                     "signal": signal,
                     "score": score,
                     "regime": regime,
-                    "reason": "Low quality setup"
+                    "reason": "Low quality"
                 }
 
             if 70 <= score < 90:
@@ -198,9 +190,6 @@ class BrainCore:
                     "reason": "Valid setup"
                 }
 
-            # =========================
-            # HIGH PROBABILITY SETUP
-            # =========================
             return {
                 "decision": signal.get("signal", "BUY/SELL"),
                 "signal": signal,
@@ -211,6 +200,7 @@ class BrainCore:
             }
 
         except Exception as e:
+
             return {
                 "decision": "ERROR",
                 "signal": {"signal": "ERROR", "confidence": 0},
@@ -218,7 +208,4 @@ class BrainCore:
             }
 
         finally:
-            # =========================
-            # ALWAYS RELEASE LOCK
-            # =========================
             self.busy = False
