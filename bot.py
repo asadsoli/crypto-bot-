@@ -1,6 +1,5 @@
 import os
 import traceback
-import telepot
 import threading
 import time
 
@@ -38,9 +37,12 @@ brain = BrainCore(
     risk=risk_manager
 )
 
+# 🔥 FIX 1: ربط مهم جداً بين SignalEngine و BrainCore
+signal_engine.connect_brain(brain)
+
 
 # =========================
-# 🔍 SCANNER INIT (FIXED)
+# 🔍 SCANNER INIT
 # =========================
 
 scanner = ScannerEngine(brain)
@@ -85,7 +87,6 @@ class TelegramLayer:
     # =========================
     # 📤 SEND
     # =========================
-
     def send(self, chat_id, text, keyboard=None):
 
         try:
@@ -97,9 +98,8 @@ class TelegramLayer:
             print("❌ SEND ERROR:", e)
 
     # =========================
-    # 🎛 KEYBOARD (FIXED GOLD)
+    # 🎛 KEYBOARD
     # =========================
-
     def keyboard(self):
 
         return {
@@ -135,18 +135,7 @@ class TelegramLayer:
     # =========================
     # 📊 FORMAT
     # =========================
-
-    def format(
-        self,
-        asset,
-        decision,
-        signal,
-        state,
-        risk,
-        news,
-        current_time,
-        session
-    ):
+    def format(self, asset, decision, signal, state, risk, news, current_time, session):
 
         return f"""🤖 ULTRA V10 AI CORE
 
@@ -237,7 +226,7 @@ def scanner_callback(best_signal):
 
 
 # =========================
-# 🔁 SCANNER THREAD (LOCKED)
+# 🔁 SCANNER THREAD
 # =========================
 
 def start_scanner_thread():
@@ -247,7 +236,6 @@ def start_scanner_thread():
     with scanner_lock:
 
         if scanner_thread_started:
-            print("⚠ Scanner already running")
             return
 
         scanner_thread_started = True
@@ -259,7 +247,7 @@ def start_scanner_thread():
 
 
 # =========================
-# 🌐 FLASK APP
+# 🌐 FLASK
 # =========================
 
 app = Flask(__name__)
@@ -283,40 +271,32 @@ def telegram_webhook():
         text = msg.get("text", "")
 
         # =========================
-        # 🚀 START
+        # START
         # =========================
-
         if text == "/start":
             telegram_layer.send(chat_id, "🤖 ULTRA V10 READY", telegram_layer.keyboard())
 
         # =========================
-        # 🟢 BOT ON/OFF
+        # BOT ON/OFF
         # =========================
-
         elif text == "🟢 تشغيل البوت":
             telegram_layer.bot_active = True
-            telegram_layer.send(chat_id, "🟢 تم تشغيل البوت")
 
         elif text == "🔴 إيقاف البوت":
             telegram_layer.bot_active = False
-            telegram_layer.send(chat_id, "🔴 تم إيقاف البوت")
 
         # =========================
-        # 🔍 SCANNER
+        # SCANNER
         # =========================
-
         elif text == "🔍 تشغيل Scanner":
             start_scanner_thread()
-            telegram_layer.send(chat_id, "🔍 تم تشغيل Scanner")
 
         elif text == "⛔ إيقاف Scanner":
             scanner.stop()
-            telegram_layer.send(chat_id, "⛔ تم إيقاف Scanner")
 
         # =========================
-        # 💰 ASSETS (FIXED GOLD = PAXGUSDT)
+        # ASSETS
         # =========================
-
         elif text in ["💰 BTCUSDT", "💰 ETHUSDT", "🥇 PAXGUSDT", "⚡ SOLUSDT"]:
 
             asset_map = {
@@ -330,34 +310,15 @@ def telegram_webhook():
 
             telegram_layer.selected_asset = asset
 
+            # 🔥 FIX 2: تحديث السوق قبل التحليل
             try:
-                brain.signal_engine.set_asset(asset)
+                signal_engine.set_asset(asset)
             except:
                 pass
 
-            telegram_layer.send(chat_id, f"✅ تم اختيار {asset}")
-
         # =========================
-        # ⚙️ STATUS
+        # ANALYSIS
         # =========================
-
-        elif text == "⚙️ الحالة":
-
-            status = "🟢 يعمل" if telegram_layer.bot_active else "🔴 متوقف"
-
-            telegram_layer.send(chat_id, f"""⚙️ ULTRA STATUS
-
-🤖 البوت:
-{status}
-
-💰 الأصل:
-{telegram_layer.selected_asset}
-""")
-
-        # =========================
-        # 📊 ANALYSIS (SAFE LOCK)
-        # =========================
-
         elif text == "📊 تحليل السوق":
 
             if not analysis_lock.acquire(blocking=False):
@@ -368,10 +329,20 @@ def telegram_webhook():
 
                 asset = telegram_layer.selected_asset
 
-                current_time = time_engine.get_current_time() if hasattr(time_engine, "get_current_time") else "UNKNOWN"
-                session = time_engine.get_session() if hasattr(time_engine, "get_session") else "UNKNOWN"
+                current_time = time_engine.get_current_time()
+                session = time_engine.get_session()
 
-                result = brain.analyze(asset)
+                # 🔥 FIX 3: حماية وتحسين
+                try:
+                    signal_engine.set_asset(asset)
+                    result = brain.analyze(asset)
+                except Exception as e:
+                    print("Brain error:", e)
+                    result = {
+                        "decision": "ERROR",
+                        "signal": {"signal": "SYSTEM ERROR", "confidence": 0}
+                    }
+
                 signal = result.get("signal", {})
                 decision = result.get("decision", "WAIT")
 
@@ -380,14 +351,7 @@ def telegram_webhook():
                 risk = risk_manager.evaluate(state, news, 0)
 
                 response = telegram_layer.format(
-                    asset=asset,
-                    decision=decision,
-                    signal=signal,
-                    state=state,
-                    risk=risk,
-                    news=news,
-                    current_time=current_time,
-                    session=session
+                    asset, decision, signal, state, risk, news, current_time, session
                 )
 
                 telegram_layer.send(chat_id, response)
@@ -417,7 +381,7 @@ def webhook():
 
 
 # =========================
-# 🚀 START
+# 🚀 RUN
 # =========================
 
 if __name__ == "__main__":
@@ -430,4 +394,4 @@ if __name__ == "__main__":
         port=int(os.environ.get("PORT", 10000)),
         debug=False,
         use_reloader=False
-                 )
+            )
