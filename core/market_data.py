@@ -17,15 +17,15 @@ class MarketDataV2:
         self.last_good = {}
 
         # =========================
-        # ⏱ CACHE TIMEOUT
+        # ⏱ CACHE SETTINGS
         # =========================
-        self.ttl = 10
+        self.ttl = 10  # seconds
 
         # =========================
-        # 🌐 REQUEST SETTINGS
+        # 🌐 API SETTINGS
         # =========================
-        self.timeout = 10
         self.base_url = "https://api.binance.com/api/v3/klines"
+        self.timeout = 10
 
         # =========================
         # 🟡 SYMBOL MAPPING (FINAL FIX)
@@ -33,11 +33,13 @@ class MarketDataV2:
         self.symbol_map = {
             "XAUUSD": "PAXGUSDT",
             "GOLD": "PAXGUSDT",
-            "PAXG": "PAXGUSDT"
+            "PAXG": "PAXGUSDT",
+            "BTC": "BTCUSDT",
+            "ETH": "ETHUSDT"
         }
 
     # =========================
-    # 🔧 SAFE CONVERTER
+    # 🔧 SAFE FLOAT
     # =========================
     def safe_float(self, x):
         try:
@@ -58,7 +60,7 @@ class MarketDataV2:
         return self.symbol_map.get(symbol, symbol)
 
     # =========================
-    # 📡 FETCH DATA
+    # 📡 FETCH FROM BINANCE
     # =========================
     def fetch_candles(self, symbol):
 
@@ -67,7 +69,7 @@ class MarketDataV2:
         params = {
             "symbol": symbol,
             "interval": self.interval,
-            "limit": 50
+            "limit": 100   # 🔥 improved depth
         }
 
         try:
@@ -88,7 +90,7 @@ class MarketDataV2:
                 return None
 
             if not isinstance(data, list) or len(data) == 0:
-                print(f"❌ Invalid/empty response for {symbol}")
+                print(f"❌ Empty response for {symbol}")
                 return None
 
             candles = []
@@ -115,8 +117,8 @@ class MarketDataV2:
                     "volume": v
                 })
 
-            if len(candles) == 0:
-                print(f"❌ No valid candles for {symbol}")
+            if len(candles) < 10:
+                print(f"❌ Not enough valid candles for {symbol}")
                 return None
 
             return candles
@@ -130,11 +132,11 @@ class MarketDataV2:
             return None
 
         except Exception as e:
-            print(f"❌ Fetch exception {symbol}: {e}")
+            print(f"❌ Fetch error {symbol}: {e}")
             return None
 
     # =========================
-    # 🧠 GET CANDLES (STABLE CACHE)
+    # 🧠 GET CANDLES (ULTIMATE SAFE CACHE)
     # =========================
     def get_candles(self, symbol=None):
 
@@ -145,13 +147,12 @@ class MarketDataV2:
         # ⚡ CACHE HIT
         # =========================
         if symbol in self.cache:
-
             last_time = self.last_update.get(symbol, 0)
 
             if now - last_time < self.ttl:
                 cached = self.cache.get(symbol)
 
-                if isinstance(cached, list) and len(cached) > 0:
+                if cached and isinstance(cached, list) and len(cached) > 0:
                     return cached
 
         # =========================
@@ -160,9 +161,9 @@ class MarketDataV2:
         candles = self.fetch_candles(symbol)
 
         # =========================
-        # 🟢 VALID UPDATE
+        # 🟢 VALID DATA
         # =========================
-        if candles:
+        if candles and isinstance(candles, list) and len(candles) > 0:
 
             self.cache[symbol] = candles
             self.last_update[symbol] = now
@@ -171,18 +172,18 @@ class MarketDataV2:
             return candles
 
         # =========================
-        # 🔁 FALLBACK
+        # 🔁 FALLBACK LAST GOOD DATA
         # =========================
         fallback = self.last_good.get(symbol)
 
-        if isinstance(fallback, list) and len(fallback) > 0:
-            print(f"⚠ Using fallback for {symbol}")
+        if fallback and isinstance(fallback, list) and len(fallback) > 0:
+            print(f"⚠ Using last valid data for {symbol}")
             return fallback
 
         # =========================
-        # ❌ FINAL SAFE OUTPUT (IMPORTANT FIX)
+        # ❌ FINAL SAFE RETURN (NO CRASH)
         # =========================
-        print(f"❌ NO DATA SAFE RETURN {symbol}")
+        print(f"❌ NO DATA SAFE MODE ACTIVATED for {symbol}")
 
         return self.cache.get(symbol, [])
 
@@ -190,6 +191,9 @@ class MarketDataV2:
     # 🔄 SWITCH SYMBOL
     # =========================
     def set_symbol(self, symbol):
+
+        if not symbol:
+            return
 
         symbol = self.normalize_symbol(symbol)
         self.symbol = symbol
