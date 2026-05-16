@@ -9,12 +9,12 @@ class TelegramLayer:
     def __init__(self, token, signal_engine, market=None, news=None, risk=None, time_engine=None):
 
         # =========================
-        # 🤖 TELEGRAM BOT CLIENT
+        # 🤖 BOT CLIENT
         # =========================
         self.bot = Bot(token)
 
         # =========================
-        # 🧠 CORE DEPENDENCIES
+        # 🧠 DEPENDENCIES
         # =========================
         self.signal_engine = signal_engine
         self.market = market
@@ -33,46 +33,50 @@ class TelegramLayer:
         )
 
         # =========================
-        # ⚙️ BOT STATE CONTROL
+        # ⚙️ STATE
         # =========================
         self.is_bot_active = True
         self.current_asset = "BTCUSDT"
         self.risk_mode = "AUTO"
 
         # =========================
-        # 🔍 WATCHLIST (FIXED + STABLE)
+        # 🔍 WATCHLIST (FINAL FIXED)
         # =========================
         self.watchlist_assets = [
             "BTCUSDT",
             "ETHUSDT",
-            "BNBUSDT",   # ✔ added
-            "PAXGUSDT",  # ✔ fixed gold standard
+            "BNBUSDT",
+            "PAXGUSDT",
             "SOLUSDT"
         ]
 
         # =========================
-        # 🔁 SCANNER CONTROL
+        # 🔁 SCANNER
         # =========================
-        self.scanner_active = False
         self.scanner = None
 
         # =========================
-        # 🧠 SAFETY FLAGS
+        # 🧠 SAFETY FLAG
         # =========================
         self.busy = False
 
     # =========================
-    # 🔗 LINK SCANNER ENGINE
+    # 🔗 LINK SCANNER
     # =========================
     def set_scanner(self, scanner):
 
         self.scanner = scanner
 
+        # sync watchlist -> scanner
         if hasattr(scanner, "assets"):
             scanner.assets = list(self.watchlist_assets)
 
+        # 🔥 CRITICAL FIX: ensure scanner uses correct asset set
+        if hasattr(scanner, "brain"):
+            scanner.brain = self.brain
+
     # =========================
-    # 🎛 TELEGRAM MENU (FIXED ASSETS)
+    # 🎛 MENU
     # =========================
     def menu(self):
 
@@ -110,11 +114,11 @@ class TelegramLayer:
         ])
 
     # =========================
-    # 📊 FORMAT OUTPUT (SAFE)
+    # 📊 FORMAT OUTPUT SAFE
     # =========================
     def format_result(self, signal_data):
 
-        if not signal_data or not isinstance(signal_data, dict):
+        if not isinstance(signal_data, dict):
             return "❌ No signal data"
 
         return f"""🤖 ULTRA V10 AI CORE
@@ -134,7 +138,7 @@ class TelegramLayer:
 """
 
     # =========================
-    # 📌 SET ACTIVE ASSET (STABLE)
+    # 📌 SET ASSET (FULL SYNC FIX)
     # =========================
     def set_asset(self, asset_symbol):
 
@@ -150,11 +154,22 @@ class TelegramLayer:
 
             self.current_asset = asset_symbol
 
-            # sync with signal engine safely
+            # =========================
+            # SYNC SIGNAL ENGINE
+            # =========================
             if self.signal_engine and hasattr(self.signal_engine, "set_asset"):
                 try:
                     self.signal_engine.set_asset(asset_symbol)
-                except Exception:
+                except:
+                    pass
+
+            # =========================
+            # SYNC SCANNER (IMPORTANT FIX)
+            # =========================
+            if self.scanner and hasattr(self.scanner, "assets"):
+                try:
+                    self.scanner.assets = list(self.watchlist_assets)
+                except:
                     pass
 
             return True
