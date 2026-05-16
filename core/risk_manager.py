@@ -1,4 +1,5 @@
 class RiskManager:
+
     def __init__(self):
         self.max_risk_score = 100
 
@@ -7,27 +8,56 @@ class RiskManager:
         Returns: ALLOW / REDUCE / BLOCK
         """
 
+        # =========================
+        # 🛡 SAFE INPUT HANDLING
+        # =========================
+        if not isinstance(news, dict):
+            news = {"risk": "NORMAL"}
+
+        if not isinstance(market_state, dict):
+            market_state = {"state": "UNKNOWN"}
+
+        if volatility is None:
+            volatility = 0
+
         score = 0
 
-        # 📰 News Risk
-        if news["risk"] == "HIGH":
+        # =========================
+        # 📰 NEWS RISK
+        # =========================
+        news_risk = news.get("risk", "NORMAL")
+
+        if news_risk == "HIGH":
             score += 50
-        elif news["risk"] == "MEDIUM":
+        elif news_risk == "MEDIUM":
             score += 25
 
-        # 📊 Market State Risk
-        if market_state["state"] == "HIGH_RISK":
+        # =========================
+        # 📊 MARKET STATE RISK
+        # =========================
+        market_state_value = market_state.get("state", "UNKNOWN")
+
+        if market_state_value == "HIGH_RISK":
             score += 50
-        elif market_state["state"] == "CAUTION":
+        elif market_state_value == "CAUTION":
             score += 25
 
-        # 📈 Volatility Risk
+        # =========================
+        # 📈 VOLATILITY RISK
+        # =========================
+        try:
+            volatility = float(volatility)
+        except:
+            volatility = 0
+
         if volatility > 70:
             score += 30
         elif volatility > 40:
             score += 15
 
-        # 🧠 Decision Logic
+        # =========================
+        # 🧠 DECISION LOGIC
+        # =========================
         if score >= 70:
             return {
                 "decision": "BLOCK",
