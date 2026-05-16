@@ -6,7 +6,7 @@ class ScannerEngine:
     def __init__(self, brain, assets=None):
 
         # =========================
-        # 🧠 BRAIN CORE (Decision Engine)
+        # 🧠 BRAIN CORE
         # =========================
         self.brain = brain
 
@@ -28,7 +28,7 @@ class ScannerEngine:
         self.scan_interval = 60
 
         # =========================
-        # 🤖 TELEGRAM INTEGRATION
+        # 🤖 TELEGRAM
         # =========================
         self.telegram = None
         self.last_sent_asset = None
@@ -40,7 +40,7 @@ class ScannerEngine:
         self.telegram = telegram
 
     # =========================
-    # 🔍 SCAN SINGLE ASSET (STABILIZED)
+    # 🔍 SCAN SINGLE ASSET (SAFE)
     # =========================
     def scan_asset(self, asset):
 
@@ -49,18 +49,19 @@ class ScannerEngine:
             if not asset:
                 return None
 
-            # 🧠 BRAIN ANALYSIS
             result = self.brain.analyze(asset)
 
-            if not result or not isinstance(result, dict):
+            if not isinstance(result, dict):
                 return None
 
             signal = result.get("signal")
 
-            if not signal or not isinstance(signal, dict):
+            if not isinstance(signal, dict):
                 return None
 
+            # =========================
             # ❌ FILTER BAD SIGNALS
+            # =========================
             if signal.get("signal") in [
                 "NO TRADE",
                 "ERROR",
@@ -88,7 +89,7 @@ class ScannerEngine:
             return None
 
     # =========================
-    # 🔥 FIND BEST OPPORTUNITY
+    # 🔥 BEST SIGNAL
     # =========================
     def find_best(self):
 
@@ -111,7 +112,7 @@ class ScannerEngine:
         return best
 
     # =========================
-    # 🔁 MAIN LOOP
+    # 🔁 MAIN LOOP (STABLE)
     # =========================
     def start(self, callback=None):
 
@@ -126,30 +127,45 @@ class ScannerEngine:
                 best = self.find_best()
 
                 # =========================
-                # 🎯 HIGH QUALITY FILTER
+                # VALIDATION SAFE
                 # =========================
-                if best and best.get("confidence", 0) >= 75:
+                if not best:
+                    time.sleep(self.scan_interval)
+                    continue
 
-                    # منع التكرار
-                    if self.last_sent_asset == best.get("asset"):
-                        time.sleep(self.scan_interval)
-                        continue
+                confidence = best.get("confidence", 0)
+                asset = best.get("asset")
 
-                    self.last_sent_asset = best.get("asset")
+                # =========================
+                # QUALITY FILTER
+                # =========================
+                if confidence < 75:
+                    time.sleep(self.scan_interval)
+                    continue
 
-                    print("🔥 BEST SIGNAL:", best)
+                # =========================
+                # DUPLICATE PREVENTION (FIXED)
+                # =========================
+                if asset == self.last_sent_asset:
+                    time.sleep(self.scan_interval)
+                    continue
 
-                    # =========================
-                    # 🤖 TELEGRAM SEND
-                    # =========================
-                    if self.telegram:
+                self.last_sent_asset = asset
 
-                        try:
-                            self.telegram.send_message(
-                                "<CHAT_ID>",
-                                f"""🔍 ULTRA SCANNER
+                print("🔥 BEST SIGNAL:", best)
 
-💰 ASSET: {best.get('asset')}
+                # =========================
+                # TELEGRAM SAFE SEND
+                # =========================
+                if self.telegram:
+
+                    try:
+                        # FIX: telepot uses sendMessage (not send_message)
+                        self.telegram.sendMessage(
+                            "<CHAT_ID>",
+                            f"""🔍 ULTRA SCANNER
+
+💰 ASSET: {asset}
 📊 SIGNAL: {best.get('signal')}
 🧠 DECISION: {best.get('decision')}
 
@@ -157,25 +173,25 @@ class ScannerEngine:
 🛑 SL: {best.get('sl')}
 💰 TP: {best.get('tp')}
 
-💎 CONFIDENCE: {best.get('confidence')}%
+💎 CONFIDENCE: {confidence}%
 🏆 QUALITY: {best.get('quality')}
 
 📍 REASON:
 {best.get('reason')}
 """
-                            )
+                        )
 
-                        except Exception as e:
-                            print("❌ Telegram send error:", e)
+                    except Exception as e:
+                        print("❌ Telegram send error:", e)
 
-                    # =========================
-                    # 🔗 CALLBACK
-                    # =========================
-                    if callback:
-                        try:
-                            callback(best)
-                        except Exception as e:
-                            print("❌ Callback error:", e)
+                # =========================
+                # CALLBACK SAFE
+                # =========================
+                if callback:
+                    try:
+                        callback(best)
+                    except Exception as e:
+                        print("❌ Callback error:", e)
 
             except Exception as e:
                 print("❌ Scanner loop error:", e)
@@ -183,7 +199,7 @@ class ScannerEngine:
             time.sleep(self.scan_interval)
 
     # =========================
-    # ⛔ STOP SCANNER
+    # ⛔ STOP
     # =========================
     def stop(self):
         self.active = False
