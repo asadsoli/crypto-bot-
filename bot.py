@@ -3,6 +3,8 @@ import traceback
 import threading
 import time
 
+import telepot   # 🔥 FIX 1: كان ناقص وهذا سبب الكراش
+
 from flask import Flask, request
 
 from core.time_engine import TimeEngine
@@ -37,7 +39,7 @@ brain = BrainCore(
     risk=risk_manager
 )
 
-# 🔥 FIX 1: ربط مهم جداً بين SignalEngine و BrainCore
+# 🔥 FIX: ربط Brain مع SignalEngine
 signal_engine.connect_brain(brain)
 
 
@@ -310,7 +312,6 @@ def telegram_webhook():
 
             telegram_layer.selected_asset = asset
 
-            # 🔥 FIX 2: تحديث السوق قبل التحليل
             try:
                 signal_engine.set_asset(asset)
             except:
@@ -332,7 +333,6 @@ def telegram_webhook():
                 current_time = time_engine.get_current_time()
                 session = time_engine.get_session()
 
-                # 🔥 FIX 3: حماية وتحسين
                 try:
                     signal_engine.set_asset(asset)
                     result = brain.analyze(asset)
@@ -394,4 +394,4 @@ if __name__ == "__main__":
         port=int(os.environ.get("PORT", 10000)),
         debug=False,
         use_reloader=False
-            )
+        )
