@@ -16,20 +16,25 @@ class BrainCore:
             "last_bias": None
         }
 
-    # =========================
-    # 🧠 CONTEXT (UNCHANGED SAFE)
-    # =========================
+        # =========================
+        # 🧠 SAFETY FLAGS (STABILITY LAYER)
+        # =========================
+        self.last_asset = None
+        self.busy = False
 
+    # =========================
+    # 🧠 CONTEXT (SAFE)
+    # =========================
     def collect_context(self, asset):
 
         try:
             market_state = self.market.get_market_state() if self.market else {"state": "UNKNOWN"}
-        except:
+        except Exception:
             market_state = {"state": "UNKNOWN"}
 
         try:
             news = self.news.analyze_news() if self.news else {"risk": "NORMAL", "impact_score": 0}
-        except:
+        except Exception:
             news = {"risk": "NORMAL", "impact_score": 0}
 
         try:
@@ -38,7 +43,7 @@ class BrainCore:
                 news=news,
                 volatility=0
             ) if self.risk else {"decision": "ALLOW", "score": 0}
-        except:
+        except Exception:
             risk = {"decision": "ALLOW", "score": 0}
 
         return market_state, news, risk
@@ -46,7 +51,6 @@ class BrainCore:
     # =========================
     # 🌍 MARKET REGIME DETECTOR
     # =========================
-
     def detect_regime(self, market_state, news):
 
         if news.get("risk") == "HIGH":
@@ -63,13 +67,19 @@ class BrainCore:
     # =========================
     # 💣 FAKE BREAKOUT FILTER
     # =========================
+    def fake_breakout_filter(self, signal, score):
 
-    def fake_breakout_filter(self, signal, confidence):
-
-        if signal.get("type") == "BREAKOUT" and confidence < 85:
+        # STABILITY FIX: protect None signal
+        if not signal or not isinstance(signal, dict):
             return True
 
-        if "weak" in signal.get("quality", "").lower():
+        signal_type = signal.get("type", "")
+        quality = signal.get("quality", "")
+
+        if signal_type == "BREAKOUT" and score < 85:
+            return True
+
+        if "weak" in str(quality).lower():
             return True
 
         return False
@@ -77,112 +87,138 @@ class BrainCore:
     # =========================
     # 📊 TRADE SCORING ENGINE
     # =========================
-
     def score_trade(self, signal, regime):
+
+        if not signal or not isinstance(signal, dict):
+            return 0
 
         base = signal.get("confidence", 0)
 
-        # regime boost
+        # regime boost / penalty
         if regime == "TRENDING":
             base += 10
-
-        if regime == "RANGE":
+        elif regime == "RANGE":
             base -= 10
 
-        # memory learning
-        if self.memory["wins"] > self.memory["losses"]:
-            base += 5
+        # memory learning (safe)
+        try:
+            if self.memory.get("wins", 0) > self.memory.get("losses", 0):
+                base += 5
+        except Exception:
+            pass
 
-        return min(max(base, 0), 100)
+        return max(0, min(base, 100))
 
     # =========================
-    # 🧠 MAIN BRAIN V17
+    # 🧠 MAIN BRAIN (STABILIZED)
     # =========================
-
     def analyze(self, asset):
 
-        market_state, news, risk = self.collect_context(asset)
+        try:
 
-        # =========================
-        # HARD BLOCKS
-        # =========================
+            # =========================
+            # 🟡 PREVENT CONCURRENT RUNS
+            # =========================
+            if self.busy:
+                return {
+                    "decision": "WAIT",
+                    "signal": {"signal": "BUSY", "confidence": 0},
+                    "reason": "BrainCore already processing"
+                }
 
-        if risk.get("decision") == "BLOCK":
+            self.busy = True
+
+            # =========================
+            # CONTEXT
+            # =========================
+            market_state, news, risk = self.collect_context(asset)
+
+            # =========================
+            # HARD BLOCKS
+            # =========================
+            if risk.get("decision") == "BLOCK":
+                return {
+                    "decision": "NO TRADE",
+                    "signal": {"signal": "BLOCKED", "confidence": 0},
+                    "reason": "Risk block"
+                }
+
+            # =========================
+            # SIGNAL ENGINE
+            # =========================
+            try:
+                signal = self.signal_engine.analyze_asset(asset)
+            except Exception:
+                return {
+                    "decision": "ERROR",
+                    "signal": {"signal": "ERROR", "confidence": 0},
+                    "reason": "Signal failure"
+                }
+
+            # =========================
+            # REGIME
+            # =========================
+            regime = self.detect_regime(market_state, news)
+
+            # =========================
+            # SCORE
+            # =========================
+            score = self.score_trade(signal, regime)
+
+            # =========================
+            # FAKE BREAKOUT FILTER
+            # =========================
+            if self.fake_breakout_filter(signal, score):
+                return {
+                    "decision": "WAIT",
+                    "signal": signal,
+                    "score": score,
+                    "regime": regime,
+                    "reason": "Fake breakout detected"
+                }
+
+            # =========================
+            # FINAL DECISION ENGINE
+            # =========================
+            if score < 70:
+                return {
+                    "decision": "WAIT",
+                    "signal": signal,
+                    "score": score,
+                    "regime": regime,
+                    "reason": "Low quality setup"
+                }
+
+            if 70 <= score < 90:
+                return {
+                    "decision": signal.get("signal", "WAIT"),
+                    "signal": signal,
+                    "score": score,
+                    "regime": regime,
+                    "reason": "Valid setup"
+                }
+
+            # =========================
+            # HIGH PROBABILITY SETUP
+            # =========================
             return {
-                "decision": "NO TRADE",
-                "signal": {"signal": "BLOCKED", "confidence": 0},
-                "reason": "Risk block"
+                "decision": signal.get("signal", "BUY/SELL"),
+                "signal": signal,
+                "score": score,
+                "regime": regime,
+                "prediction": "HIGH PROBABILITY MOVE",
+                "reason": "Institutional grade setup"
             }
 
-        # =========================
-        # SIGNAL ENGINE
-        # =========================
-
-        try:
-            signal = self.signal_engine.analyze_asset(asset)
-        except:
+        except Exception as e:
             return {
                 "decision": "ERROR",
                 "signal": {"signal": "ERROR", "confidence": 0},
-                "reason": "Signal failure"
+                "reason": str(e)
             }
 
-        # =========================
-        # REGIME
-        # =========================
-
-        regime = self.detect_regime(market_state, news)
-
-        # =========================
-        # SCORE
-        # =========================
-
-        score = self.score_trade(signal, regime)
-
-        # =========================
-        # FAKE BREAKOUT FILTER
-        # =========================
-
-        if self.fake_breakout_filter(signal, score):
-            return {
-                "decision": "WAIT",
-                "signal": signal,
-                "score": score,
-                "regime": regime,
-                "reason": "Fake breakout detected"
-            }
-
-        # =========================
-        # FINAL DECISION ENGINE
-        # =========================
-
-        if score < 70:
-            return {
-                "decision": "WAIT",
-                "signal": signal,
-                "score": score,
-                "regime": regime,
-                "reason": "Low quality setup"
-            }
-
-        if 70 <= score < 90:
-            return {
-                "decision": signal.get("signal", "WAIT"),
-                "signal": signal,
-                "score": score,
-                "regime": regime,
-                "reason": "Valid setup"
-            }
-
-        # =========================
-        # HIGH PROBABILITY SETUP
-        # =========================
-
-        return {
-            "decision": signal.get("signal", "BUY/SELL"),
-            "signal": signal,
-            "score": score,
-            "regime": regime,
-            "prediction": "HIGH PROBABILITY MOVE",
-            "reason": "Institutional grade setup"
-        }
+        finally:
+            # =========================
+            # ALWAYS RELEASE LOCK
+            # =========================
+            self.busy = False
