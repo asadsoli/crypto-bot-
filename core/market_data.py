@@ -27,19 +27,41 @@ class MarketDataV2:
         self.timeout = 10
         self.base_url = "https://api.binance.com/api/v3/klines"
 
+        # =========================
+        # 🟡 SYMBOL MAPPING
+        # =========================
+        self.symbol_map = {
+            "XAUUSD": "PAXGUSDT",
+            "GOLD": "PAXGUSDT"
+        }
+
     # =========================
     # 🔧 SAFE CONVERTER
     # =========================
     def safe_float(self, x):
         try:
             return float(x)
-        except:
+        except Exception:
             return None
+
+    # =========================
+    # 🧠 NORMALIZE SYMBOL
+    # =========================
+    def normalize_symbol(self, symbol):
+
+        if not symbol:
+            return self.symbol
+
+        symbol = str(symbol).upper().strip()
+
+        return self.symbol_map.get(symbol, symbol)
 
     # =========================
     # 📡 FETCH DATA
     # =========================
     def fetch_candles(self, symbol):
+
+        symbol = self.normalize_symbol(symbol)
 
         params = {
             "symbol": symbol,
@@ -66,12 +88,19 @@ class MarketDataV2:
             # =========================
             try:
                 data = res.json()
-            except:
+            except Exception:
                 print(f"❌ JSON decode error for {symbol}")
                 return None
 
+            # =========================
+            # ❌ INVALID RESPONSE
+            # =========================
             if not isinstance(data, list):
                 print(f"❌ Invalid response type for {symbol}")
+                return None
+
+            if len(data) == 0:
+                print(f"❌ Empty candles response for {symbol}")
                 return None
 
             candles = []
@@ -80,6 +109,9 @@ class MarketDataV2:
             # 📊 PARSE CANDLES
             # =========================
             for c in data:
+
+                if not isinstance(c, list):
+                    continue
 
                 if len(c) < 6:
                     continue
@@ -101,7 +133,22 @@ class MarketDataV2:
                     "volume": v
                 })
 
-            return candles if len(candles) > 0 else None
+            # =========================
+            # ❌ NO VALID CANDLES
+            # =========================
+            if len(candles) == 0:
+                print(f"❌ No valid candles parsed for {symbol}")
+                return None
+
+            return candles
+
+        except requests.exceptions.Timeout:
+            print(f"❌ Timeout while fetching {symbol}")
+            return None
+
+        except requests.exceptions.ConnectionError:
+            print(f"❌ Connection error for {symbol}")
+            return None
 
         except Exception as e:
             print(f"❌ Fetch exception {symbol}: {e}")
@@ -112,17 +159,22 @@ class MarketDataV2:
     # =========================
     def get_candles(self, symbol=None):
 
-        symbol = symbol or self.symbol
+        symbol = self.normalize_symbol(symbol or self.symbol)
         now = time.time()
 
         # =========================
         # ⚡ CACHE HIT
         # =========================
         if symbol in self.cache:
+
             last_time = self.last_update.get(symbol, 0)
 
             if now - last_time < self.ttl:
-                return self.cache[symbol]
+
+                cached = self.cache.get(symbol)
+
+                if cached and isinstance(cached, list):
+                    return cached
 
         # =========================
         # 📡 FETCH NEW DATA
@@ -132,10 +184,12 @@ class MarketDataV2:
         # =========================
         # 🟢 VALID DATA
         # =========================
-        if candles:
+        if candles and isinstance(candles, list):
+
             self.cache[symbol] = candles
             self.last_update[symbol] = now
             self.last_good[symbol] = candles
+
             return candles
 
         # =========================
@@ -143,8 +197,14 @@ class MarketDataV2:
         # =========================
         fallback = self.last_good.get(symbol)
 
-        if fallback:
+        if fallback and isinstance(fallback, list):
+            print(f"⚠ Using fallback candles for {symbol}")
             return fallback
+
+        # =========================
+        # ❌ FINAL FALLBACK
+        # =========================
+        print(f"❌ NO DATA for {symbol}")
 
         return []
 
@@ -152,4 +212,7 @@ class MarketDataV2:
     # 🔄 SWITCH SYMBOL
     # =========================
     def set_symbol(self, symbol):
+
+        symbol = self.normalize_symbol(symbol)
+
         self.symbol = symbol
