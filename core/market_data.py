@@ -17,33 +17,45 @@ class MarketDataV2:
         self.last_good = {}
 
         # =========================
-        # ⏱ CACHE SETTINGS
+        # ⏱ CACHE TIMEOUT
         # =========================
-        self.ttl = 10  # seconds
+        self.ttl = 10
 
         # =========================
-        # 🌐 API SETTINGS
+        # 🌐 API URLS (FAILOVER)
         # =========================
-        self.base_url = "https://api.binance.com/api/v3/klines"
-        self.timeout = 10
+        self.urls = [
+            "https://api.binance.com/api/v3/klines",
+            "https://api1.binance.com/api/v3/klines",
+            "https://api2.binance.com/api/v3/klines",
+            "https://api3.binance.com/api/v3/klines"
+        ]
+
+        self.timeout = 15
 
         # =========================
-        # 🟡 SYMBOL MAPPING (FINAL FIX)
+        # 🌍 HEADERS (IMPORTANT)
+        # =========================
+        self.headers = {
+            "User-Agent": "Mozilla/5.0"
+        }
+
+        # =========================
+        # 🟡 SYMBOL MAPPING
         # =========================
         self.symbol_map = {
             "XAUUSD": "PAXGUSDT",
             "GOLD": "PAXGUSDT",
-            "PAXG": "PAXGUSDT",
-            "BTC": "BTCUSDT",
-            "ETH": "ETHUSDT"
+            "PAXG": "PAXGUSDT"
         }
 
     # =========================
     # 🔧 SAFE FLOAT
     # =========================
-    def safe_float(self, x):
+    def safe_float(self, value):
+
         try:
-            return float(x)
+            return float(value)
         except:
             return None
 
@@ -69,101 +81,157 @@ class MarketDataV2:
         params = {
             "symbol": symbol,
             "interval": self.interval,
-            "limit": 100   # 🔥 improved depth
+            "limit": 50
         }
 
-        try:
-            res = requests.get(
-                self.base_url,
-                params=params,
-                timeout=self.timeout
-            )
-
-            if res.status_code != 200:
-                print(f"❌ HTTP {res.status_code} for {symbol}")
-                return None
+        # =========================
+        # 🔁 TRY MULTIPLE URLS
+        # =========================
+        for url in self.urls:
 
             try:
-                data = res.json()
-            except:
-                print(f"❌ JSON decode error for {symbol}")
-                return None
 
-            if not isinstance(data, list) or len(data) == 0:
-                print(f"❌ Empty response for {symbol}")
-                return None
+                print(f"📡 Fetching {symbol} from {url}")
 
-            candles = []
+                response = requests.get(
+                    url,
+                    params=params,
+                    headers=self.headers,
+                    timeout=self.timeout
+                )
 
-            for c in data:
+                print(f"📊 STATUS {symbol}: {response.status_code}")
 
-                if not isinstance(c, list) or len(c) < 6:
+                # =========================
+                # ❌ BAD STATUS
+                # =========================
+                if response.status_code != 200:
+
+                    print(f"❌ HTTP ERROR {response.status_code}")
+
+                    try:
+                        print(response.text)
+                    except:
+                        pass
+
                     continue
 
-                o = self.safe_float(c[1])
-                h = self.safe_float(c[2])
-                l = self.safe_float(c[3])
-                cl = self.safe_float(c[4])
-                v = self.safe_float(c[5])
-
-                if None in (o, h, l, cl, v):
+                # =========================
+                # 📦 JSON
+                # =========================
+                try:
+                    data = response.json()
+                except Exception as e:
+                    print("❌ JSON ERROR:", e)
                     continue
 
-                candles.append({
-                    "open": o,
-                    "high": h,
-                    "low": l,
-                    "close": cl,
-                    "volume": v
-                })
+                # =========================
+                # ❌ INVALID DATA
+                # =========================
+                if not isinstance(data, list):
 
-            if len(candles) < 10:
-                print(f"❌ Not enough valid candles for {symbol}")
-                return None
+                    print("❌ INVALID RESPONSE TYPE")
+                    print(data)
 
-            return candles
+                    continue
 
-        except requests.exceptions.Timeout:
-            print(f"❌ Timeout {symbol}")
-            return None
+                if len(data) == 0:
 
-        except requests.exceptions.ConnectionError:
-            print(f"❌ Connection error {symbol}")
-            return None
+                    print("❌ EMPTY DATA")
 
-        except Exception as e:
-            print(f"❌ Fetch error {symbol}: {e}")
-            return None
+                    continue
+
+                candles = []
+
+                # =========================
+                # 📊 PARSE
+                # =========================
+                for candle in data:
+
+                    try:
+
+                        if len(candle) < 6:
+                            continue
+
+                        parsed = {
+                            "open": self.safe_float(candle[1]),
+                            "high": self.safe_float(candle[2]),
+                            "low": self.safe_float(candle[3]),
+                            "close": self.safe_float(candle[4]),
+                            "volume": self.safe_float(candle[5])
+                        }
+
+                        if None in parsed.values():
+                            continue
+
+                        candles.append(parsed)
+
+                    except Exception as e:
+                        print("❌ PARSE ERROR:", e)
+
+                # =========================
+                # ✅ SUCCESS
+                # =========================
+                if len(candles) > 0:
+
+                    print(f"✅ SUCCESS {symbol} candles={len(candles)}")
+
+                    return candles
+
+            except requests.exceptions.Timeout:
+
+                print(f"❌ TIMEOUT {symbol}")
+
+            except requests.exceptions.ConnectionError:
+
+                print(f"❌ CONNECTION ERROR {symbol}")
+
+            except Exception as e:
+
+                print(f"❌ FETCH EXCEPTION {symbol}: {e}")
+
+        # =========================
+        # ❌ FAILED ALL URLS
+        # =========================
+        print(f"❌ ALL BINANCE ENDPOINTS FAILED {symbol}")
+
+        return None
 
     # =========================
-    # 🧠 GET CANDLES (ULTIMATE SAFE CACHE)
+    # 🧠 GET CANDLES
     # =========================
     def get_candles(self, symbol=None):
 
         symbol = self.normalize_symbol(symbol or self.symbol)
+
         now = time.time()
 
         # =========================
         # ⚡ CACHE HIT
         # =========================
         if symbol in self.cache:
+
             last_time = self.last_update.get(symbol, 0)
 
             if now - last_time < self.ttl:
+
                 cached = self.cache.get(symbol)
 
-                if cached and isinstance(cached, list) and len(cached) > 0:
+                if cached and isinstance(cached, list):
+
+                    print(f"⚡ CACHE HIT {symbol}")
+
                     return cached
 
         # =========================
-        # 📡 FETCH NEW DATA
+        # 📡 FETCH NEW
         # =========================
         candles = self.fetch_candles(symbol)
 
         # =========================
-        # 🟢 VALID DATA
+        # ✅ VALID DATA
         # =========================
-        if candles and isinstance(candles, list) and len(candles) > 0:
+        if candles and isinstance(candles, list):
 
             self.cache[symbol] = candles
             self.last_update[symbol] = now
@@ -172,28 +240,30 @@ class MarketDataV2:
             return candles
 
         # =========================
-        # 🔁 FALLBACK LAST GOOD DATA
+        # 🔁 FALLBACK
         # =========================
         fallback = self.last_good.get(symbol)
 
-        if fallback and isinstance(fallback, list) and len(fallback) > 0:
-            print(f"⚠ Using last valid data for {symbol}")
+        if fallback:
+
+            print(f"⚠ USING FALLBACK {symbol}")
+
             return fallback
 
         # =========================
-        # ❌ FINAL SAFE RETURN (NO CRASH)
+        # ❌ FINAL SAFE RETURN
         # =========================
-        print(f"❌ NO DATA SAFE MODE ACTIVATED for {symbol}")
+        print(f"❌ NO MARKET DATA {symbol}")
 
-        return self.cache.get(symbol, [])
+        return []
 
     # =========================
-    # 🔄 SWITCH SYMBOL
+    # 🔄 SET SYMBOL
     # =========================
     def set_symbol(self, symbol):
 
-        if not symbol:
-            return
-
         symbol = self.normalize_symbol(symbol)
+
         self.symbol = symbol
+
+        print(f"🔄 ACTIVE SYMBOL = {self.symbol}")
