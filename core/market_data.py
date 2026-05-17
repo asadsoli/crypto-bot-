@@ -16,40 +16,23 @@ class MarketDataV2:
         self.last_update = {}
 
         # =========================
-        # ⏱ CACHE TTL
+        # ⏱ TTL
         # =========================
-        self.ttl = 10
+        self.ttl = 5
 
         # =========================
-        # 🌐 API URLs (MULTI BACKUP)
+        # 🌐 BINANCE
         # =========================
-        self.urls = [
-            "https://api.binance.com/api/v3/klines",
-            "https://api1.binance.com/api/v3/klines",
-            "https://api2.binance.com/api/v3/klines",
-            "https://api3.binance.com/api/v3/klines"
-        ]
-
-        self.timeout = 15
+        self.base_url = "https://api.binance.com/api/v3/klines"
 
         # =========================
-        # 🥇 GOLD FIX
+        # 🟡 SYMBOL MAP
         # =========================
         self.symbol_map = {
-            "XAUUSD": "PAXGUSDT",
             "GOLD": "PAXGUSDT",
+            "XAUUSD": "PAXGUSDT",
             "PAXG": "PAXGUSDT"
         }
-
-    # =========================
-    # 🔧 SAFE FLOAT
-    # =========================
-    def safe_float(self, value):
-
-        try:
-            return float(value)
-        except:
-            return None
 
     # =========================
     # 🔄 NORMALIZE
@@ -73,88 +56,60 @@ class MarketDataV2:
     # =========================
     # 📡 FETCH
     # =========================
-    def fetch_candles(self, symbol):
+    def fetch_candles(self, symbol=None):
 
-        symbol = self.normalize_symbol(symbol)
+        symbol = self.normalize_symbol(symbol or self.symbol)
 
-        params = {
-            "symbol": symbol,
-            "interval": self.interval,
-            "limit": 100
-        }
+        try:
 
-        headers = {
-            "User-Agent": "Mozilla/5.0"
-        }
+            url = (
+                f"{self.base_url}"
+                f"?symbol={symbol}"
+                f"&interval={self.interval}"
+                f"&limit=100"
+            )
 
-        # =========================
-        # 🔁 TRY ALL BINANCE SERVERS
-        # =========================
-        for url in self.urls:
+            response = requests.get(url, timeout=10)
 
-            try:
+            if response.status_code != 200:
+                print(f"❌ Binance HTTP {response.status_code}")
+                return []
 
-                print(f"📡 Fetching {symbol} from {url}")
+            data = response.json()
 
-                response = requests.get(
-                    url,
-                    params=params,
-                    headers=headers,
-                    timeout=self.timeout
-                )
+            if not isinstance(data, list):
+                print("❌ Invalid Binance data")
+                return []
 
-                print(f"📊 STATUS: {response.status_code}")
+            candles = []
 
-                if response.status_code != 200:
-                    continue
+            for c in data:
 
-                data = response.json()
+                try:
 
-                if not isinstance(data, list):
-                    print("❌ Invalid Binance response")
-                    continue
+                    candles.append({
+                        "open": float(c[1]),
+                        "high": float(c[2]),
+                        "low": float(c[3]),
+                        "close": float(c[4]),
+                        "volume": float(c[5])
+                    })
 
-                candles = []
+                except Exception as e:
+                    print("CANDLE PARSE ERROR:", e)
 
-                for c in data:
+            print(f"✅ {symbol} candles loaded: {len(candles)}")
 
-                    try:
+            return candles
 
-                        candles.append({
-                            "open": self.safe_float(c[1]),
-                            "high": self.safe_float(c[2]),
-                            "low": self.safe_float(c[3]),
-                            "close": self.safe_float(c[4]),
-                            "volume": self.safe_float(c[5])
-                        })
+        except Exception as e:
 
-                    except:
-                        continue
+            print("❌ FETCH ERROR:", e)
 
-                # =========================
-                # ✅ SUCCESS
-                # =========================
-                if len(candles) > 20:
-
-                    print(f"✅ Loaded {len(candles)} candles for {symbol}")
-
-                    return candles
-
-            except Exception as e:
-
-                print(f"❌ API ERROR {url}: {e}")
-
-                continue
-
-        # =========================
-        # ❌ FAILED
-        # =========================
-        print(f"❌ ALL BINANCE SERVERS FAILED FOR {symbol}")
-
-        return []
+            return []
 
     # =========================
-    # 📊 GET CANDLES
+    # 🧠 GET CANDLES
     # =========================
     def get_candles(self, symbol=None):
 
@@ -167,13 +122,14 @@ class MarketDataV2:
         # =========================
         if symbol in self.cache:
 
-            age = now - self.last_update.get(symbol, 0)
+            last = self.last_update.get(symbol, 0)
 
-            if age < self.ttl:
+            if now - last < self.ttl:
 
                 cached = self.cache.get(symbol)
 
                 if cached:
+                    print(f"⚡ CACHE HIT {symbol}")
                     return cached
 
         # =========================
@@ -192,17 +148,14 @@ class MarketDataV2:
             return candles
 
         # =========================
-        # ⚠ FALLBACK CACHE
+        # 🔁 FALLBACK
         # =========================
         fallback = self.cache.get(symbol)
 
         if fallback:
-
-            print(f"⚠ Using cached fallback for {symbol}")
-
+            print(f"⚠ USING FALLBACK {symbol}")
             return fallback
 
-        # =========================
-        # ❌ FINAL
-        # =========================
+        print(f"❌ NO DATA {symbol}")
+
         return []
