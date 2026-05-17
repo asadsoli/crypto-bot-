@@ -4,7 +4,7 @@ import time
 
 class MarketDataV2:
 
-    def __init__(self, symbol="BTCUSDT", interval="1m"):
+    def __init__(self, symbol="BTCUSDT", interval="5m"):
 
         # =========================
         # 🪙 SYMBOL
@@ -26,7 +26,8 @@ class MarketDataV2:
         # =========================
         # 🌐 BINANCE API
         # =========================
-        self.base_url = "https://api.binance.com/api/v3/klines"
+        self.kline_url = "https://api.binance.com/api/v3/klines"
+        self.price_url = "https://api.binance.com/api/v3/ticker/price"
 
         # =========================
         # 🔄 SYMBOL MAP
@@ -56,9 +57,7 @@ class MarketDataV2:
 
         try:
 
-            symbol = self.normalize_symbol(symbol)
-
-            self.symbol = symbol
+            self.symbol = self.normalize_symbol(symbol)
 
             print(f"✅ SYMBOL SET: {self.symbol}")
 
@@ -71,6 +70,70 @@ class MarketDataV2:
             return False
 
     # =========================
+    # 💰 GET LIVE PRICE
+    # =========================
+    def get_price(self, symbol=None):
+
+        try:
+
+            symbol = self.normalize_symbol(symbol or self.symbol)
+
+            response = requests.get(
+                self.price_url,
+                params={"symbol": symbol},
+                timeout=5
+            )
+
+            data = response.json()
+
+            price = float(data["price"])
+
+            print(f"💰 LIVE PRICE {symbol}: {price}")
+
+            return price
+
+        except Exception as e:
+
+            print("❌ GET PRICE ERROR:", e)
+
+            return None
+
+    # =========================
+    # 📊 GET RAW KLINES
+    # =========================
+    def get_klines(self, symbol=None):
+
+        try:
+
+            symbol = self.normalize_symbol(symbol or self.symbol)
+
+            response = requests.get(
+                self.kline_url,
+                params={
+                    "symbol": symbol,
+                    "interval": self.interval,
+                    "limit": 100
+                },
+                timeout=10
+            )
+
+            data = response.json()
+
+            close = [float(x[4]) for x in data]
+            high = [float(x[2]) for x in data]
+            low = [float(x[3]) for x in data]
+
+            print(f"✅ KLINES LOADED: {symbol} ({len(close)})")
+
+            return close, high, low
+
+        except Exception as e:
+
+            print("❌ GET KLINES ERROR:", e)
+
+            return [], [], []
+
+    # =========================
     # 📡 FETCH CANDLES
     # =========================
     def fetch_candles(self, symbol=None):
@@ -79,97 +142,44 @@ class MarketDataV2:
 
         try:
 
-            url = (
-                f"{self.base_url}"
-                f"?symbol={symbol}"
-                f"&interval={self.interval}"
-                f"&limit=100"
-            )
-
-            print(f"📡 FETCHING: {symbol}")
-
-            headers = {
-                "User-Agent": "Mozilla/5.0"
-            }
-
             response = requests.get(
-                url,
-                headers=headers,
-                timeout=15
+                self.kline_url,
+                params={
+                    "symbol": symbol,
+                    "interval": self.interval,
+                    "limit": 100
+                },
+                timeout=10
             )
 
-            # =========================
-            # ❌ HTTP ERROR
-            # =========================
             if response.status_code != 200:
 
                 print(f"❌ BINANCE HTTP ERROR: {response.status_code}")
-                print(response.text)
 
                 return []
 
-            # =========================
-            # 📦 JSON
-            # =========================
             data = response.json()
-
-            if not isinstance(data, list):
-
-                print("❌ INVALID BINANCE RESPONSE")
-                print(data)
-
-                return []
-
-            if len(data) == 0:
-
-                print("❌ EMPTY BINANCE DATA")
-
-                return []
 
             candles = []
 
             for c in data:
 
-                try:
+                candles.append({
 
-                    candles.append({
+                    "timestamp": int(c[0]),
 
-                        "timestamp": int(c[0]),
+                    "open": float(c[1]),
+                    "high": float(c[2]),
+                    "low": float(c[3]),
+                    "close": float(c[4]),
 
-                        "open": float(c[1]),
-                        "high": float(c[2]),
-                        "low": float(c[3]),
-                        "close": float(c[4]),
+                    "volume": float(c[5])
 
-                        "volume": float(c[5])
+                })
 
-                    })
-
-                except Exception as parse_error:
-
-                    print("❌ CANDLE PARSE ERROR:", parse_error)
-
-            # =========================
-            # ✅ SUCCESS
-            # =========================
-            print(f"✅ {symbol} LOADED: {len(candles)} candles")
-
-            if candles:
-                print(f"💰 LAST PRICE: {candles[-1]['close']}")
+            print(f"✅ {symbol} CANDLES: {len(candles)}")
 
             return candles
-
-        except requests.exceptions.Timeout:
-
-            print("❌ REQUEST TIMEOUT")
-
-            return []
-
-        except requests.exceptions.ConnectionError:
-
-            print("❌ CONNECTION ERROR")
-
-            return []
 
         except Exception as e:
 
@@ -187,7 +197,7 @@ class MarketDataV2:
         now = time.time()
 
         # =========================
-        # ⚡ CACHE HIT
+        # ⚡ CACHE
         # =========================
         if symbol in self.cache:
 
@@ -197,21 +207,21 @@ class MarketDataV2:
 
                 cached = self.cache.get(symbol)
 
-                if cached and len(cached) > 0:
+                if cached:
 
                     print(f"⚡ CACHE HIT: {symbol}")
 
                     return cached
 
         # =========================
-        # 📡 FETCH NEW DATA
+        # 📡 FETCH
         # =========================
         candles = self.fetch_candles(symbol)
 
         # =========================
         # ✅ SAVE CACHE
         # =========================
-        if candles and len(candles) > 0:
+        if candles:
 
             self.cache[symbol] = candles
             self.last_update[symbol] = now
@@ -219,39 +229,16 @@ class MarketDataV2:
             return candles
 
         # =========================
-        # 🔁 FALLBACK CACHE
+        # 🔁 FALLBACK
         # =========================
         fallback = self.cache.get(symbol)
 
-        if fallback and len(fallback) > 0:
+        if fallback:
 
             print(f"⚠ USING FALLBACK CACHE: {symbol}")
 
             return fallback
 
-        # =========================
-        # ❌ FINAL FAIL
-        # =========================
-        print(f"❌ NO MARKET DATA: {symbol}")
+        print(f"❌ NO DATA: {symbol}")
 
         return []
-
-    # =========================
-    # 💰 GET CURRENT PRICE
-    # =========================
-    def get_price(self, symbol=None):
-
-        try:
-
-            candles = self.get_candles(symbol)
-
-            if not candles:
-                return None
-
-            return candles[-1]["close"]
-
-        except Exception as e:
-
-            print("❌ GET PRICE ERROR:", e)
-
-            return None
