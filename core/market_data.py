@@ -6,7 +6,10 @@ class MarketDataV2:
 
     def __init__(self, symbol="BTCUSDT", interval="1m"):
 
-        self.symbol = symbol
+        # =========================
+        # 🪙 SYMBOL
+        # =========================
+        self.symbol = symbol.upper()
         self.interval = interval
 
         # =========================
@@ -16,17 +19,17 @@ class MarketDataV2:
         self.last_update = {}
 
         # =========================
-        # ⏱ TTL
+        # ⏱ CACHE TTL
         # =========================
         self.ttl = 5
 
         # =========================
-        # 🌐 BINANCE
+        # 🌐 BINANCE API
         # =========================
         self.base_url = "https://api.binance.com/api/v3/klines"
 
         # =========================
-        # 🟡 SYMBOL MAP
+        # 🔄 SYMBOL MAP
         # =========================
         self.symbol_map = {
             "GOLD": "PAXGUSDT",
@@ -35,7 +38,7 @@ class MarketDataV2:
         }
 
     # =========================
-    # 🔄 NORMALIZE
+    # 🔄 NORMALIZE SYMBOL
     # =========================
     def normalize_symbol(self, symbol):
 
@@ -51,10 +54,24 @@ class MarketDataV2:
     # =========================
     def set_symbol(self, symbol):
 
-        self.symbol = self.normalize_symbol(symbol)
+        try:
+
+            symbol = self.normalize_symbol(symbol)
+
+            self.symbol = symbol
+
+            print(f"✅ SYMBOL SET: {self.symbol}")
+
+            return True
+
+        except Exception as e:
+
+            print("❌ SET SYMBOL ERROR:", e)
+
+            return False
 
     # =========================
-    # 📡 FETCH
+    # 📡 FETCH CANDLES
     # =========================
     def fetch_candles(self, symbol=None):
 
@@ -69,16 +86,44 @@ class MarketDataV2:
                 f"&limit=100"
             )
 
-            response = requests.get(url, timeout=10)
+            print(f"📡 FETCHING: {symbol}")
 
+            headers = {
+                "User-Agent": "Mozilla/5.0"
+            }
+
+            response = requests.get(
+                url,
+                headers=headers,
+                timeout=15
+            )
+
+            # =========================
+            # ❌ HTTP ERROR
+            # =========================
             if response.status_code != 200:
-                print(f"❌ Binance HTTP {response.status_code}")
+
+                print(f"❌ BINANCE HTTP ERROR: {response.status_code}")
+                print(response.text)
+
                 return []
 
+            # =========================
+            # 📦 JSON
+            # =========================
             data = response.json()
 
             if not isinstance(data, list):
-                print("❌ Invalid Binance data")
+
+                print("❌ INVALID BINANCE RESPONSE")
+                print(data)
+
+                return []
+
+            if len(data) == 0:
+
+                print("❌ EMPTY BINANCE DATA")
+
                 return []
 
             candles = []
@@ -88,19 +133,43 @@ class MarketDataV2:
                 try:
 
                     candles.append({
+
+                        "timestamp": int(c[0]),
+
                         "open": float(c[1]),
                         "high": float(c[2]),
                         "low": float(c[3]),
                         "close": float(c[4]),
+
                         "volume": float(c[5])
+
                     })
 
-                except Exception as e:
-                    print("CANDLE PARSE ERROR:", e)
+                except Exception as parse_error:
 
-            print(f"✅ {symbol} candles loaded: {len(candles)}")
+                    print("❌ CANDLE PARSE ERROR:", parse_error)
+
+            # =========================
+            # ✅ SUCCESS
+            # =========================
+            print(f"✅ {symbol} LOADED: {len(candles)} candles")
+
+            if candles:
+                print(f"💰 LAST PRICE: {candles[-1]['close']}")
 
             return candles
+
+        except requests.exceptions.Timeout:
+
+            print("❌ REQUEST TIMEOUT")
+
+            return []
+
+        except requests.exceptions.ConnectionError:
+
+            print("❌ CONNECTION ERROR")
+
+            return []
 
         except Exception as e:
 
@@ -118,7 +187,7 @@ class MarketDataV2:
         now = time.time()
 
         # =========================
-        # ⚡ CACHE
+        # ⚡ CACHE HIT
         # =========================
         if symbol in self.cache:
 
@@ -128,19 +197,21 @@ class MarketDataV2:
 
                 cached = self.cache.get(symbol)
 
-                if cached:
-                    print(f"⚡ CACHE HIT {symbol}")
+                if cached and len(cached) > 0:
+
+                    print(f"⚡ CACHE HIT: {symbol}")
+
                     return cached
 
         # =========================
-        # 📡 FETCH
+        # 📡 FETCH NEW DATA
         # =========================
         candles = self.fetch_candles(symbol)
 
         # =========================
         # ✅ SAVE CACHE
         # =========================
-        if candles:
+        if candles and len(candles) > 0:
 
             self.cache[symbol] = candles
             self.last_update[symbol] = now
@@ -148,14 +219,39 @@ class MarketDataV2:
             return candles
 
         # =========================
-        # 🔁 FALLBACK
+        # 🔁 FALLBACK CACHE
         # =========================
         fallback = self.cache.get(symbol)
 
-        if fallback:
-            print(f"⚠ USING FALLBACK {symbol}")
+        if fallback and len(fallback) > 0:
+
+            print(f"⚠ USING FALLBACK CACHE: {symbol}")
+
             return fallback
 
-        print(f"❌ NO DATA {symbol}")
+        # =========================
+        # ❌ FINAL FAIL
+        # =========================
+        print(f"❌ NO MARKET DATA: {symbol}")
 
         return []
+
+    # =========================
+    # 💰 GET CURRENT PRICE
+    # =========================
+    def get_price(self, symbol=None):
+
+        try:
+
+            candles = self.get_candles(symbol)
+
+            if not candles:
+                return None
+
+            return candles[-1]["close"]
+
+        except Exception as e:
+
+            print("❌ GET PRICE ERROR:", e)
+
+            return None
