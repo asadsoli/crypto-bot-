@@ -10,19 +10,18 @@ class MarketDataV2:
         self.interval = interval
 
         # =========================
-        # 🧠 CACHE STORAGE
+        # 🧠 CACHE
         # =========================
         self.cache = {}
         self.last_update = {}
-        self.last_good = {}
 
         # =========================
-        # ⏱ CACHE TIMEOUT
+        # ⏱ CACHE TTL
         # =========================
         self.ttl = 10
 
         # =========================
-        # 🌐 API URLS (FAILOVER)
+        # 🌐 API URLs (MULTI BACKUP)
         # =========================
         self.urls = [
             "https://api.binance.com/api/v3/klines",
@@ -34,14 +33,7 @@ class MarketDataV2:
         self.timeout = 15
 
         # =========================
-        # 🌍 HEADERS (IMPORTANT)
-        # =========================
-        self.headers = {
-            "User-Agent": "Mozilla/5.0"
-        }
-
-        # =========================
-        # 🟡 SYMBOL MAPPING
+        # 🥇 GOLD FIX
         # =========================
         self.symbol_map = {
             "XAUUSD": "PAXGUSDT",
@@ -60,7 +52,7 @@ class MarketDataV2:
             return None
 
     # =========================
-    # 🧠 NORMALIZE SYMBOL
+    # 🔄 NORMALIZE
     # =========================
     def normalize_symbol(self, symbol):
 
@@ -72,7 +64,14 @@ class MarketDataV2:
         return self.symbol_map.get(symbol, symbol)
 
     # =========================
-    # 📡 FETCH FROM BINANCE
+    # 🔄 SET SYMBOL
+    # =========================
+    def set_symbol(self, symbol):
+
+        self.symbol = self.normalize_symbol(symbol)
+
+    # =========================
+    # 📡 FETCH
     # =========================
     def fetch_candles(self, symbol):
 
@@ -81,11 +80,15 @@ class MarketDataV2:
         params = {
             "symbol": symbol,
             "interval": self.interval,
-            "limit": 50
+            "limit": 100
+        }
+
+        headers = {
+            "User-Agent": "Mozilla/5.0"
         }
 
         # =========================
-        # 🔁 TRY MULTIPLE URLS
+        # 🔁 TRY ALL BINANCE SERVERS
         # =========================
         for url in self.urls:
 
@@ -96,109 +99,62 @@ class MarketDataV2:
                 response = requests.get(
                     url,
                     params=params,
-                    headers=self.headers,
+                    headers=headers,
                     timeout=self.timeout
                 )
 
-                print(f"📊 STATUS {symbol}: {response.status_code}")
+                print(f"📊 STATUS: {response.status_code}")
 
-                # =========================
-                # ❌ BAD STATUS
-                # =========================
                 if response.status_code != 200:
-
-                    print(f"❌ HTTP ERROR {response.status_code}")
-
-                    try:
-                        print(response.text)
-                    except:
-                        pass
-
                     continue
 
-                # =========================
-                # 📦 JSON
-                # =========================
-                try:
-                    data = response.json()
-                except Exception as e:
-                    print("❌ JSON ERROR:", e)
-                    continue
+                data = response.json()
 
-                # =========================
-                # ❌ INVALID DATA
-                # =========================
                 if not isinstance(data, list):
-
-                    print("❌ INVALID RESPONSE TYPE")
-                    print(data)
-
-                    continue
-
-                if len(data) == 0:
-
-                    print("❌ EMPTY DATA")
-
+                    print("❌ Invalid Binance response")
                     continue
 
                 candles = []
 
-                # =========================
-                # 📊 PARSE
-                # =========================
-                for candle in data:
+                for c in data:
 
                     try:
 
-                        if len(candle) < 6:
-                            continue
+                        candles.append({
+                            "open": self.safe_float(c[1]),
+                            "high": self.safe_float(c[2]),
+                            "low": self.safe_float(c[3]),
+                            "close": self.safe_float(c[4]),
+                            "volume": self.safe_float(c[5])
+                        })
 
-                        parsed = {
-                            "open": self.safe_float(candle[1]),
-                            "high": self.safe_float(candle[2]),
-                            "low": self.safe_float(candle[3]),
-                            "close": self.safe_float(candle[4]),
-                            "volume": self.safe_float(candle[5])
-                        }
-
-                        if None in parsed.values():
-                            continue
-
-                        candles.append(parsed)
-
-                    except Exception as e:
-                        print("❌ PARSE ERROR:", e)
+                    except:
+                        continue
 
                 # =========================
                 # ✅ SUCCESS
                 # =========================
-                if len(candles) > 0:
+                if len(candles) > 20:
 
-                    print(f"✅ SUCCESS {symbol} candles={len(candles)}")
+                    print(f"✅ Loaded {len(candles)} candles for {symbol}")
 
                     return candles
 
-            except requests.exceptions.Timeout:
-
-                print(f"❌ TIMEOUT {symbol}")
-
-            except requests.exceptions.ConnectionError:
-
-                print(f"❌ CONNECTION ERROR {symbol}")
-
             except Exception as e:
 
-                print(f"❌ FETCH EXCEPTION {symbol}: {e}")
+                print(f"❌ API ERROR {url}: {e}")
+
+                continue
 
         # =========================
-        # ❌ FAILED ALL URLS
+        # ❌ FAILED
         # =========================
-        print(f"❌ ALL BINANCE ENDPOINTS FAILED {symbol}")
+        print(f"❌ ALL BINANCE SERVERS FAILED FOR {symbol}")
 
-        return None
+        return []
 
     # =========================
-    # 🧠 GET CANDLES
+    # 📊 GET CANDLES
     # =========================
     def get_candles(self, symbol=None):
 
@@ -207,63 +163,46 @@ class MarketDataV2:
         now = time.time()
 
         # =========================
-        # ⚡ CACHE HIT
+        # ⚡ CACHE
         # =========================
         if symbol in self.cache:
 
-            last_time = self.last_update.get(symbol, 0)
+            age = now - self.last_update.get(symbol, 0)
 
-            if now - last_time < self.ttl:
+            if age < self.ttl:
 
                 cached = self.cache.get(symbol)
 
-                if cached and isinstance(cached, list):
-
-                    print(f"⚡ CACHE HIT {symbol}")
-
+                if cached:
                     return cached
 
         # =========================
-        # 📡 FETCH NEW
+        # 📡 FETCH
         # =========================
         candles = self.fetch_candles(symbol)
 
         # =========================
-        # ✅ VALID DATA
+        # ✅ SAVE CACHE
         # =========================
-        if candles and isinstance(candles, list):
+        if candles:
 
             self.cache[symbol] = candles
             self.last_update[symbol] = now
-            self.last_good[symbol] = candles
 
             return candles
 
         # =========================
-        # 🔁 FALLBACK
+        # ⚠ FALLBACK CACHE
         # =========================
-        fallback = self.last_good.get(symbol)
+        fallback = self.cache.get(symbol)
 
         if fallback:
 
-            print(f"⚠ USING FALLBACK {symbol}")
+            print(f"⚠ Using cached fallback for {symbol}")
 
             return fallback
 
         # =========================
-        # ❌ FINAL SAFE RETURN
+        # ❌ FINAL
         # =========================
-        print(f"❌ NO MARKET DATA {symbol}")
-
         return []
-
-    # =========================
-    # 🔄 SET SYMBOL
-    # =========================
-    def set_symbol(self, symbol):
-
-        symbol = self.normalize_symbol(symbol)
-
-        self.symbol = symbol
-
-        print(f"🔄 ACTIVE SYMBOL = {self.symbol}")
