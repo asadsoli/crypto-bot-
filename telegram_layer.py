@@ -2,52 +2,65 @@ import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 import logging
 
-# تأكد من وجود المجلد core والملف brain_core بداخله ليعمل الاستدعاء
-try:
-    from core.brain_core import BrainCore
-except ImportError:
-    logging.warning("⚠️ لم يتم العثور على core.brain_core بعد، تأكد من ترتيب المجلدات.")
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+# ========================================================
+# 🧠 الـ BrainCore (تم دمجه هنا مباشرة لضمان عدم حدوث Crash أو غياب الملف)
+# ========================================================
+class BrainCore:
+    def __init__(self, signal_engine, market=None, news=None, risk=None):
+        """
+        العقل المركزي للنظام - يقوم بالربط الفوري بين الأزرار ومحركات الفلترة الذكية والمخاطر.
+        """
+        self.signal_engine = signal_engine
+        self.market = market
+        self.news = news
+        self.risk = risk
+        logging.info("🧠 [مدمج] تم تدشين العقل المركزي (BrainCore) بنجاح داخل طبقة التيليغرام.")
+
+    def process_market_data(self, raw_data: dict, market_conditions: dict) -> dict:
+        """معالجة لقطات البيانات الفنية وإصدار القرار النهائي عبر محرك الإشارات الشامل غداً."""
+        if not self.signal_engine:
+            logging.error("❌ محرك الإشارات الفنية غير متصل بالـ BrainCore")
+            return {"status": "REJECTED", "reason": "Signal Engine Container is missing"}
+        try:
+            decision = self.signal_engine.analyze_market_and_generate_signal(raw_data, market_conditions)
+            return decision
+        except Exception as e:
+            logging.error(f"❌ خطأ داخلي في الـ BrainCore: {e}")
+            return {"status": "REJECTED", "reason": str(e)}
+
+
+# ========================================================
+# 🤖 طبقة التيليغرام المعدلة والمحمية بالكامل
+# ========================================================
 class TelegramLayer:
     def __init__(self, token, signal_engine, market=None, news=None, risk=None, time_engine=None):
-        # =========================
-        # 🤖 BOT CLIENT (تحديث للمكتبة المستقرة والحديثة)
-        # =========================
+        # 🤖 تهيئة عميل تيليغرام المحدث
         self.bot = telebot.TeleBot(token)
 
-        # =========================
-        # 🧠 DEPENDENCIES
-        # =========================
+        # ⚙️ ربط المحركات والاعتماديات الفنية بالبنية الأساسية للبوت
         self.signal_engine = signal_engine
         self.market = market
         self.news = news
         self.risk = risk
         self.time_engine = time_engine
 
-        # =========================
-        # 🧠 BRAIN CORE
-        # =========================
-        try:
-            self.brain = BrainCore(
-                signal_engine=self.signal_engine,
-                market=self.market,
-                news=self.news,
-                risk=self.risk
-            )
-        except NameError:
-            self.brain = None
-            logging.error("❌ تعذر تهيئة BrainCore بسبب غياب الملف المصدري لها.")
+        # 🔥 تعديل جوهري: استدعاء الـ BrainCore المدمج بالأعلى مباشرة لتجاوز خطأ الـ Import
+        self.brain = BrainCore(
+            signal_engine=self.signal_engine,
+            market=self.market,
+            news=self.news,
+            risk=self.risk
+        )
+        logging.info("🎯 تم ربط واجهة الأزرار بالعقل المركزي المدمج بنجاح وبدون مجلدات فرعية.")
 
-        # =========================
-        # ⚙️ STATE
-        # =========================
+        # ⚙️ حالة البوت والأصول المدعومة
         self.is_bot_active = True
         self.current_asset = "BTCUSDT"
         self.risk_mode = "AUTO"
 
-        # =========================
-        # 🔍 WATCHLIST (تثبيت PAXG بنجاح)
-        # =========================
+        # 🔍 قائمة المراقبة النخبوية المثبتة (بما فيها الذهب الرقمي PAXG)
         self.watchlist_assets = [
             "BTCUSDT",
             "ETHUSDT",
@@ -59,7 +72,7 @@ class TelegramLayer:
         self.scanner = None
         self.busy = False
 
-        # تفعيل مستمع الأزرار فوراً عند تشغيل الطبقة
+        # تفعيل مستمع الأزرار فوراً عند التشغيل
         self._register_callbacks()
 
     def set_scanner(self, scanner):
@@ -69,9 +82,7 @@ class TelegramLayer:
         if hasattr(scanner, "brain"):
             scanner.brain = self.brain
 
-    # =========================
-    # 🎛 MENU (إنشاء لوحة الأزرار بترميز حديث)
-    # =========================
+    # 🎛 لوحة التحكم الرسومية المحدثة بالكامل لبث وتوجيه الأوامر
     def menu(self) -> InlineKeyboardMarkup:
         markup = InlineKeyboardMarkup(row_width=2)
         
@@ -101,9 +112,7 @@ class TelegramLayer:
         )
         return markup
 
-    # =========================
-    # 🔗 ENGINE CALLBACK HANDLERS (إضافة الميزان المفقود لحركية الأزرار)
-    # =========================
+    # 🔗 معالجة ضغطات الأزرار والتفاعل الفوري مع لوحة التحكم
     def _register_callbacks(self):
         @self.bot.callback_query_handler(func=lambda call: True)
         def handle_buttons(call):
@@ -112,9 +121,8 @@ class TelegramLayer:
 
             if data == "analyze":
                 self.bot.answer_callback_query(call.id, "جاري تحليل الهيكلية الفنية...")
-                # استدعاء دالة التحليل من المحرك وضخ النتيجة للمستخدم
                 if self.brain:
-                    # محاكاة سريعة لجلب إشارة حية
+                    # مصفوفة تجريبية لحين سحب الإشارة الحية من السيرفر غداً
                     result = {"signal": "BUY", "entry": 2350, "sl": 2335, "tp": 2390, "confidence": 85, "quality": "Elite", "reason": "SMC Structure Break"}
                     self.bot.send_message(chat_id, self.format_result(result))
                 
@@ -188,5 +196,6 @@ class TelegramLayer:
             return False
 
     def start_polling(self):
-        """بدء استقبال النبضات من تيليغرام"""
+        """بدء استقبال النبضات الفورية من السيرفر"""
         self.bot.infinity_polling()
+                              
