@@ -1,6 +1,0 @@
-flask
-telepot
-requests
-python-dotenv
-pytz
-feedparser
