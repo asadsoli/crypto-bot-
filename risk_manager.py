@@ -1,0 +1,115 @@
+import logging
+import datetime
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+class InstitutionalRiskManager:
+    def __init__(self, news_engine, self_learning_engine):
+        # ربط إدارة المخاطر بمحرك الأخبار ونظام التعلم الذاتي
+        self.news_engine = news_engine
+        self.self_learning_engine = self_learning_engine
+        
+        # سجل داخلي لتتبع الصفقات المفتوحة حالياً لمنع التداخل
+        self.active_trades = {}
+        
+        # إعدادات المخاطرة المؤسسية الافتراضية لكل صفقة من حجم الحساب
+        self.risk_profiles = {
+            'LOW': 0.01,       # 1% مخاصرة لكل صفقة
+            'MEDIUM': 0.02,    # 2% مخاطرة لكل صفقة
+            'HIGH': 0.03,      # 3% مخاطرة لكل صفقة
+            'STRICT': 0.005    # 0.5% مخاطرة مؤسسية صارمة جداً
+        }
+        
+        # الملف الافتراضي الحالي لإدارة المخاطر
+        self.current_profile = 'STRICT'
+
+    def set_risk_profile(self, profile_name: str):
+        """تغيير نمط المخاطرة من لوحة التحكم (Low / Medium / High / Strict)"""
+        if profile_name.upper() in self.risk_profiles:
+            self.current_profile = profile_name.upper()
+            logging.info(f"⚙️ تم تعديل نمط إدارة المخاطر إلى: {self.current_profile}")
+
+    def can_open_trade(self, signal_data: dict, current_market_conditions: dict) -> dict:
+        """
+        🛡️ الفحص النهائي الإجباري قبل تنفيذ أي صفقة.
+        يرجع إما موافقة بالدخول وحجم العقد أو حظر تام للصفقة.
+        """
+        pair = signal_data.get('pair', 'UNKNOWN').upper()
+        if 'XAU' in pair:
+            pair = pair.replace('XAU', 'PAXG')
+
+        # 1. فلتر الثقة (Confidence Gate)
+        confidence = signal_data.get('confidence_score', 0.0)
+        if confidence < 55.0:
+            return {'status': 'BLOCK', 'reason': f"❌ حظر المخاطر: نسبة الثقة {confidence}% أقل من حد الـ 55%"}
+        elif 55.0 <= confidence < 70.0:
+            logging.warning(f"⚠️ تنبيه المخاطر: نسبة الثقة {confidence}% في مرحلة المراقبة والحذر")
+            # يمكن للمطور اختيار حظرها أو السماح بها بحجم عقد مخفض جداً، هنا سنمررها بشرط الحذر
+        
+        # 2. فحص كثرة الصفقات المفتوحة ومنع التداخل (Overlapping Prevention)
+        if len(self.active_trades) >= 3:
+            return {'status': 'BLOCK', 'reason': "❌ حظر المخاطر: تم الوصول للحد الأقصى من الصفقات المتزامنة (حد أقصى 3)"}
+        
+        if pair in self.active_trades:
+            return {'status': 'BLOCK', 'reason': f"❌ حظر المخاطر: توجد صفقة مفتوحة بالفعل على زوج {pair}"}
+
+        # 3. فحص حالة السوق العامة (Risk Regime) والظروف الجيوسياسية والأخبار الخطيرة
+        news_analysis = current_market_conditions.get('news_analysis', {})
+        if news_analysis.get('risk_regime') == 'Risk OFF':
+            # إذا كنا في حالة Risk OFF، نمنع التداول تماماً إلا لـ PAXG لحماية الحساب من عواصف التقلب
+            if pair != 'PAXGUSDT':
+                return {'status': 'BLOCK', 'reason': "❌ حظر المخاطر: السوق في حالة Risk OFF (أخبار ماكرو أو جيوسياسية قوية)، يمنع التداول"}
+
+        # 4. فلتر التوقيت للأحداث الاقتصادي (Event Timing Lock)
+        event_time_epoch = current_market_conditions.get('next_event_epoch', 0)
+        timing_status = self.news_engine.get_event_timing_status(event_time_epoch)
+        if timing_status['action'] in ['STOP_TRADING', 'REDUCE_TRADING']:
+            if timing_status['action'] == 'STOP_TRADING':
+                return {'status': 'BLOCK', 'reason': f"❌ حظر المخاطر: قفل زمني مفعل بسبب {timing_status['desc']}"}
+            else:
+                logging.info("⚠️ تقليص المخاطرة إجباريًا بسبب قرب حدث اقتصادي.")
+
+        # 5. فلتر التقلب العشوائي (Volatility Filter)
+        if current_market_conditions.get('is_market_choppy', False):
+            return {'status': 'BLOCK', 'reason': "❌ حظر المخاطر: السوق يتحرك بشكل عشوائي وبدون اتجاه واضح (Choppy Market)"}
+
+        # 6. حساب إدارة المخاطرة الديناميكية (Dynamic Risk Management)
+        # نقوم بطلب أوزان المخاطرة التكيفية من محرك التعلم الذاتي
+        adaptive_weights = self.self_learning_engine.get_adaptive_config()
+        learning_multiplier = adaptive_weights.get('risk_multiplier', 1.0)
+        
+        base_risk_percentage = self.risk_profiles[self.current_profile]
+        
+        # دمج النسبة الافتراضية مع معامل التعلم الذاتي (يزداد مع الأرباح وينخفض مع الخسائر)
+        final_risk_percentage = base_risk_percentage * learning_multiplier
+        
+        # إذا كانت الظروف قريبة من الأخبار، نخفض المخاطرة للنصف تلقائياً كحماية إضافية
+        if timing_status['action'] == 'REDUCE_TRADING':
+            final_risk_percentage *= 0.5
+
+        return {
+            'status': 'ALLOW',
+            'reason': "✔ تمت الموافقة من إدارة المخاطر المؤسسية",
+            'allocated_risk_percentage': round(final_risk_percentage, 4),
+            'pair': pair
+        }
+
+    def register_active_trade(self, pair: str, id: str, risk_amount: float):
+        """تسجيل الصفقة عند فتحها بنجاح لمنع التداخل"""
+        if 'XAU' in pair:
+            pair = pair.replace('XAU', 'PAXG')
+        self.active_trades[pair] = {
+            'trade_id': id,
+            'risk_allocated': risk_amount,
+            'opened_at': datetime.datetime.utcnow().isoformat()
+        }
+        logging.info(f"🔒 تم قفل زوج {pair} في سجل المخاطر المفتوحة.")
+
+    def remove_active_trade(self, pair: str):
+        """إزالة الصفقة من السجل عند إغلاقها لإتاحة فرص جديدة"""
+        if 'XAU' in pair:
+            pair = pair.replace('XAU', 'PAXG')
+        if pair in self.active_trades:
+            del self.active_trades[pair]
+            logging.info(f"🔓 تم تحرير زوج {pair} وجاهز لاستقبال صفقات جديدة.")
+          
