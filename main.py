@@ -1,6 +1,7 @@
 import os
 import time
 import logging
+import threading
 from time_engine import TradingTimeEngine
 from news_engine import FederalNewsEngine
 from signal_filter import AdaptiveSignalFilter
@@ -11,7 +12,22 @@ from quality_engine import EliteQualityEngine
 from signal_engine import SignalEngineV1
 from execution_engine import ExecutionEngineV1
 from control_panel import InstitutionalControlPanelV2
-import threading
+
+# ==================================================
+# 🌐 إضافة خادم ويب زائف (Flask) لإرضاء سيرفر Render ومنعه من إعادة التشغيل
+# ==================================================
+from flask import Flask
+app_flask = Flask('')
+
+@app_flask.route('/')
+def home():
+    return "⚡ ULTRA V10 AI CORE IS LIVE & RUNNING!"
+
+def run_flask():
+    # جلب المنفذ التلقائي الذي يفرضه Render، وإلا استخدام 8080 كافتراضي
+    port = int(os.environ.get("PORT", 8080))
+    app_flask.run(host='0.0.0.0', port=port)
+# ==================================================
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -25,11 +41,16 @@ def run_control_panel(panel):
 def main():
     logging.info("👑 جاري تشغيل النظام البرمجي المؤسسي الشامل V2...")
 
-    # 1. جلب التوكنز والمعرفات من متغيرات البيئة (Environment Variables) لحماية الخصوصية
+    # 1. تشغيل خادم الويب في مسار منفصل تماماً قبل بدء محركات البوت
+    flask_thread = threading.Thread(target=run_flask, daemon=True)
+    flask_thread.start()
+    logging.info("🌐 تم تشغيل خادم الويب الخلفي لتأمين استقرار السيرفر.")
+
+    # 2. جلب التوكنز والمعرفات من متغيرات البيئة (Environment Variables) لحماية الخصوصية
     TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "YOUR_BOT_TOKEN_HERE")
     CHANNEL_ID = os.getenv("CHANNEL_ID", "YOUR_CHANNEL_ID_HERE")
 
-    # 2. تهيئة وتدشين كافة المحركات الفرعية للمشروع
+    # 3. تهيئة وتدشين كافة المحركات الفرعية للمشروع
     time_engine = TradingTimeEngine()
     news_engine = FederalNewsEngine()
     signal_filter = AdaptiveSignalFilter()
@@ -41,7 +62,7 @@ def main():
     
     quality_engine = EliteQualityEngine(time_engine=time_engine, pre_move_engine=pre_move_engine)
     
-    # 3. تهيئة المحركات الكبرى لاتخاذ القرار والتنفيذ
+    # 4. تهيئة المحركات الكبرى لاتخاذ القرار والتنفيذ
     signal_engine = SignalEngineV1(
         time_engine=time_engine,
         news_engine=news_engine,
@@ -57,7 +78,7 @@ def main():
         risk_manager=risk_manager
     )
 
-    # 4. تهيئة وتشغيل لوحة التحكم الاحترافية في الخلفية (Multithreading)
+    # 5. تهيئة وتشغيل لوحة التحكم الاحترافية في الخلفية (Multithreading)
     control_panel = InstitutionalControlPanelV2(
         token=TELEGRAM_TOKEN,
         risk_manager=risk_manager,
@@ -70,15 +91,14 @@ def main():
 
     logging.info("🚀 تم ربط كافة البوابات بنجاح. النظام مستعد الآن لاستقبال وتحليل بيانات السوق...")
 
-    # 5. حلقة محاكاة السوق اللحظية (Market Live Simulation Loop)
-    # هنا نقوم بضخ بيانات تجريبية تفصيلية تحاكي ما يتم استقباله من منصات البيانات مثل TradingView Webhooks
+    # 6. حلقة محاكاة السوق اللحظية (Market Live Simulation Loop)
     while True:
         if control_panel.bot_status == "RUNNING":
             logging.info("🔍 جاري سحب لقطة حية للسوق وتمريرها عبر فلاتر الأموال الذكية...")
             
             # محاكاة لبيانات قادمة لزوج الذهب الرقمي المثبت PAXG
             mock_smc_data = {
-                'pair': 'XAUUSDT', # سيقوم المحرك بتحويلها تلقائياً إلى PAXGUSDT داخلياً لحظر الذهب العادي
+                'pair': 'XAUUSDT',
                 'structure': 'BOS_Bullish',
                 'liquidity_swept': True,
                 'at_order_block_or_fvg': True,
@@ -122,4 +142,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-  
+    
