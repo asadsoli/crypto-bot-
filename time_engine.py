@@ -5,13 +5,12 @@ import logging
 # إعداد السجلات
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-class TimeEngineV2:
+class TradingTimeEngine: # تم تعديل الاسم هنا ليتوافق مع ملف main.py
     def __init__(self):
         # تحديد التوقيت الرسمي (سوريا)
         self.timezone = pytz.timezone('Asia/Damascus')
         
         # تعريف مواعيد الجلسات الافتراضية (بتوقيت سوريا)
-        # ملاحظة: يمكن تعديل الساعات بناءً على التوقيت الصيفي/الشتوي العالمي
         self.sessions_config = {
             'Asian': {'open': datetime.time(2, 0), 'close': datetime.time(10, 0)},
             'London': {'open': datetime.time(9, 0), 'close': datetime.time(17, 0)},
@@ -121,5 +120,5 @@ class TimeEngineV2:
         for alert_type in self.fired_alerts:
             self.fired_alerts[alert_type] = {
                 alert_id for alert_id in self.fired_alerts[alert_type] if current_date_str in alert_id
-      }
-          
+            }
+            
