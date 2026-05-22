@@ -40,8 +40,8 @@ def run_flask():
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# متغير عالمي للحفاظ على آخر سعر ومحاكاته بشكل مستمر ومنطقي
-LAST_GOLD_PRICE = 2350.0
+# 🔥 [تحديث تاريخي] تعديل السعر الأساسي ليطابق واقع عام 2026 فوق مستويات الـ 4500$
+LAST_GOLD_PRICE = 4550.0
 
 def get_real_crypto_price(symbol="PAXGUSDT"):
     """دالة تجلب السعر الحقيقي، وفي حال فشل الاتصال تولد حركة سعرية منطقية ديناميكية"""
@@ -131,14 +131,14 @@ def main():
         if control_panel.bot_status == "RUNNING":
             logging.info("🔍 جاري سحب لقطة حية للسوق وتمريرها عبر فلاتر الأموال الذكية...")
             
-            # 🔄 جلب السعر اللحظي (سواء من بينانس أو من المحاكي الحركي المتغير)
+            # 🔄 جلب السعر اللحظي (المبني على المستويات الصحيحة الحالية)
             current_price = get_real_crypto_price("PAXGUSDT")
             
-            # حساب الأهداف ديناميكياً بدقة بناءً على السعر الجديد لكي تتغير في الرسالة
-            stop_loss = round(current_price - 15.0, 2)
-            tp1 = round(current_price + 20.0, 2)
-            tp2 = round(current_price + 40.0, 2)
-            tp3 = round(current_price + 70.0, 2)
+            # حساب الأهداف ديناميكياً بدقة بناءً على السعر الحقيقي الجديد فوق الـ 4500
+            stop_loss = round(current_price - 25.0, 2)  # زيادة مسافة الوقف لتناسب تقلبات السعر العالي
+            tp1 = round(current_price + 35.0, 2)
+            tp2 = round(current_price + 65.0, 2)
+            tp3 = round(current_price + 110.0, 2)
 
             mock_smc_data = {
                 'pair': 'XAUUSDT',
@@ -187,4 +187,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-            
+    
