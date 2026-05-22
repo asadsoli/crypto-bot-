@@ -13,7 +13,7 @@ from news_engine import FederalNewsEngine
 from signal_filter import InstitutionalSignalFilter as AdaptiveSignalFilter
 # 🧠 تم حل مشكلة محرك التعلم الذاتي هنا بإضافة V1 كاسم مستعار ليتوافق مع السيرفر وباقي الكود
 from self_learning import SelfLearningEngineV1 as SelfLearningEngine
-from pre_move_engine import PreMoveExplosionEngine
+from pre_move_engine import PreMovePredictionEngine as PreMoveExplosionEngine
 from risk_manager import InstitutionalRiskManager
 from quality_engine import EliteQualityEngine
 from signal_engine import SignalEngineV1
