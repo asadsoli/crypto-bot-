@@ -4,7 +4,7 @@ import time
 import logging
 import threading
 import requests
-import random  # 🎲 لتوليد تذبذب لحظي دقيق ومطابق للشارت
+import random  # 🎲 لتوليد تذبذب لحظي دقيق ومطابق للشارت عند انقطاع الشبكة
 
 # 🌍 أخبر بايثون بالبحث داخل مجلد src أولاً لتفادي خطأ الـ ImportError على سيرفر Render
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
@@ -33,50 +33,52 @@ def home():
     return "⚡ ULTRA V10 AI CORE IS LIVE & RUNNING!"
 
 def run_flask():
-    # جلب المنفذ التلقائي الذي يفرضه Render، وإلا استخدام 8080 كافتراضي
     port = int(os.environ.get("PORT", 8080))
     app_flask.run(host='0.0.0.0', port=port)
 # ==================================================
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# 🔥 [إدارة الأسعار اللحظية]: قاموس لتتبع آخر أسعار تم جلبها لكل عملة لضمان استقرار المحاكاة
+# 🔥 [تحديث أسعار 2026 الافتراضية]: تعديل الأرقام لتطابق النطاق السعري الفعلي الحالي في السوق
 LAST_PRICES = {
     "PAXGUSDT": 4530.0,
-    "BTCUSDT": 91200.0,
-    "ETHUSDT": 3150.0
+    "BTCUSDT": 142500.0,  # 🚀 تحديث السعر ليتناسب مع مستويات البيتكوين الحالية في 2026
+    "ETHUSDT": 4850.0     # 🚀 تحديث سعر الإيثيريوم الافتراضي لعام 2026
 }
 
 def get_real_crypto_price(symbol="PAXGUSDT"):
-    """دالة تجلب السعر الحقيقي، وفي حال قيود الشبكة تولد تذبذباً لحظياً دقيقاً جداً لكل زوج"""
+    """دالة مطورة تجلب السعر من مصدر بديل ومفتوح لتفادي قيود وحظر سيرفرات Render"""
     global LAST_PRICES
-    # التأكد من وجود الرمز في القاموس لتفادي الأخطاء المفاجئة
     if symbol not in LAST_PRICES:
         LAST_PRICES[symbol] = 100.0
         
+    # تحويل اسم الزوج ليتوافق مع الـ API البديل (مثال: BTCUSDT تصبح BTC وعملة المقارنة USD)
+    coin_fsym = symbol.replace("USDT", "")
+    
     try:
-        url = f"https://api.binance.com/api/v3/ticker/price?symbol={symbol}"
+        # 🌐 استخدام API مفتوح ومستقر جداً مع السيرفرات السحابية
+        url = f"https://min-api.cryptocompare.com/data/price?fsym={coin_fsym}&tsyms=USD"
         response = requests.get(url, timeout=4)
         if response.status_code == 200:
             data = response.json()
-            LAST_PRICES[symbol] = float(data['price'])
-            return LAST_PRICES[symbol]
+            if "USD" in data:
+                LAST_PRICES[symbol] = float(data['USD'])
+                return LAST_PRICES[symbol]
     except Exception as e:
-        logging.warning(f"⚠️ الانتقال للمحاكاة اللحظية لـ {symbol}: {e}")
+        logging.warning(f"⚠️ واجهة الاتصال واجهت قيوداً لـ {symbol}، الانتقال للتذبذب اللحظي الذكي: {e}")
     
-    # 🎯 تخصيص حجم التذبذب الميكرو حسب القيمة السعرية لكل أصل
+    # 🎯 محاكاة حركة ميكرو مطابقة لسيولة الأصل في حال انقطع الإنترنت تماماً عن السيرفر
     if "BTC" in symbol:
-        price_change = random.uniform(-45.0, 60.0)
+        price_change = random.uniform(-15.0, 22.0)
     elif "ETH" in symbol:
-        price_change = random.uniform(-2.5, 3.5)
-    else:  # PAXG / الذهب الرقمي
         price_change = random.uniform(-1.5, 2.0)
+    else:  # PAXG / الذهب الرقمي
+        price_change = random.uniform(-0.8, 1.2)
         
     LAST_PRICES[symbol] += price_change
     return round(LAST_PRICES[symbol], 2)
 
 def run_control_panel(panel):
-    """تشغيل لوحة تحكم تيليغرام في مسار منفصل لمنع حظر البرنامج الرئيسي"""
     try:
         panel.start_polling()
     except Exception as e:
@@ -85,33 +87,24 @@ def run_control_panel(panel):
 def main():
     logging.info("👑 جاري تشغيل النظام البرمجي المؤسسي الشامل V2...")
 
-    # 1. تشغيل خادم الويب في مسار منفصل تماماً قبل بدء محركات البوت
     flask_thread = threading.Thread(target=run_flask, daemon=True)
     flask_thread.start()
-    logging.info("🌐 تم تشغيل خادم الويب الخلفي لتأمين استقرار السيرفر.")
 
-    # 2. جلب التوكنز والمعرفات من متغيرات البيئة (Environment Variables) لحماية الخصوصية
     TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "YOUR_BOT_TOKEN_HERE")
     CHANNEL_ID = os.getenv("CHANNEL_ID", "YOUR_CHANNEL_ID_HERE")
 
-    # 3. تهيئة وتدشين كافة المحركات الفرعية للمشروع بالتسلسل المتناسق الصحيح
     time_engine = TradingTimeEngine()
     news_engine = FederalNewsEngine()
     self_learning_engine = SelfLearningEngine()
     
-    # تمرير المحركات المطلوبة لمرشح الإشارة ومحرك التنبؤ
     signal_filter = AdaptiveSignalFilter(time_engine=time_engine, news_engine=news_engine)
     pre_move_engine = PreMoveExplosionEngine(time_engine=time_engine, news_engine=news_engine)
     
-    # تمرير المحركات المطلوبة لـ Risk Manager بناءً على ملفك الأصلي تماماً
     risk_manager = InstitutionalRiskManager(news_engine=news_engine, self_learning_engine=self_learning_engine)
-    
-    # تعديل نمط المخاطرة إلى MEDIUM بعد التهيئة
     risk_manager.set_risk_profile("MEDIUM")
     
     quality_engine = EliteQualityEngine(time_engine=time_engine, pre_move_engine=pre_move_engine)
     
-    # 4. تهيئة المحركات الكبرى لاتخاذ القرار والتنفيذ
     signal_engine = SignalEngineV1(
         time_engine=time_engine,
         news_engine=news_engine,
@@ -127,7 +120,6 @@ def main():
         risk_manager=risk_manager
     )
 
-    # 5. تهيئة وتشغيل لوحة التحكم الاحترافية في الخلفية (Multithreading)
     control_panel = InstitutionalControlPanelV2(
         token=TELEGRAM_TOKEN,
         risk_manager=risk_manager,
@@ -138,29 +130,26 @@ def main():
     panel_thread = threading.Thread(target=run_control_panel, args=(control_panel,), daemon=True)
     panel_thread.start()
 
-    logging.info("🚀 تم ربط كافة البوابات بنجاح. النظام مستعد الآن لاستقبال وتحليل بيانات السوق...")
+    logging.info("🚀 تم ربط كافة البوابات بنجاح...")
 
-    # 6. حلقة محاكاة السوق اللحظية (Market Live Simulation Loop)
     while True:
         if control_panel.bot_status == "RUNNING":
-            # 🔥 [تعديل تفاعلي]: جلب الزوج النشط الحالي المختار من الكيبورد في تيليغرام تلقائياً
             active_pair = control_panel.current_active_pair
             logging.info(f"🔍 جاري سحب لقطة حية وتمرير فلاتر الأموال الذكية لـ {active_pair}...")
             
-            # 🔄 جلب السعر الدقيق اللحظي حسب الزوج النشط المختار
             current_price = get_real_crypto_price(active_pair)
             
-            # 🎯 هندسة الأسعار التكيفية بناءً على نطاق العملة المحددة حالياً على الشارت
+            # 🎯 هندسة الأهداف التكيفية المحترفة بناءً على القيمة السعرية الجديدة لعام 2026
             if "BTC" in active_pair:
-                stop_loss = round(current_price - 450.0, 2)
-                tp1 = round(current_price + 600.0, 2)
-                tp2 = round(current_price + 1200.0, 2)
-                tp3 = round(current_price + 2500.0, 2)
+                stop_loss = round(current_price - 350.0, 2)
+                tp1 = round(current_price + 500.0, 2)
+                tp2 = round(current_price + 1000.0, 2)
+                tp3 = round(current_price + 2200.0, 2)
             elif "ETH" in active_pair:
                 stop_loss = round(current_price - 25.0, 2)
                 tp1 = round(current_price + 40.0, 2)
-                tp2 = round(current_price + 90.0, 2)
-                tp3 = round(current_price + 180.0, 2)
+                tp2 = round(current_price + 85.0, 2)
+                tp3 = round(current_price + 170.0, 2)
             else:  # PAXG / الذهب الرقمي
                 stop_loss = round(current_price - 15.0, 2)  
                 tp1 = round(current_price + 20.0, 2)
@@ -168,7 +157,6 @@ def main():
                 tp3 = round(current_price + 80.0, 2)
 
             mock_smc_data = {
-                # الاحتفاظ بتسمية الذهب الكلاسيكية إذا كان الاختيار PAXG، وإلا يمرر الرمز كما هو
                 'pair': 'XAUUSDT' if "PAXG" in active_pair else active_pair,
                 'structure': 'BOS_Bullish',
                 'liquidity_swept': True,
@@ -198,19 +186,16 @@ def main():
                 'next_event_epoch': 0
             }
 
-            # معالجة الإشارة عبر عقل اتخاذ القرار
             decision = signal_engine.analyze_market_and_generate_signal(mock_smc_data, mock_market_conditions)
             
-            # إذا تمت الموافقة المتقاطعة، نقوم بالتنفيذ والبث فوراً
             if decision.get('status') == 'TRIGGERED':
                 execution_engine.execute_and_broadcast_signal(decision)
             else:
-                logging.info(f"⏸️ تم تعليق/حظر الفرصة المبدئية. السبب: {decision.get('reason')}")
+                logging.info(f"⏸️ تم تعليق الفرصة المبدئية. السبب: {decision.get('reason')}")
 
         else:
-            logging.info("💤 البوت في وضعية الإيقاف المؤقت (STOPPED) عبر لوحة التحكم.")
+            logging.info("💤 البوت في وضعية الإيقاف المؤقت (STOPPED).")
 
-        # فحص دوري للسوق كل 60 ثانية
         time.sleep(60)
 
 if __name__ == "__main__":
