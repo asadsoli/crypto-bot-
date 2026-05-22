@@ -9,7 +9,8 @@ sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
 from time_engine import TradingTimeEngine
 from news_engine import FederalNewsEngine
-from signal_filter import AdaptiveSignalFilter
+# 🛠️ تم حل المشكلة هنا بدمج الاسم المستعار ليتوافق مع كودك بالأسفل تلقائياً
+from signal_filter import InstitutionalSignalFilter as AdaptiveSignalFilter
 from self_learning import SelfLearningEngine
 from pre_move_engine import PreMoveExplosionEngine
 from risk_manager import InstitutionalRiskManager
