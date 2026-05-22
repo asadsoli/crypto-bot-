@@ -40,26 +40,40 @@ def run_flask():
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# 🔥 [تعديل السعر اللحظي]: ضبط الانطلاق من مستويات الـ 4530$ الحالية بدقة
-LAST_GOLD_PRICE = 4530.0
+# 🔥 [إدارة الأسعار اللحظية]: قاموس لتتبع آخر أسعار تم جلبها لكل عملة لضمان استقرار المحاكاة
+LAST_PRICES = {
+    "PAXGUSDT": 4530.0,
+    "BTCUSDT": 91200.0,
+    "ETHUSDT": 3150.0
+}
 
 def get_real_crypto_price(symbol="PAXGUSDT"):
-    """دالة تجلب السعر الحقيقي، وفي حال قيود الشبكة تولد تذبذباً لحظياً دقيقاً جداً"""
-    global LAST_GOLD_PRICE
+    """دالة تجلب السعر الحقيقي، وفي حال قيود الشبكة تولد تذبذباً لحظياً دقيقاً جداً لكل زوج"""
+    global LAST_PRICES
+    # التأكد من وجود الرمز في القاموس لتفادي الأخطاء المفاجئة
+    if symbol not in LAST_PRICES:
+        LAST_PRICES[symbol] = 100.0
+        
     try:
         url = f"https://api.binance.com/api/v3/ticker/price?symbol={symbol}"
         response = requests.get(url, timeout=4)
         if response.status_code == 200:
             data = response.json()
-            LAST_GOLD_PRICE = float(data['price'])
-            return LAST_GOLD_PRICE
+            LAST_PRICES[symbol] = float(data['price'])
+            return LAST_PRICES[symbol]
     except Exception as e:
         logging.warning(f"⚠️ الانتقال للمحاكاة اللحظية لـ {symbol}: {e}")
     
-    # 🎯 تذبذب ميكرو دقيق جداً (بين -1.5 و +2.0 دولار) ليبقى السعر ملتصقاً بالـ 4530 الحقيقية
-    price_change = random.uniform(-1.5, 2.0)
-    LAST_GOLD_PRICE += price_change
-    return round(LAST_GOLD_PRICE, 2)
+    # 🎯 تخصيص حجم التذبذب الميكرو حسب القيمة السعرية لكل أصل
+    if "BTC" in symbol:
+        price_change = random.uniform(-45.0, 60.0)
+    elif "ETH" in symbol:
+        price_change = random.uniform(-2.5, 3.5)
+    else:  # PAXG / الذهب الرقمي
+        price_change = random.uniform(-1.5, 2.0)
+        
+    LAST_PRICES[symbol] += price_change
+    return round(LAST_PRICES[symbol], 2)
 
 def run_control_panel(panel):
     """تشغيل لوحة تحكم تيليغرام في مسار منفصل لمنع حظر البرنامج الرئيسي"""
@@ -129,19 +143,33 @@ def main():
     # 6. حلقة محاكاة السوق اللحظية (Market Live Simulation Loop)
     while True:
         if control_panel.bot_status == "RUNNING":
-            logging.info("🔍 جاري سحب لقطة حية للسوق وتمريرها عبر فلاتر الأموال الذكية...")
+            # 🔥 [تعديل تفاعلي]: جلب الزوج النشط الحالي المختار من الكيبورد في تيليغرام تلقائياً
+            active_pair = control_panel.current_active_pair
+            logging.info(f"🔍 جاري سحب لقطة حية وتمرير فلاتر الأموال الذكية لـ {active_pair}...")
             
-            # 🔄 جلب السعر الدقيق اللحظي
-            current_price = get_real_crypto_price("PAXGUSDT")
+            # 🔄 جلب السعر الدقيق اللحظي حسب الزوج النشط المختار
+            current_price = get_real_crypto_price(active_pair)
             
-            # حساب الأهداف بناءً على النطاق السعري لـ 4530$ بدقة
-            stop_loss = round(current_price - 15.0, 2)  
-            tp1 = round(current_price + 20.0, 2)
-            tp2 = round(current_price + 45.0, 2)
-            tp3 = round(current_price + 80.0, 2)
+            # 🎯 هندسة الأسعار التكيفية بناءً على نطاق العملة المحددة حالياً على الشارت
+            if "BTC" in active_pair:
+                stop_loss = round(current_price - 450.0, 2)
+                tp1 = round(current_price + 600.0, 2)
+                tp2 = round(current_price + 1200.0, 2)
+                tp3 = round(current_price + 2500.0, 2)
+            elif "ETH" in active_pair:
+                stop_loss = round(current_price - 25.0, 2)
+                tp1 = round(current_price + 40.0, 2)
+                tp2 = round(current_price + 90.0, 2)
+                tp3 = round(current_price + 180.0, 2)
+            else:  # PAXG / الذهب الرقمي
+                stop_loss = round(current_price - 15.0, 2)  
+                tp1 = round(current_price + 20.0, 2)
+                tp2 = round(current_price + 45.0, 2)
+                tp3 = round(current_price + 80.0, 2)
 
             mock_smc_data = {
-                'pair': 'XAUUSDT',
+                # الاحتفاظ بتسمية الذهب الكلاسيكية إذا كان الاختيار PAXG، وإلا يمرر الرمز كما هو
+                'pair': 'XAUUSDT' if "PAXG" in active_pair else active_pair,
                 'structure': 'BOS_Bullish',
                 'liquidity_swept': True,
                 'at_order_block_or_fvg': True,
