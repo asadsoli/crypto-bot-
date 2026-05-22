@@ -4,7 +4,7 @@ import logging
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-class NewsEngineV2:
+class FederalNewsEngine: # تم تعديل الاسم هنا ليتوافق مع ملف main.py
     def __init__(self):
         # الكلمات المفتاحية الحساسة لأخبار الماكرو الاقتصادي
         self.macro_keywords = {
@@ -112,4 +112,4 @@ class NewsEngineV2:
                 'timestamp': news.get('timestamp', datetime.datetime.utcnow().timestamp())
             })
         return processed_news
-  
+        
