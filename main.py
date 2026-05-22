@@ -1,7 +1,12 @@
 import os
+import sys
 import time
 import logging
 import threading
+
+# 🌍 أخبر بايثون بالبحث داخل مجلد src أولاً لتفادي خطأ الـ ImportError على سيرفر Render
+sys.path.append(os.path.abspath(os.path.dirname(__file__)))
+
 from time_engine import TradingTimeEngine
 from news_engine import FederalNewsEngine
 from signal_filter import AdaptiveSignalFilter
