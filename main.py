@@ -57,20 +57,20 @@ def main():
     TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "YOUR_BOT_TOKEN_HERE")
     CHANNEL_ID = os.getenv("CHANNEL_ID", "YOUR_CHANNEL_ID_HERE")
 
-    # 3. تهيئة وتدشين كافة المحركات الفرعية للمشروع
+    # 3. تهيئة وتدشين كافة المحركات الفرعية للمشروع بالتسلسل المتناسق الصحيح
     time_engine = TradingTimeEngine()
     news_engine = FederalNewsEngine()
-    
-    # تمرير المحركات المطلوبة لمرشح الإشارة
-    signal_filter = AdaptiveSignalFilter(time_engine=time_engine, news_engine=news_engine)
-    
     self_learning_engine = SelfLearningEngine()
     
-    # 🔥 [التعديل الأخير والمنقذ] تمرير محرك التوقيت والأخبار لمحرك التنبؤ لحل خطأ الـ TypeError نهائياً
+    # تمرير المحركات المطلوبة لمرشح الإشارة ومحرك التنبؤ
+    signal_filter = AdaptiveSignalFilter(time_engine=time_engine, news_engine=news_engine)
     pre_move_engine = PreMoveExplosionEngine(time_engine=time_engine, news_engine=news_engine)
     
-    # تهيئة إدارة المخاطر برأس مال افتراضي 100,000$ ونمط متوسط
-    risk_manager = InstitutionalRiskManager(total_capital=100000.0, risk_profile="MEDIUM")
+    # 🔥 [إصلاح المخاطر الجذري]: تمرير المحركات المطلوبة لـ Risk Manager بناءً على ملفك الأصلي تماماً
+    risk_manager = InstitutionalRiskManager(news_engine=news_engine, self_learning_engine=self_learning_engine)
+    
+    # تعديل نمط المخاطرة إلى MEDIUM بعد التهيئة إن أردت (باستخدام الدالة المدمجة بملفك)
+    risk_manager.set_risk_profile("MEDIUM")
     
     quality_engine = EliteQualityEngine(time_engine=time_engine, pre_move_engine=pre_move_engine)
     
@@ -134,7 +134,9 @@ def main():
                 'news_analysis': {
                     'impact_score': 1,
                     'sentiment': 'Bullish'
-                }
+                },
+                'is_market_choppy': False,
+                'next_event_epoch': 0
             }
 
             # معالجة الإشارة عبر عقل اتخاذ القرار
@@ -154,4 +156,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-            
+    
