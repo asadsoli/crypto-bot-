@@ -9,9 +9,10 @@ sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
 from time_engine import TradingTimeEngine
 from news_engine import FederalNewsEngine
-# 🛠️ تم حل المشكلة هنا بدمج الاسم المستعار ليتوافق مع كودك بالأسفل تلقائياً
+# 🛠️ تم حل مشكلة مرشح الإشارة بالاسم المستعار
 from signal_filter import InstitutionalSignalFilter as AdaptiveSignalFilter
-from self_learning import SelfLearningEngine
+# 🧠 تم حل مشكلة محرك التعلم الذاتي هنا بإضافة V1 كاسم مستعار ليتوافق مع السيرفر وباقي الكود
+from self_learning import SelfLearningEngineV1 as SelfLearningEngine
 from pre_move_engine import PreMoveExplosionEngine
 from risk_manager import InstitutionalRiskManager
 from quality_engine import EliteQualityEngine
