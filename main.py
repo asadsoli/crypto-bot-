@@ -3,6 +3,7 @@ import sys
 import time
 import logging
 import threading
+import requests  # 🌐 استيراد مكتبة الطلبات لجلب الأسعار الحقيقية
 
 # 🌍 أخبر بايثون بالبحث داخل مجلد src أولاً لتفادي خطأ الـ ImportError على سيرفر Render
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
@@ -38,6 +39,18 @@ def run_flask():
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+def get_real_crypto_price(symbol="PAXGUSDT"):
+    """دالة آمنة تضمن جلب السعر الحقيقي مباشرة من Binance API العام دون تجميد الكود"""
+    try:
+        url = f"https://api.binance.com/api/v3/ticker/price?symbol={symbol}"
+        response = requests.get(url, timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            return float(data['price'])
+    except Exception as e:
+        logging.error(f"⚠️ تعذر جلب السعر الحقيقي لـ {symbol} بسبب: {e}")
+    return None
+
 def run_control_panel(panel):
     """تشغيل لوحة تحكم تيليغرام في مسار منفصل لمنع حظر البرنامج الرئيسي"""
     try:
@@ -66,10 +79,10 @@ def main():
     signal_filter = AdaptiveSignalFilter(time_engine=time_engine, news_engine=news_engine)
     pre_move_engine = PreMoveExplosionEngine(time_engine=time_engine, news_engine=news_engine)
     
-    # 🔥 [إصلاح المخاطر الجذري]: تمرير المحركات المطلوبة لـ Risk Manager بناءً على ملفك الأصلي تماماً
+    # تمرير المحركات المطلوبة لـ Risk Manager بناءً على ملفك الأصلي تماماً
     risk_manager = InstitutionalRiskManager(news_engine=news_engine, self_learning_engine=self_learning_engine)
     
-    # تعديل نمط المخاطرة إلى MEDIUM بعد التهيئة إن أردت (باستخدام الدالة المدمجة بملفك)
+    # تعديل نمط المخاطرة إلى MEDIUM بعد التهيئة
     risk_manager.set_risk_profile("MEDIUM")
     
     quality_engine = EliteQualityEngine(time_engine=time_engine, pre_move_engine=pre_move_engine)
@@ -108,17 +121,28 @@ def main():
         if control_panel.bot_status == "RUNNING":
             logging.info("🔍 جاري سحب لقطة حية للسوق وتمريرها عبر فلاتر الأموال الذكية...")
             
-            # محاكاة لبيانات قادمة لزوج الذهب الرقمي المثبت PAXG
+            # 🔄 محاولة جلب السعر اللحظي الحقيقي للذهب الرقمي
+            live_paxg_price = get_real_crypto_price("PAXGUSDT")
+            if live_paxg_price is None:
+                live_paxg_price = 2350.0  # قيمة احتياطية في حال انقطع الاتصال بـ Binance
+            
+            # نقوم بحساب الأهداف ديناميكياً بناءً على السعر الحقيقي الحالي بدلاً من القيم الثابتة
+            current_price = live_paxg_price
+            stop_loss = current_price - 15.0
+            tp1 = current_price + 20.0
+            tp2 = current_price + 40.0
+            tp3 = current_price + 70.0
+
             mock_smc_data = {
                 'pair': 'XAUUSDT',
                 'structure': 'BOS_Bullish',
                 'liquidity_swept': True,
                 'at_order_block_or_fvg': True,
-                'current_price': 2350.0,
-                'stop_loss': 2335.0,
-                'tp1': 2370.0,
-                'tp2': 2390.0,
-                'tp3': 2420.0,
+                'current_price': current_price,
+                'stop_loss': stop_loss,
+                'tp1': tp1,
+                'tp2': tp2,
+                'tp3': tp3,
                 'base_confidence': 88.0,
                 'base_ai_score': 90.0,
                 'rsi': 48,
@@ -156,4 +180,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
+            
