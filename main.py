@@ -60,7 +60,10 @@ def main():
     # 3. تهيئة وتدشين كافة المحركات الفرعية للمشروع
     time_engine = TradingTimeEngine()
     news_engine = FederalNewsEngine()
-    signal_filter = AdaptiveSignalFilter()
+    
+    # 🔥 [التعديل الجوهري] تمرير المحركات المطلوبة لحل خطأ الـ TypeError نهائياً
+    signal_filter = AdaptiveSignalFilter(time_engine=time_engine, news_engine=news_engine)
+    
     self_learning_engine = SelfLearningEngine()
     pre_move_engine = PreMoveExplosionEngine()
     
@@ -149,4 +152,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
+        
