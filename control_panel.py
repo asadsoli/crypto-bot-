@@ -16,10 +16,22 @@ class InstitutionalControlPanelV2:
         self.intelligence_level = "INSTITUTIONAL" # NORMAL / SMART / INSTITUTIONAL
         self.news_filter_active = True
         self.market_regime = "Risk ON"
-        self.tracked_pairs = ["BTCUSDT", "ETHUSDT", "PAXGUSDT"] # PAXG مثبت بدلاً من XAU
+        self.tracked_pairs = ["BTCUSDT", "ETHUSDT", "PAXGUSDT"] 
+        
+        # 🔥 [ميزة العملة النشطة]: العملة الافتراضية عند التشغيل
+        self.current_active_pair = "PAXGUSDT"
 
         # تسجيل معالجات الضغط على الأزرار (Callback Queries)
         self._setup_callbacks()
+
+        # 🎯 تسجيل أمر /start لكي يظهر الكيبورد فوراً بمجرد كتابته للبوت
+        self._setup_commands()
+
+    def _setup_commands(self):
+        """تسجيل الأوامر النصية مثل /start لإظهار اللوحة الرئيسية تلقائياً"""
+        @self.bot.message_handler(commands=['start', 'menu'])
+        def send_welcome(message):
+            self.send_dashboard(message.chat.id)
 
     def get_main_menu_keyboard(self) -> InlineKeyboardMarkup:
         """إنشاء الأزرار التفاعلية للقائمة الرئيسية للتحكم بالمحرك"""
@@ -44,7 +56,7 @@ class InstitutionalControlPanelV2:
                    InlineKeyboardButton(elite_text, callback_data="toggle_elite_mode"))
         
         # السطر 5: قسم إدارة العملات والأداء
-        markup.add(InlineKeyboardButton("🪙 قسم العملات الذكي", callback_data="menu_pairs"),
+        markup.add(InlineKeyboardButton(f"🪙 العملة: {self.current_active_pair.split('USDT')[0]}", callback_data="menu_pairs"),
                    InlineKeyboardButton("🛡️ مستويات المخاطرة", callback_data="menu_risk"))
         
         markup.add(InlineKeyboardButton("📊 إحصائيات الأداء", callback_data="menu_performance"),
@@ -62,7 +74,8 @@ class InstitutionalControlPanelV2:
             "-------------------------------------------\n"
             "مرحباً بك في وحدة التحكم المركزية للبوت. استخدم الأزرار أدناه لتوجيه سلوك النظام الحركي وإدارة الصفقات فورياً بدون أوامر نصية.\n\n"
             f"⚡ **الحالة العامة:** {self.bot_status}\n"
-            f"🧠 **نمط التحلبل الحركي:** {self.intelligence_level}\n"
+            f"🪙 **العملة المراقبة حالياً:** `{self.current_active_pair}`\n"
+            f"🧠 **نمط التحليل الحركي:** {self.intelligence_level}\n"
             f"🛡️ **ملف المخاطر النشط:** {self.risk_manager.current_profile}\n"
             f"🔥 **تصفية النخبة (Elite Mode):** {'مفعلة' if self.quality_engine.elite_mode_active else 'معطلة'}"
         )
@@ -99,7 +112,6 @@ class InstitutionalControlPanelV2:
                 self.bot.answer_callback_query(call.id, f"تحديث حالة السوق لـ {self.market_regime}")
                 
             elif data == "menu_risk":
-                # لوحة فرعية سريعة لاختيار نمط المخاطر المؤسسي
                 markup = InlineKeyboardMarkup()
                 markup.add(InlineKeyboardButton("📉 منخفض (1%)", callback_data="set_risk_LOW"),
                            InlineKeyboardButton("⚖️ متوسط (2%)", callback_data="set_risk_MEDIUM"))
@@ -109,6 +121,22 @@ class InstitutionalControlPanelV2:
                 self.bot.edit_message_text("🛡️ **اختر نمط إدارة المخاطر المؤسسي للمحرك:**", chat_id, call.message.message_id, reply_markup=markup, parse_mode="Markdown")
                 return
 
+            # 🔥 [تحديث تفاعلي كلي لقسم العملات]: تفعيل لوحة اختيار أزواج التداول
+            elif data == "menu_pairs":
+                markup = InlineKeyboardMarkup(row_width=1)
+                markup.add(
+                    InlineKeyboardButton("🪙 الذهب الرقمي (PAXGUSDT)", callback_data="select_pair_PAXGUSDT"),
+                    InlineKeyboardButton("⚡ البيتكوين (BTCUSDT)", callback_data="select_pair_BTCUSDT"),
+                    InlineKeyboardButton("🔷 الإيثيريوم (ETHUSDT)", callback_data="select_pair_ETHUSDT")
+                )
+                markup.add(InlineKeyboardButton("⬅️ العودة للقائمة الرئيسية", callback_data="back_to_main"))
+                self.bot.edit_message_text("🪙 **اختر العملة المؤسسية المراد فحص حركتها اللحظية الآن:**", chat_id, call.message.message_id, reply_markup=markup, parse_mode="Markdown")
+                return
+
+            elif data.startswith("select_pair_"):
+                self.current_active_pair = data.replace("select_pair_", "")
+                self.bot.answer_callback_query(call.id, f"🎯 تحويل رادار الفحص إلى: {self.current_active_pair}")
+
             elif data.startswith("set_risk_"):
                 profile = data.replace("set_risk_", "")
                 self.risk_manager.set_risk_profile(profile)
@@ -116,11 +144,13 @@ class InstitutionalControlPanelV2:
                 
             elif data == "emergency_stop":
                 self.bot_status = "STOPPED"
-                self.risk_manager.active_trades.clear() # تصفير فوري لسجل الصفقات النشطة
+                self.risk_manager.active_trades.clear()
                 self.bot.send_message(chat_id, "⚠️ **إجراء طوارئ إجباري!** تم إيقاف التداول الشامل وتصفير بوابات المخاطر فوراً حماية لرأس المال.", parse_mode="Markdown")
                 
-            elif data == "back_to_main":
-                pass # سيقوم الكود بالأسفل بتحديث الصفحة الرئيسية تلقائياً
+            elif data in ["back_to_main", "menu_performance", "menu_prediction"]:
+                # معالجة القوائم الإضافية لتعود بأمان للشاشة الرئيسية دون تعطيل الكود
+                if data != "back_to_main":
+                    self.bot.answer_callback_query(call.id, "📊 النظام يقوم بجمع الإحصائيات في الخلفية...")
 
             # إعادة تحديث اللوحة الرئيسية لتعكس التغييرات والبيانات اللحظية
             try:
@@ -128,7 +158,8 @@ class InstitutionalControlPanelV2:
                     "👑 **لوحة التحكم المؤسسية الاحترافية V2** 👑\n"
                     "-------------------------------------------\n"
                     f"⚡ **الحالة العامة:** {self.bot_status}\n"
-                    f"🧠 **نمط التحلبل الحركي:** {self.intelligence_level}\n"
+                    f"🪙 **العملة المراقبة حالياً:** `{self.current_active_pair}`\n"
+                    f"🧠 **نمط التحليل الحركي:** {self.intelligence_level}\n"
                     f"🛡️ **ملف المخاطر النشط:** {self.risk_manager.current_profile}\n"
                     f"🌍 **حالة السوق الفدرالية والجيوسياسية:** {self.market_regime}\n"
                     f"🔥 **تصفية النخبة (Elite Mode):** {'مفعلة' if self.quality_engine.elite_mode_active else 'معطلة'}"
@@ -138,7 +169,7 @@ class InstitutionalControlPanelV2:
                 logging.error(f"خطأ في تحديث واجهة اللوحة: {e}")
 
     def start_polling(self):
-        """تشغيل محرك استقبال البيانات من تيليغرام (Non-blocking في الخلفية لاحقاً)"""
+        """تشغيل محرك استقبال البيانات من تيليغرام"""
         logging.info("📱 لوحة التحكم الاحترافية بدأت العمل واستقبال الأوامر عبر الأزرار...")
         self.bot.infinity_polling()
-      
+        
