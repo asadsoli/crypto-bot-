@@ -61,11 +61,13 @@ def main():
     time_engine = TradingTimeEngine()
     news_engine = FederalNewsEngine()
     
-    # 🔥 [التعديل الجوهري] تمرير المحركات المطلوبة لحل خطأ الـ TypeError نهائياً
+    # تمرير المحركات المطلوبة لمرشح الإشارة
     signal_filter = AdaptiveSignalFilter(time_engine=time_engine, news_engine=news_engine)
     
     self_learning_engine = SelfLearningEngine()
-    pre_move_engine = PreMoveExplosionEngine()
+    
+    # 🔥 [التعديل الأخير والمنقذ] تمرير محرك التوقيت والأخبار لمحرك التنبؤ لحل خطأ الـ TypeError نهائياً
+    pre_move_engine = PreMoveExplosionEngine(time_engine=time_engine, news_engine=news_engine)
     
     # تهيئة إدارة المخاطر برأس مال افتراضي 100,000$ ونمط متوسط
     risk_manager = InstitutionalRiskManager(total_capital=100000.0, risk_profile="MEDIUM")
@@ -152,4 +154,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-        
+            
