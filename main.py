@@ -153,7 +153,7 @@ def main():
                     tp2 = round(current_price + 35.0, 2)
                     tp3 = round(current_price + 70.0, 2)
 
-                # 🎲 خلخلة البيانات وتجهيزها
+                # 🎲 خلخلة البيانات وتجهيزها لحقنها في المحرك الفني الأصلي
                 mock_smc_data = {
                     'pair': active_pair,
                     'structure': random.choice(['BOS_Bullish', 'CHoCH_Bullish', 'BOS_Bullish']),
@@ -179,39 +179,19 @@ def main():
                     'next_event_epoch': 0
                 }
 
-                # جلب القرار الأصلي من محرك الإشارات
+                # 🧠 خطوة 1: استدعاء قرار المحرك الذكي الأصلي والكامل للتحليلات
                 decision = signal_engine.analyze_market_and_generate_signal(mock_smc_data, mock_market_conditions)
                 
-                # 🚀 [التعديل الجوهري لحل الـ KeyError والانهيار]
-                # نقوم ببناء قاموس استجابة متكامل ومحمي ومطابق 100% لما يبحث عنه ملف execution_engine.py
-                final_decision = {
-                    'status': 'TRIGGERED',
-                    'filtered_signal': {
-                        'pair': active_pair,
-                        'current_price': current_price,
-                        'stop_loss': stop_loss,
-                        'tp1': tp1,
-                        'tp2': tp2,
-                        'tp3': tp3,
-                        'structure': mock_smc_data['structure'],
-                        'base_confidence': mock_smc_data['base_confidence'],
-                        'base_ai_score': mock_smc_data['base_ai_score']
-                    },
-                    'signal_data': {
-                        'pair': active_pair,
-                        'current_price': current_price,
-                        'stop_loss': stop_loss,
-                        'tp1': tp1,
-                        'tp2': tp2,
-                        'tp3': tp3
-                    }
-                }
-                
-                # إرسال الصفقة المحمية والهيكلية فورا لتظهر بالقناة
-                try:
-                    execution_engine.execute_and_broadcast_signal(final_decision)
-                except Exception as e:
-                    logging.error(f"⚠️ خطأ أثناء بث الإشارة إلى تليغرام: {e}")
+                # 🚀 خطوة 2: التحقق الآمن وبث الإشارة دون فقدان الـ 'type' أو التسبب في انهيار الكود
+                if decision.get('status') == 'TRIGGERED':
+                    try:
+                        # نقوم بتمرير النتيجة الكاملة والذكية القادمة مباشرة من المحرك الفني بعد فلاتر الحماية
+                        execution_engine.execute_and_broadcast_signal(decision)
+                    except Exception as e:
+                        logging.error(f"⚠️ خطأ أثناء بث الإشارة إلى تليغرام: {e}")
+                else:
+                    # طباعة سبب عدم الخروج بالإشارة في اللوجات لمراقبة ذكاء البوت
+                    logging.info(f"🔮 محرك التنبؤ السعري [{active_pair}]: {decision.get('reason', 'شروط التصفية النشطة')}")
 
             else:
                 logging.info("💤 البوت في وضعية الإيقاف المؤقت (STOPPED).")
@@ -223,4 +203,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-                
