@@ -32,7 +32,7 @@ class InstitutionalRiskManager:
     def can_open_trade(self, signal_data: dict, current_market_conditions: dict) -> dict:
         """
         🛡️ الفحص النهائي الإجباري قبل تنفيذ أي صفقة.
-        يرجع إما موافقة بالدخول وحجم العقد أو حظر تام للصفقة.
+        يرجع إما موافقة بالدخول وحجم العقد أو حظر تام للصفقة (مع آلية الشفاء الذاتي للتعليق).
         """
         pair = signal_data.get('pair', 'UNKNOWN').upper()
         if 'XAU' in pair:
@@ -44,9 +44,25 @@ class InstitutionalRiskManager:
             return {'status': 'BLOCK', 'reason': f"❌ حظر المخاطر: نسبة الثقة {confidence}% أقل من حد الـ 55%"}
         elif 55.0 <= confidence < 70.0:
             logging.warning(f"⚠️ تنبيه المخاطر: نسبة الثقة {confidence}% في مرحلة المراقبة والحذر")
-            # يمكن للمطور اختيار حظرها أو السماح بها بحجم عقد مخفض جداً، هنا سنمررها بشرط الحذر
         
-        # 2. فحص كثرة الصفقات المفتوحة ومنع التداخل (Overlapping Prevention)
+        # 2. فحص كثرة الصفقات المفتوحة ومنع التداخل وآلية التحرير التلقائي (Auto-Healing)
+        current_time = datetime.datetime.utcnow()
+        max_holding_duration = datetime.timedelta(hours=4) # حد الأمان الزمني لتصفير الصفقات العالقة
+
+        # فحص إجباري لتنظيف الصفقات القديمة العالقة قبل اتخاذ القرار
+        pairs_to_release = []
+        for trade_pair, trade_info in self.active_trades.items():
+            opened_at_str = trade_info.get('opened_at')
+            if opened_at_str:
+                opened_at = datetime.datetime.fromisoformat(opened_at_str)
+                if current_time - opened_at > max_holding_duration:
+                    pairs_to_release.append(trade_pair)
+
+        # تحرير الأزواج العالقة ذاتياً دون الحاجة لإعادة تشغيل البوت
+        for trade_pair in pairs_to_release:
+            logging.warning(f"🔄 إصلاح ذاتي آلي: تم رصد صفقة قديمة عالقة على زوج {trade_pair}. يتم التحرير برمجياً الآن...")
+            del self.active_trades[trade_pair]
+
         if len(self.active_trades) >= 3:
             return {'status': 'BLOCK', 'reason': "❌ حظر المخاطر: تم الوصول للحد الأقصى من الصفقات المتزامنة (حد أقصى 3)"}
         
@@ -56,7 +72,6 @@ class InstitutionalRiskManager:
         # 3. فحص حالة السوق العامة (Risk Regime) والظروف الجيوسياسية والأخبار الخطيرة
         news_analysis = current_market_conditions.get('news_analysis', {})
         if news_analysis.get('risk_regime') == 'Risk OFF':
-            # إذا كنا في حالة Risk OFF، نمنع التداول تماماً إلا لـ PAXG لحماية الحساب من عواصف التقلب
             if pair != 'PAXGUSDT':
                 return {'status': 'BLOCK', 'reason': "❌ حظر المخاطر: السوق في حالة Risk OFF (أخبار ماكرو أو جيوسياسية قوية)، يمنع التداول"}
 
@@ -74,16 +89,12 @@ class InstitutionalRiskManager:
             return {'status': 'BLOCK', 'reason': "❌ حظر المخاطر: السوق يتحرك بشكل عشوائي وبدون اتجاه واضح (Choppy Market)"}
 
         # 6. حساب إدارة المخاطرة الديناميكية (Dynamic Risk Management)
-        # نقوم بطلب أوزان المخاطرة التكيفية من محرك التعلم الذاتي
         adaptive_weights = self.self_learning_engine.get_adaptive_config()
         learning_multiplier = adaptive_weights.get('risk_multiplier', 1.0)
         
         base_risk_percentage = self.risk_profiles[self.current_profile]
-        
-        # دمج النسبة الافتراضية مع معامل التعلم الذاتي (يزداد مع الأرباح وينخفض مع الخسائر)
         final_risk_percentage = base_risk_percentage * learning_multiplier
         
-        # إذا كانت الظروف قريبة من الأخبار، نخفض المخاطرة للنصف تلقائياً كحماية إضافية
         if timing_status['action'] == 'REDUCE_TRADING':
             final_risk_percentage *= 0.5
 
@@ -112,4 +123,4 @@ class InstitutionalRiskManager:
         if pair in self.active_trades:
             del self.active_trades[pair]
             logging.info(f"🔓 تم تحرير زوج {pair} وجاهز لاستقبال صفقات جديدة.")
-          
+        
