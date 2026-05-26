@@ -1,19 +1,27 @@
+# SignalEngineV3.py
+# ⚡ محرك الإشارات المؤسسي المطور بالكامل - النسخة V3 ⚡
+# 🛡️ يحافظ على كافة الميزات السابقة ويضيف: الاستوب الديناميكي، الرادار المستقل، والفحص تحت الطلب
+
 import logging
 import datetime
+import time
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-class SignalEngineV1:
+class SignalEngineV3:
     def __init__(self, time_engine, news_engine, risk_manager, quality_engine, pre_move_engine):
         self.time_engine = time_engine
         self.news_engine = news_engine
         self.risk_manager = risk_manager
         self.quality_engine = quality_engine
         self.pre_move_engine = pre_move_engine
+        
+        # 🪙 السلة الذهبية للأزواج الأربعة المعتمدة للرادار الخلفي
+        self.watchlist_pairs = ["BTCUSDT", "PAXGUSDT", "ETHUSDT", "SOLUSDT"]
 
     def analyze_market_and_generate_signal(self, smc_data: dict, market_conditions: dict) -> dict:
         """
-        ⚙️ محرك تحليل الهيكلية واتخاذ قرار الدخول المؤسسي
+        ⚙️ محرك تحليل الهيكلية واتخاذ قرار الدخول المؤسسي (النسخة المستقرة V3)
         """
         pair = smc_data.get('pair', 'UNKNOWN').upper()
         # استبدال الذهب التقليدي بالذهب الرقمي المشفر بشكل صارم ومثبت
@@ -46,15 +54,33 @@ class SignalEngineV1:
         if not signal_type:
             return {'status': 'NO_SIGNAL', 'reason': "لم تتحقق شروط توافق هيكلية الأموال الذكية وسحب السيولة"}
 
-        # 2. بناء بيانات الإشارة المبدئية
+        # 🛡️ ترقية V3: حساب الاستوب والأهداف ديناميكياً لحماية الصفقة من الذيول والتقلبات
+        entry_price = smc_data.get('current_price')
+        raw_sl = smc_data.get('stop_loss')
+        atr_value = smc_data.get('atr', entry_price * 0.002) # إذا لم يتوفر ATR، نستخدم 0.2% كمعامل أمان ديناميكي
+        
+        # توسيع الاستوب لمنع ضرب السيولة الخادعة وقت الأخبار
+        if signal_type == "BUY":
+            final_sl = min(raw_sl, entry_price - (atr_value * 1.5))
+            # إعادة توازن الأهداف بناءً على الاستوب الجديد لضمان نسبة عائد للمخاطرة ممتازة (Risk:Reward)
+            tp1 = entry_price + (entry_price - final_sl) * 1.0
+            tp2 = entry_price + (entry_price - final_sl) * 2.0
+            tp3 = entry_price + (entry_price - final_sl) * 4.0
+        else:
+            final_sl = max(raw_sl, entry_price + (atr_value * 1.5))
+            tp1 = entry_price - (final_sl - entry_price) * 1.0
+            tp2 = entry_price - (final_sl - entry_price) * 2.0
+            tp3 = entry_price - (final_sl - entry_price) * 4.0
+
+        # 2. بناء بيانات الإشارة المبدئية بالقيم المحدثة
         raw_signal = {
             'pair': pair,
             'type': signal_type,
-            'entry_price': smc_data.get('current_price'),
-            'sl': smc_data.get('stop_loss'),
-            'tp1': smc_data.get('tp1'),
-            'tp2': smc_data.get('tp2'),
-            'tp3': smc_data.get('tp3'),
+            'entry_price': entry_price,
+            'sl': round(final_sl, 2),
+            'tp1': round(tp1, 2),
+            'tp2': round(tp2, 2),
+            'tp3': round(tp3, 2),
             'confidence_score': smc_data.get('base_confidence', 65.0),
             'ai_score': smc_data.get('base_ai_score', 70.0),
             'timestamp': datetime.datetime.utcnow().timestamp()
@@ -88,4 +114,67 @@ class SignalEngineV1:
             'status': 'TRIGGERED',
             'signal_data': raw_signal
         }
-      
+
+    # =========================================================================
+    # 🔥 ميزات ترقية V3 الكبرى الأخرى (الرادار الخلفي والفحص تحت الطلب)
+    # =========================================================================
+
+    def run_autonomous_radar_scan(self, current_dashboard_pair: str, get_smc_data_func, market_conditions: dict) -> list:
+        """
+        🦅 رادار الفحص الخلفي المستقل: يمسح العملات الأساسية المتبقية خارج اللوحة
+        ويرسل فقط الفرص التي تصنيفها 'Elite' وتتعدى نسبة ثقتها 85%
+        """
+        autonomous_signals = []
+        for pair in self.watchlist_pairs:
+            if pair == current_dashboard_pair.upper():
+                continue # تخطي عملة اللوحة الأساسية منعاً للتكرار
+            
+            # جلب البيانات اللحظية للعملة الخلفية
+            smc_data = get_smc_data_func(pair)
+            if not smc_data:
+                continue
+                
+            res = self.analyze_market_and_generate_signal(smc_data, market_conditions)
+            if res['status'] == 'TRIGGERED':
+                sig = res['signal_data']
+                # شرط صارم: لا نرسل خارج اللوحة إلا النخبة الفولاذية
+                if sig['classification'] == 'Elite' and sig['confidence_score'] >= 85.0:
+                    sig['is_autonomous'] = True
+                    autonomous_signals.append(sig)
+                    
+        return autonomous_signals
+
+    def process_on_demand_request(self, custom_pair: str, get_smc_data_func, market_conditions: dict) -> dict:
+        """
+        🔍 مستشار الفحص الفوري المخصص (On-Demand Scan):
+        يحلل أي عملة في السوق فوراً وبكبسة زر بناءً على طلبك الشخصي ولا يرسلها للقناة.
+        """
+        custom_pair = custom_pair.upper()
+        smc_data = get_smc_data_func(custom_pair)
+        
+        if not smc_data:
+            return {
+                'pair': custom_pair,
+                'status': 'ERROR',
+                'message': '❌ تعذر جلب بيانات الحركة اللحظية للعملة من المنصة حالياً.'
+            }
+            
+        res = self.analyze_market_and_generate_signal(smc_data, market_conditions)
+        
+        report = {
+            'pair': custom_pair,
+            'current_price': smc_data.get('current_price'),
+            'structure': smc_data.get('structure', 'غير محدد'),
+            'liquidity_swept': 'تم سحب السيولة ✅' if smc_data.get('liquidity_swept') else 'لم تسحب السيولة ❌',
+            'timestamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        }
+        
+        if res['status'] == 'TRIGGERED':
+            report['opportunity'] = 'AVAILABLE ✅'
+            report['signal_details'] = res['signal_data']
+        else:
+            report['opportunity'] = 'NOT_AVAILABLE ❌'
+            report['reason'] = res.get('reason', 'السوق غير مستقر أو الهيكل غير مكتمل.')
+            
+        return report
+    
