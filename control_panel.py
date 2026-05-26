@@ -1,3 +1,6 @@
+# control_panel.py
+# ⚡ لوحة تحكم منظومة الوحش المؤسسية المطورة - النسخة المدمجة V2.1 ⚡
+
 import telebot
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 import logging
@@ -23,12 +26,14 @@ class InstitutionalControlPanelV2:
         self._setup_message_handlers()
 
     def get_main_menu_keyboard(self) -> ReplyKeyboardMarkup:
-        """توليد كيبورد تيليغرام الأساسي المدمج أسفل لوحة الكتابة مباشرة"""
-        # zero_time_keyboard=False مع resize_keyboard يجعل الأزرار ثابتة وتفتح وتغلق من زر تليجرام نفسه
+        """توليد كيبورد تيليغرام الأساسي المدمج أسفل لوحة الكتابة مباشرة مع الزر السحري"""
         markup = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True, row_width=2)
         
         status_text = "🟢 تشغيل البوت (نشط)" if self.bot_status == "RUNNING" else "🔴 إيقاف البوت (معطل)"
         markup.row(KeyboardButton(status_text))
+        
+        # 🔥 الزر السحري الجديد لتصفير وتحرير الصفقات العالقة فوراً
+        markup.row(KeyboardButton("🔓 تصفير وتحرير الصفقات العالقة"))
         
         intel_text = f"🧠 الذكاء: {self.intelligence_level}"
         elite_text = "🔥 وضع النخبة: ON" if self.quality_engine.elite_mode_active else "🔥 وضع النخبة: OFF"
@@ -66,14 +71,31 @@ class InstitutionalControlPanelV2:
         @self.bot.message_handler(commands=['start', 'menu'])
         def handle_start_command(message):
             self.current_menu_state = "MAIN"
-            # إرسال الرسالة التعريفية لمرة واحدة فقط لتظهر اللوحة بالأسفل
-            text = "👑 **تم تفعيل لوحة التحكم المركزية بالأسفل** 👑\nاضغط على زر الكيبورد في تيليغرام لفتحها أو إغلاقها في أي وقت."
+            text = "👑 **تم تفعيل لوحة التحكم المركزية المدمجة بالأسفل** 👑\nاضغط على زر الكيبورد في تيليغرام لفتحها أو إغلاقها في أي وقت."
             self.bot.send_message(message.chat.id, text, reply_markup=self.get_main_menu_keyboard(), parse_mode="Markdown")
 
         @self.bot.message_handler(func=lambda msg: True)
         def handle_keyboard_inputs(message):
             chat_id = message.chat.id
             text = message.text
+
+            # 🛠️ معالجة الضغط المباشر على زر التصفير السحري في أي وقت
+            if text == "🔓 تصفير وتحرير الصفقات العالقة":
+                if self.risk_manager:
+                    # تنظيف السجلات وفك القفل برمجياً فوراً
+                    if hasattr(self.risk_manager, 'active_trades'):
+                        self.risk_manager.active_trades.clear()
+                    if hasattr(self.risk_manager, 'daily_loss_counter'):
+                        self.risk_manager.daily_loss_counter = 0
+                    if hasattr(self.risk_manager, 'emergency_lock_until'):
+                        self.risk_manager.emergency_lock_until = None
+                        
+                    alert = "✅ **[تحديث مؤسسي]:** تم تصفير سجل المخاطر وتنظيف الصفقات العالقة برمجياً! البوت عاد للرصد الكامل الآن. 🦅"
+                else:
+                    alert = "❌ خطأ: محرك إدارة المخاطر غير متصل باللوحة حالياً."
+                
+                self.bot.send_message(chat_id, alert, reply_markup=self.get_main_menu_keyboard(), parse_mode="Markdown")
+                return
 
             if text == "⬅️ العودة للقائمة الرئيسية":
                 self.current_menu_state = "MAIN"
@@ -113,7 +135,8 @@ class InstitutionalControlPanelV2:
                     return
                 elif text == "🛑 إغلاق الطوارئ الشامل":
                     self.bot_status = "STOPPED"
-                    self.risk_manager.active_trades.clear()
+                    if hasattr(self.risk_manager, 'active_trades'):
+                        self.risk_manager.active_trades.clear()
                     self.bot.send_message(chat_id, "⚠️ **إغلاق طوارئ صارم!** تم إيقاف كافة المحركات لحماية الحساب.", reply_markup=self.get_main_menu_keyboard(), parse_mode="Markdown")
                     return
                 else:
@@ -140,6 +163,6 @@ class InstitutionalControlPanelV2:
                 self.bot.send_message(chat_id, f"🎯 تم تثبيت رادار الفحص اللحظي على: {self.current_active_pair}", reply_markup=self.get_main_menu_keyboard())
 
     def start_polling(self):
-        logging.info("📱 تم الانتقال الكامل لنظام كيبورد تيليغرام الأصلي والذكي...")
+        logging.info("📱 تم تشغيل لوحة التحكم الكيبورد المدمجة بنجاح وبث استقبال البيانات الحية...")
         self.bot.infinity_polling()
-        
+                               
