@@ -1,6 +1,6 @@
 # TelegramLayerV3.py
 # ⚡ طبقة التيليغرام ولوحة التحكم المطورة بالكامل - النسخة V3 ⚡
-# 🛡️ تحافظ على كافة الميزات السابقة مدمجاً بها: زر الفحص تحت الطلب ومذيع الجلسات والعطلات
+# 🛡️ تحافظ على كافة الميزات السابقة مدمجاً بها: زر الفحص تحت الطلب، مذيع الجلسات، وزر تصفير الأقفال العالقة
 
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
@@ -102,8 +102,11 @@ class TelegramLayerV3:
             InlineKeyboardButton("⚡ SOL (سولانا)", callback_data="asset_SOLUSDT")
         )
         
-        # 🔥 ترقية V3: ميزة الفحص تحت الطلب المخصصة للعملات الأخرى
+        # 🔥 ميزة الفحص تحت الطلب المخصصة للعملات الأخرى
         markup.add(InlineKeyboardButton("🔍 فحص عملة مخصصة (تحت الطلب)", callback_data="custom_scan_menu"))
+        
+        # 🔥 حقن التحديث الجديد: زر التصفير والتحرير الفوري للأقفال العالقة لحل مشكلة الحظر الأحمر
+        markup.add(InlineKeyboardButton("🔓 تصفير وتحرير الصفقات العالقة", callback_data="clear_active_trades"))
         
         markup.add(
             InlineKeyboardButton("🟢 تشغيل البوت", callback_data="bot_on"),
@@ -171,19 +174,28 @@ class TelegramLayerV3:
                 self.bot.edit_message_text("⚡ لوحة تحكم منظومة الوحش المؤسسية V3 ⚡", 
                                            chat_id, call.message.message_id, reply_markup=self.menu())
 
+            # 🔥 منطق زر تصفير وتحرير الأقفال العالقة برمجياً فوراً
+            elif data == "clear_active_trades":
+                if self.risk:
+                    self.risk.active_trades.clear()
+                    self.risk.daily_loss_counter = 0
+                    self.risk.emergency_lock_until = None
+                    self.bot.answer_callback_query(call.id, "🔄 تم تصفير كافة الأقفال بنجاح!")
+                    self.bot.send_message(chat_id, "✅ **[تحديث المخاطر V3]:** تم تنظيف سجل الصفقات العالقة وتصفير عدادات الحظر التلقائي بنجاح. المنظومة عادت للرصد والنشر اللحظي الفوري الآن! 🦅", parse_mode="Markdown")
+                else:
+                    self.bot.answer_callback_query(call.id, "❌ خطأ: محرك إدارة المخاطر غير متصل برمجياً بالواجهة حالياً.")
+
             # 🔥 تنفيذ عملية الفحص الفوري تحت الطلب للعملة المخصصة
             elif data.startswith("ondemand_"):
                 custom_pair = data.replace("ondemand_", "")
                 self.bot.answer_callback_query(call.id, f"جاري فحص {custom_pair}...")
                 
                 if self.signal_engine:
-                    # تزويد محرك الفحص ببيانات مخصصة وهمية للمحاكاة وتجاوز فلاتر التنفيذ الحية
                     def get_mock_data(p):
                         return {'pair': p, 'current_price': 580.50 if 'BNB' in p else 1.15, 'structure': 'CHoCH_Bullish', 'liquidity_swept': True, 'at_order_block_or_fvg': True, 'rsi': 58, 'ema_supporting': True, 'stop_loss': 570.0}
                     
                     mock_market = {'news_analysis': {'risk_regime': 'Risk ON'}, 'next_event_epoch': 0, 'is_market_choppy': False}
                     
-                    # استدعاء دالة V3 المخصصة للفحص الشخصي دون إرسال للقناة
                     report = self.signal_engine.process_on_demand_request(custom_pair, get_mock_data, mock_market)
                     
                     msg = (
@@ -274,4 +286,4 @@ class TelegramLayerV3:
     def start_polling(self):
         """بدء استقبال النبضات الفورية من السيرفر"""
         self.bot.infinity_polling()
-                
+            
