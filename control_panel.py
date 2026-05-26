@@ -1,6 +1,6 @@
 # control_panel.py
-# ⚡ لوحة تحكم منظومة الوحش المؤسسية - النسخة الشاملة V2.3 ⚡
-# 🌍 رادار العملات البديلة والمؤسسية مع فحص فوري لأسعار وفرص البيع والشراء تحت الطلب
+# ⚡ لوحة تحكم منظومة الوحش المؤسسية - النسخة الشاملة V2.4 ⚡
+# 🌍 رادار العملات البديلة + بث تلقائي مستقل لافتتاح وإغلاق الأسواق العالمية (طوكيو، لندن، نيويورك)
 
 import telebot
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton
@@ -28,15 +28,11 @@ class InstitutionalControlPanelV2:
         self._setup_message_handlers()
 
     def get_main_menu_keyboard(self) -> ReplyKeyboardMarkup:
-        """لوحة التحكم المركزية بالأسفل"""
         markup = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True, row_width=2)
-        
         status_text = "🟢 تشغيل البوت (نشط)" if self.bot_status == "RUNNING" else "🔴 إيقاف البوت (معطل)"
         markup.row(KeyboardButton(status_text))
         
-        # الأزرار القيادية الجديدة لفحص السيولة وتحرير القيود
         markup.row(KeyboardButton("🔍 رادار العملات والفرص الفورية"), KeyboardButton("🔓 تصفير وتحرير الصفقات العالقة"))
-        
         markup.row(KeyboardButton(f"🧠 الذكاء: {self.intelligence_level}"), KeyboardButton("🔥 وضع النخبة: ON" if self.quality_engine.elite_mode_active else "🔥 وضع النخبة: OFF"))
         markup.row(KeyboardButton(f"📰 الأخبار: {'ON' if self.news_filter_active else 'OFF'}"), KeyboardButton(f"🌍 السوق: {self.market_regime}"))
         markup.row(KeyboardButton(f"🪙 العملة النشطة: {self.current_active_pair.split('USDT')[0]}"), KeyboardButton("🛡️ مستويات المخاطرة"))
@@ -51,7 +47,6 @@ class InstitutionalControlPanelV2:
         return markup
 
     def get_pairs_menu_keyboard(self) -> ReplyKeyboardMarkup:
-        """قائمة العملات الأساسية لرادار الخلفية التلقائي"""
         markup = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True, row_width=2)
         markup.add(KeyboardButton("🏅 الذهب الرقمي (PAXGUSDT)"), KeyboardButton("⚡ البيتكوين (BTCUSDT)"))
         markup.add(KeyboardButton("🔷 الإيثيريوم (ETHUSDT)"), KeyboardButton("🔮 سولانا (SOLUSDT)"))
@@ -59,7 +54,6 @@ class InstitutionalControlPanelV2:
         return markup
 
     def get_radar_menu_keyboard(self) -> ReplyKeyboardMarkup:
-        """🔥 كيبورد الرادار المؤسسي الموسع للعملات البديلة تحت الطلب"""
         markup = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True, row_width=2)
         markup.add(KeyboardButton("🪙 BNB (بينانس)"), KeyboardButton("🌐 XRP (ريبل)"))
         markup.add(KeyboardButton("🦅 ADA (كاردانو)"), KeyboardButton("🔗 LINK (شينلينك)"))
@@ -67,27 +61,44 @@ class InstitutionalControlPanelV2:
         markup.row(KeyboardButton("⬅️ العودة للقائمة الرئيسية"))
         return markup
 
+    # 🔥 الدالة السحرية الجديدة للبث المستقل لافتتاح وإغلاق الأسواق عبر التليغرام فوراً
+    def broadcast_session_alert(self, chat_id, session_name, is_weekend=False):
+        """إرسال رسالة منفصلة فخمة عند دخول سيولة الجلسات الكبرى"""
+        icons = {"Tokyo": "🇯🇵 🏯", "London": "🇬🇧 👑", "New_York": "🇺🇸 🗽", "US": "🇺🇸 🗽", "EU": "🇪🇺 💶", "ASIA": "🇯🇵 🏯"}
+        icon = icons.get(session_name, "🌍 ⚡")
+        
+        if is_weekend:
+            msg = f"{icon} **[تنبيه الأسواق - عطلة نهاية الأسبوع]:**\nنحن الآن في وقت جلسة `{session_name}`، يرجى الحذر فالسيولة المؤسسية منخفضة والأسواق التقليدية مغلقة. ⚠️"
+        else:
+            msg = (
+                f"{icon} **[رادار السيولة الذكي - تنبيه جلسة حية]**\n"
+                f"----------------------------------------\n"
+                f"🚨 **تحديث الحجم فوري:** تم الآن **افتتاح ودخول** نطاق سيولة سوق **[{session_name}]** رسميّاً!\n\n"
+                f"💡 *تأثير الحركية:* تتدفق الآن أموال صناديق التحوط والبنوك الكبرى إلى الحيتان. راقب رادار الفرص التلقائي لالتقاط الكسر الحقيقي (BOS/CHoCH) فوراً! 🦅💰"
+            )
+        
+        # الإرسال المباشر كرسالة منفصلة مستقلة تماماً
+        try:
+            self.bot.send_message(chat_id, msg, parse_mode="Markdown")
+            logging.info(f"📢 تم بث إشعار جلسة {session_name} بنجاح إلى التليغرام.")
+        except Exception as e:
+            logging.error(f"⚠️ فشل إرسال تنبيه الجلسة: {e}")
+
     def _fetch_live_price(self, symbol: str) -> float:
-        """جلب السعر الحقيقي الفوري لأي عملة من الشبكة"""
         try:
             url = f"https://min-api.cryptocompare.com/data/price?fsym={symbol}&tsyms=USD"
             res = requests.get(url, timeout=3).json()
-            if "USD" in res:
-                return float(res["USD"])
-        except:
-            pass
+            if "USD" in res: return float(res["USD"])
+        except: pass
         return 0.0
 
     def _generate_radar_report(self, coin_name: str, symbol: str):
-        """تحليل فني فوري مدمج مع تحديد اتجاه الصفقة (بيع أو شراء) وقيمة السعر"""
         price = self._fetch_live_price(symbol)
         if price == 0.0:
-            # أسعار افتراضية احتياطية في حال انقطاع الشبكة مؤقتاً
             prices = {"BNB": 580.5, "XRP": 0.52, "ADA": 0.45, "LINK": 15.2, "DOT": 6.8, "DOGE": 0.14}
             price = prices.get(symbol, 1.0)
             
         score = random.randint(78, 95)
-        # هندسة الإشارات (شراء/بيع/انتظار) بصورة تكيفية ذكية
         signal_type = random.choice(["🟢 شراء مؤسسي دلالي (LONG)", "🔴 بيع انعكاسي صارم (SHORT)", "🟡 رصد سيولة (WAIT)"])
         
         if "شراء" in signal_type:
@@ -116,7 +127,7 @@ class InstitutionalControlPanelV2:
         @self.bot.message_handler(commands=['start', 'menu'])
         def handle_start_command(message):
             self.current_menu_state = "MAIN"
-            text = "👑 **تم تفعيل لوحة الرادار الشاملة بنجاح V2.3** 👑\nاضغط الآن على زر الرادار لفحص أسعار وفرص أي عملة بديلة فوراً!"
+            text = "👑 **تم تفعيل رادار السيولة والمذيع الآلي للأسواق بنجاح V2.4** 👑\nالآن سيقوم البوت بإرسال مسج مستقل تلقائي فور افتتاح أي سوق عالمي كقناة إشعارات حية لك!"
             self.bot.send_message(message.chat.id, text, reply_markup=self.get_main_menu_keyboard(), parse_mode="Markdown")
 
         @self.bot.message_handler(func=lambda msg: True)
@@ -124,7 +135,6 @@ class InstitutionalControlPanelV2:
             chat_id = message.chat.id
             text = message.text
 
-            # 🛠️ 1. زر التصفير السحري
             if text == "🔓 تصفير وتحرير الصفقات العالقة":
                 if self.risk_manager:
                     if hasattr(self.risk_manager, 'active_trades'): self.risk_manager.active_trades.clear()
@@ -136,7 +146,6 @@ class InstitutionalControlPanelV2:
                 self.bot.send_message(chat_id, alert, reply_markup=self.get_main_menu_keyboard(), parse_mode="Markdown")
                 return
 
-            # 🛠️ 2. فتح قائمة رادار العملات الفرعية الموسعة
             if text == "🔍 رادار العملات والفرص الفورية":
                 self.current_menu_state = "RADAR"
                 self.bot.send_message(chat_id, "🔍 **مرحباً بك في رادار العملات البديلة تحت الطلب.**\nاختر أي عملة الآن ليقوم المحرك بسحب سعرها وفحص شروط البيع والشراء فيها حياً:", reply_markup=self.get_radar_menu_keyboard(), parse_mode="Markdown")
@@ -147,7 +156,6 @@ class InstitutionalControlPanelV2:
                 self.bot.send_message(chat_id, "🔄 عدنا للقائمة الرئيسية للوحش:", reply_markup=self.get_main_menu_keyboard())
                 return
 
-            # 🛠️ معالجة الضغط داخل قائمة الرادار الموسعة (البيع والشراء والأسعار اللحظية)
             if self.current_menu_state == "RADAR":
                 if "BNB" in text: msg = self._generate_radar_report("BNB (Binance Coin)", "BNB")
                 elif "XRP" in text: msg = self._generate_radar_report("XRP (Ripple)", "XRP")
@@ -156,12 +164,9 @@ class InstitutionalControlPanelV2:
                 elif "DOT" in text: msg = self._generate_radar_report("DOT (Polkadot)", "DOT")
                 elif "DOGE" in text: msg = self._generate_radar_report("DOGE (Dogecoin)", "DOGE")
                 else: return
-                
-                # إرسال التقرير الفني الفوري للعملة مع بقاء كيبورد الرادار مفتوحاً للتنقل المريح
                 self.bot.send_message(chat_id, msg, reply_markup=self.get_radar_menu_keyboard(), parse_mode="Markdown")
                 return
 
-            # 🛠️ معالجة القائمة الرئيسية القياسية
             if self.current_menu_state == "MAIN":
                 if "تشغيل البوت" in text or "إيقاف البوت" in text:
                     self.bot_status = "STOPPED" if self.bot_status == "RUNNING" else "RUNNING"
@@ -197,12 +202,10 @@ class InstitutionalControlPanelV2:
                     if hasattr(self.risk_manager, 'active_trades'): self.risk_manager.active_trades.clear()
                     self.bot.send_message(chat_id, "⚠️ **إغلاق طوارئ صارم!** تم إيقاف كافة المحركات لحماية الحساب.", reply_markup=self.get_main_menu_keyboard(), parse_mode="Markdown")
                     return
-                else:
-                    return
+                else: return
 
                 self.bot.send_message(chat_id, alert, reply_markup=self.get_main_menu_keyboard())
 
-            # 🛠️ قائمة المخاطر الفرعية
             elif self.current_menu_state == "RISK":
                 if "منخفض" in text: self.risk_manager.set_risk_profile("LOW")
                 elif "متوسط" in text: self.risk_manager.set_risk_profile("MEDIUM")
@@ -211,7 +214,6 @@ class InstitutionalControlPanelV2:
                 self.current_menu_state = "MAIN"
                 self.bot.send_message(chat_id, f"🛡️ تم اعتماد ملف مخاطر: {self.risk_manager.current_profile}", reply_markup=self.get_main_menu_keyboard())
 
-            # 🛠️ قائمة العملات الفرعية الأساسية
             elif self.current_menu_state == "PAIRS":
                 if "PAXGUSDT" in text or "الذهب" in text: self.current_active_pair = "PAXGUSDT"
                 elif "BTCUSDT" in text or "البيتكوين" in text: self.current_active_pair = "BTCUSDT"
@@ -222,4 +224,4 @@ class InstitutionalControlPanelV2:
 
     def start_polling(self):
         self.bot.infinity_polling()
-                                                                    
+                
