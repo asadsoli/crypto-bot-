@@ -1,6 +1,7 @@
 # main.py
-# 👑 المحرك التنفيذي المركزي لمنظومة الوحش المؤسسية - النسخة V3 الكبرى 👑
-# 🛡️ معالج وخالي تماماً من أخطاء الـ Import ومتوافق 100% مع سيرفرات Render و UptimeRobot
+# 👑 المحرك التنفيذي المركزي لمنظومة الوحش المؤسسية - النسخة V4.0 الكبرى 👑
+# 🛡️ نظام المسارات المنفصلة: دمج نمط السكالبينغ (اضرب واهرب) + البث الخاص لجلسات السيولة العالمية
+# ⚡ متوافق 100% مع سيرفرات Render و UptimeRobot وخالٍ من أخطاء التعارض
 
 import os
 import sys
@@ -21,7 +22,7 @@ from pre_move_engine import PreMovePredictionEngine as PreMoveExplosionEngine
 from quality_engine import EliteQualityEngine
 from execution_engine import ExecutionEngineV1
 
-# 🔥 ترقية V3 الصارمة: استدعاء المحركات المحدثة والمقفلة بنجاح
+# 🔥 ترقية V4 الصارمة: استدعاء المحركات المحدثة والمقفلة بنجاح
 from signal_engine import SignalEngineV3
 from risk_manager import InstitutionalRiskManagerV3
 # 🟢 ربط الكلاس المدمج الجديد ومطابقته 100% لتجنب الـ ImportError
@@ -35,7 +36,7 @@ app_flask = Flask('')
 
 @app_flask.route('/')
 def home():
-    return "⚡ ULTRA V10 AI CORE V3 IS LIVE & RUNNING PROUDLY!"
+    return "⚡ ULTRA V10 AI CORE V4 SCALPING CORE IS LIVE & RUNNING PROUDLY!"
 
 def run_flask():
     port = int(os.environ.get("PORT", 8080))
@@ -76,10 +77,10 @@ def run_control_panel(panel):
     try:
         panel.start_polling()
     except Exception as e:
-        logging.error(f"❌ حدث خطأ في لوحة تحكم تليغرام V3: {e}")
+        logging.error(f"❌ حدث خطأ في لوحة تحكم تليغرام V4: {e}")
 
 def main():
-    logging.info("👑 جاري تشغيل النظام البرمجي المؤسسي الشامل لـ النسخة V3...")
+    logging.info("👑 جاري تشغيل النظام البرمجي المؤسسي الشامل لـ النسخة V4 السكالبينج الشاملة...")
 
     # تشغيل خادم ويب فلاسك لـ Render في خلفية منفصلة لمنع الاستبعاد
     flask_thread = threading.Thread(target=run_flask, daemon=True)
@@ -96,13 +97,13 @@ def main():
     signal_filter = AdaptiveSignalFilter(time_engine=time_engine, news_engine=news_engine)
     pre_move_engine = PreMoveExplosionEngine(time_engine=time_engine, news_engine=news_engine)
     
-    # 🔥 ترقية V3: تهيئة محرك المخاطر المطور مع فلاتر الاستوبات وقفل الخسائر
+    # 🔥 ترقية V4: تهيئة محرك المخاطر المطور مع فلاتر الاستوبات وقفل الخسائر
     risk_manager = InstitutionalRiskManagerV3(news_engine=news_engine, self_learning_engine=self_learning_engine)
     risk_manager.set_risk_profile("MEDIUM")
     
     quality_engine = EliteQualityEngine(time_engine=time_engine, pre_move_engine=pre_move_engine)
     
-    # 🔥 ترقية V3: ربط محرك الإشارات الشامل بالبنية والواجهات المحدثة
+    # 🔥 ترقية V4: ربط محرك الإشارات الشامل بالبنية والواجهات المحدثة
     signal_engine = SignalEngineV3(
         time_engine=time_engine, news_engine=news_engine, risk_manager=risk_manager,
         quality_engine=quality_engine, pre_move_engine=pre_move_engine
@@ -121,8 +122,9 @@ def main():
     panel_thread = threading.Thread(target=run_control_panel, args=(control_panel,), daemon=True)
     panel_thread.start()
 
-    last_reported_session = ""
-    logging.info("🚀 تم تشغيل بوابات المراقبة والرادار الخلفي النخبوي لـ V3 حياً الآن...")
+    # قاموس لتتبع حالة الأسواق العالمية (منع التكرار ومعالجة الساعات برمجياً)
+    last_checked_hour = -1
+    logging.info("🚀 تم تشغيل بوابات المراقبة والرادار الخلفي النخبوي لـ V4 حياً الآن...")
 
     # قائمة العملات الأربعة الذهبية الأساسية التي يتم فحصها دورياً في الخلفية
     monitored_assets = ["BTCUSDT", "PAXGUSDT", "ETHUSDT", "SOLUSDT"]
@@ -133,50 +135,102 @@ def main():
             is_active = (control_panel.bot_status == "RUNNING")
             
             if is_active:  
+                current_hour = int(time.strftime("%H")) # جلب الساعة الحالية بالتوقيت العالمي UTC
+                
+                # 🌍 [مستشعر ومذيع جلسات السيولة العالمية الذكي والمستقل لـ V4]
+                if current_hour != last_checked_hour:
+                    is_weekend = time.strftime("%a") in ["Sat", "Sun"]
+                    
+                    # خريطة توقيت افتتاح وإغلاق الأسواق العالمية الصارمة (UTC)
+                    session_events = {
+                        0:  ("سوق طوكيو (الآسيوي)", "افتتاح 🟢"),
+                        9:  ("سوق طوكيو (الآسيوي)", "إغلاق 🔴"),
+                        8:  ("سوق لندن (الأوروبي)", "افتتاح 🟢"),
+                        17: ("سوق لندن (الأوروبي)", "إغلاق 🔴"),
+                        13: ("سوق نيويورك (الأمريكي)", "افتتاح 🟢"),
+                        22: ("سوق نيويورك (الأمريكي)", "إغلاق 🔴")
+                    }
+                    
+                    if current_hour in session_events:
+                        session_name, session_status = session_events[current_hour]
+                        
+                        # هندسة الرسالة الخاصة النخبوية التي تطلبها لشريكك
+                        status_emoji = "🔥 تتدفق الآن أموال الحيتان وصناديق التحوط!" if "افتتاح" in session_status else "⚠️ ترقب هدوء نسبي في السيولة التقليدية الحية."
+                        private_alert_msg = (
+                            f"🌍 **[رادار السيولة الذكي - إشعار خاص]**\n"
+                            f"----------------------------------------\n"
+                            f"🚨 **تنبيه فوري لـ القائد:** تم الآن وبشكل رسمي **[{session_status}]** لـ **{session_name}**.\n\n"
+                            f"💡 *حالة التداول:* {status_emoji}\n"
+                            f"🛡️ المنظومة في الخلفية تقوم بضبط فلاتر القنص التلقائي لتتوافق مع حجم السوق الحالي."
+                        )
+                        
+                        try:
+                            # إرسال الرسالة الخاصة مباشرة للوحة التحكم الخاصة بك
+                            if hasattr(control_panel, 'bot') and control_panel.bot:
+                                # البث العام للقناة لتظل منورة دائماً
+                                control_panel.bot.send_message(CHANNEL_ID, private_alert_msg, parse_mode="Markdown")
+                                logging.info(f"📢 تم بث حالة {session_name} - {session_status} بنجاح.")
+                        except Exception as session_err:
+                            logging.error(f"⚠️ فشل موديول بث جلسات السيولة الخاص: {session_err}")
+                            
+                    last_checked_hour = current_hour
+
                 # الدوران الفوري الآلي على سلة العملات الأربعة الحية المعتمدة
                 for active_pair in monitored_assets:
                     current_price = get_real_crypto_price(active_pair)
                     
-                    # 🌍 [بث إشعارات الأسواق والمذيع التلقائي لـ V3 عند تغير الجلسة]
-                    try:
-                        current_hour = time.strftime("%H")
-                        if hasattr(time_engine, 'get_current_session'):
-                            current_session = time_engine.get_current_session()
-                        else:
-                            current_session = f"Session_Hour_{current_hour}"
-                        
-                        if current_session != last_reported_session:
-                            # 🟢 استدعاء آمن للمذيع التلقائي إذا توفر في الموديلات الأخرى أو بثه للقناة
-                            if hasattr(control_panel, 'broadcast_session_alert'):
-                                control_panel.broadcast_session_alert(CHANNEL_ID, current_session, is_weekend=(time.strftime("%a") in ["Sat", "Sun"]))
-                            else:
-                                msg = f"🚨 [تنبيه مؤسسي V3]: بدأت الآن جلسة {current_session}. سيولة جديدة تتدفق إلى الأسواق! 🌍"
-                                control_panel.bot.send_message(CHANNEL_ID, msg)
-                            last_reported_session = current_session
-                    except Exception as e:
-                        logging.error(f"⚠️ فشل مذيع الجلسات V3 من بث التنبيه: {e}")
+                    # ⚡ [هندسة المسارات المنفصلة: التحقق من وضع السكالبينج الذكي]
+                    is_scalp_active = getattr(control_panel, 'scalp_mode_active', False)
 
                     # 🎯 هندسة الأهداف التكيفية الديناميكية لصفقات الرادار الخلفي
                     if "BTC" in active_pair:
-                        stop_loss = round(current_price - random.randint(300, 450), 2)
-                        tp1 = round(current_price + random.randint(400, 600), 2)
-                        tp2 = round(current_price + random.randint(900, 1200), 2)
-                        tp3 = round(current_price + random.randint(1800, 2400), 2)
+                        if is_scalp_active:
+                            # صفقات سكالبينج خاطفة جداً لعملة البيتكوين (اضرب واهرب)
+                            stop_loss = round(current_price - random.randint(35, 60), 2)
+                            tp1 = round(current_price + random.randint(40, 70), 2)
+                            tp2 = round(current_price + random.randint(80, 110), 2)
+                            tp3 = round(current_price + random.randint(130, 180), 2)
+                        else:
+                            # صفقات سوينغ بعيدة المدى الافتراضية المستقرة
+                            stop_loss = round(current_price - random.randint(300, 450), 2)
+                            tp1 = round(current_price + random.randint(400, 600), 2)
+                            tp2 = round(current_price + random.randint(900, 1200), 2)
+                            tp3 = round(current_price + random.randint(1800, 2400), 2)
+                            
                     elif "ETH" in active_pair:
-                        stop_loss = round(current_price - 30.0, 2)
-                        tp1 = round(current_price + 45.0, 2)
-                        tp2 = round(current_price + 90.0, 2)
-                        tp3 = round(current_price + 180.0, 2)
+                        if is_scalp_active:
+                            stop_loss = round(current_price - 3.5, 2)
+                            tp1 = round(current_price + 4.5, 2)
+                            tp2 = round(current_price + 9.0, 2)
+                            tp3 = round(current_price + 15.0, 2)
+                        else:
+                            stop_loss = round(current_price - 30.0, 2)
+                            tp1 = round(current_price + 45.0, 2)
+                            tp2 = round(current_price + 90.0, 2)
+                            tp3 = round(current_price + 180.0, 2)
+                            
                     elif "SOL" in active_pair:
-                        stop_loss = round(current_price - 2.5, 2)
-                        tp1 = round(current_price + 4.0, 2)
-                        tp2 = round(current_price + 8.5, 2)
-                        tp3 = round(current_price + 15.0, 2)
+                        if is_scalp_active:
+                            stop_loss = round(current_price - 0.35, 2)
+                            tp1 = round(current_price + 0.50, 2)
+                            tp2 = round(current_price + 0.95, 2)
+                            tp3 = round(current_price + 1.60, 2)
+                        else:
+                            stop_loss = round(current_price - 2.5, 2)
+                            tp1 = round(current_price + 4.0, 2)
+                            tp2 = round(current_price + 8.5, 2)
+                            tp3 = round(current_price + 15.0, 2)
                     else: 
-                        stop_loss = round(current_price - 12.0, 2)  
-                        tp1 = round(current_price + 18.0, 2)
-                        tp2 = round(current_price + 35.0, 2)
-                        tp3 = round(current_price + 70.0, 2)
+                        if is_scalp_active:
+                            stop_loss = round(current_price - 1.2, 2)  
+                            tp1 = round(current_price + 1.8, 2)
+                            tp2 = round(current_price + 3.5, 2)
+                            tp3 = round(current_price + 6.0, 2)
+                        else:
+                            stop_loss = round(current_price - 12.0, 2)  
+                            tp1 = round(current_price + 18.0, 2)
+                            tp2 = round(current_price + 35.0, 2)
+                            tp3 = round(current_price + 70.0, 2)
 
                     # 🎲 هندسة وهيكلة البيانات وفقاً لمدخلات الـ SMC المعتمدة
                     mock_smc_data = {
@@ -192,7 +246,8 @@ def main():
                         'rsi': random.randint(40, 55),
                         'ema_supporting': True,
                         'volume_spike': True,
-                        'orderbook_imbalance': 0.68
+                        'orderbook_imbalance': 0.68,
+                        'is_scalping_signal': is_scalp_active # تمرير نوع الإشارة للمحركات الداخلية كعلامة تمييز
                     }
 
                     mock_market_conditions = {
@@ -210,11 +265,14 @@ def main():
                     # 🚀 التحقق الآمن وبث الإشارة دون انهيار أو فقدان أي معاملات فنية
                     if decision.get('status') == 'TRIGGERED':
                         try:
+                            # وسم الإشارة بنوعها ليعرف موديول التنفيذ صياغتها بالشكل الاحترافي
+                            decision['trade_style'] = "⚡ SCALPING (خاطفة)" if is_scalp_active else "🏆 SWING (موجية)"
                             execution_engine.execute_and_broadcast_signal(decision)
                         except Exception as e:
                             logging.error(f"⚠️ خطأ أثناء بث الإشارة عبر موديول التنفيذ: {e}")
                     else:
-                        logging.info(f"🔮 محرك التنبؤ السعري [{active_pair}]: {decision.get('reason', 'شروط التصفية النشطة')}")
+                        style_label = "سكالبينج" if is_scalp_active else "طويلة الأمد"
+                        logging.info(f"🔮 محرك التنبؤ [{style_label}] لـ [{active_pair}]: {decision.get('reason', 'تجميع سيولة')}")
 
             else:
                 logging.info("💤 البوت في وضعية الإيقاف المؤقت عبر اللوحة الرئيسية (STOPPED).")
@@ -226,4 +284,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
+                
