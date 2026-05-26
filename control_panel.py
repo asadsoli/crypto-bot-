@@ -1,6 +1,6 @@
 # control_panel.py
-# ⚡ لوحة تحكم منظومة الوحش المؤسسية - النسخة الشاملة V2.4 ⚡
-# 🌍 رادار العملات البديلة + بث تلقائي مستقل لافتتاح وإغلاق الأسواق العالمية (طوكيو، لندن، نيويورك)
+# ⚡ لوحة تحكم منظومة الوحش المؤسسية - النسخة الشاملة V4.0 النخبوية ⚡
+# 🌍 رادار العملات البديلة + بث الأسواق + إدارة منفصلة تماماً لنمط السكالبينج (اضرب واهرب)
 
 import telebot
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton
@@ -25,6 +25,9 @@ class InstitutionalControlPanelV2:
         self.current_active_pair = "PAXGUSDT"
         self.current_menu_state = "MAIN" 
         
+        # ⚡ ترقية V4: مفتاح التحكم المستقل بنمط السكالبينج الخاطف
+        self.scalp_mode_active = False
+        
         self._setup_message_handlers()
 
     def get_main_menu_keyboard(self) -> ReplyKeyboardMarkup:
@@ -32,11 +35,14 @@ class InstitutionalControlPanelV2:
         status_text = "🟢 تشغيل البوت (نشط)" if self.bot_status == "RUNNING" else "🔴 إيقاف البوت (معطل)"
         markup.row(KeyboardButton(status_text))
         
-        markup.row(KeyboardButton("🔍 رادار العملات والفرص الفورية"), KeyboardButton("🔓 تصفير وتحرير الصفقات العالقة"))
-        markup.row(KeyboardButton(f"🧠 الذكاء: {self.intelligence_level}"), KeyboardButton("🔥 وضع النخبة: ON" if self.quality_engine.elite_mode_active else "🔥 وضع النخبة: OFF"))
-        markup.row(KeyboardButton(f"📰 الأخبار: {'ON' if self.news_filter_active else 'OFF'}"), KeyboardButton(f"🌍 السوق: {self.market_regime}"))
-        markup.row(KeyboardButton(f"🪙 العملة النشطة: {self.current_active_pair.split('USDT')[0]}"), KeyboardButton("🛡️ مستويات المخاطرة"))
-        markup.row(KeyboardButton("🛑 إغلاق الطوارئ الشامل"))
+        # ⚡ ترقية V4: دمج زر وضع السكالبينج في الصف الأول مع الرادار لتسهيل الوصول السريع
+        scalp_text = "⚡ وضع السكالب: ON" if self.scalp_mode_active else "⚡ وضع السكالب: OFF"
+        markup.row(KeyboardButton(scalp_text), KeyboardButton("🔍 رادار العملات والفرص الفورية"))
+        
+        markup.row(KeyboardButton("🔓 تصفير وتحرير الصفقات العالقة"), KeyboardButton(f"🧠 الذكاء: {self.intelligence_level}"))
+        markup.row(KeyboardButton("🔥 وضع النخبة: ON" if self.quality_engine.elite_mode_active else "🔥 وضع النخبة: OFF"), KeyboardButton(f"📰 الأخبار: {'ON' if self.news_filter_active else 'OFF'}"))
+        markup.row(KeyboardButton(f"🌍 السوق: {self.market_regime}"), KeyboardButton(f"🪙 العملة النشطة: {self.current_active_pair.split('USDT')[0]}"))
+        markup.row(KeyboardButton("🛡️ مستويات المخاطرة"), KeyboardButton("🛑 إغلاق الطوارئ الشامل"))
         return markup
 
     def get_risk_menu_keyboard(self) -> ReplyKeyboardMarkup:
@@ -61,7 +67,6 @@ class InstitutionalControlPanelV2:
         markup.row(KeyboardButton("⬅️ العودة للقائمة الرئيسية"))
         return markup
 
-    # 🔥 الدالة السحرية الجديدة للبث المستقل لافتتاح وإغلاق الأسواق عبر التليغرام فوراً
     def broadcast_session_alert(self, chat_id, session_name, is_weekend=False):
         """إرسال رسالة منفصلة فخمة عند دخول سيولة الجلسات الكبرى"""
         icons = {"Tokyo": "🇯🇵 🏯", "London": "🇬🇧 👑", "New_York": "🇺🇸 🗽", "US": "🇺🇸 🗽", "EU": "🇪🇺 💶", "ASIA": "🇯🇵 🏯"}
@@ -77,7 +82,6 @@ class InstitutionalControlPanelV2:
                 f"💡 *تأثير الحركية:* تتدفق الآن أموال صناديق التحوط والبنوك الكبرى إلى الحيتان. راقب رادار الفرص التلقائي لالتقاط الكسر الحقيقي (BOS/CHoCH) فوراً! 🦅💰"
             )
         
-        # الإرسال المباشر كرسالة منفصلة مستقلة تماماً
         try:
             self.bot.send_message(chat_id, msg, parse_mode="Markdown")
             logging.info(f"📢 تم بث إشعار جلسة {session_name} بنجاح إلى التليغرام.")
@@ -101,19 +105,36 @@ class InstitutionalControlPanelV2:
         score = random.randint(78, 95)
         signal_type = random.choice(["🟢 شراء مؤسسي دلالي (LONG)", "🔴 بيع انعكاسي صارم (SHORT)", "🟡 رصد سيولة (WAIT)"])
         
-        if "شراء" in signal_type:
-            target = round(price * 1.04, 4)
-            stop = round(price * 0.98, 4)
-            action_tip = f"🎯 الأهداف المتوقعة للموجة: `{target}`\n🛡️ وقف حماية الحساب: `{stop}`"
-        elif "بيع" in signal_type:
-            target = round(price * 0.96, 4)
-            stop = round(price * 1.02, 4)
-            action_tip = f"🎯 الأهداف المتوقعة للموجة: `{target}`\n🛡️ وقف حماية الحساب: `{stop}`"
+        # ⚡ ترقية V4: تعديل حسابات أهداف الرادار اليدوي لتتوافق ديناميكياً مع نمط السكالبينج المفعل
+        if self.scalp_mode_active:
+            # إذا كان السكالبينج مفعل، يتم ضغط الأهداف لتكون خاطفة وقريبة جداً لحصد النقاط السريعة
+            if "شراء" in signal_type:
+                target = round(price * 1.005, 4)
+                stop = round(price * 0.995, 4)
+                action_tip = f"⚡ **[أهداف سكالبينج خاطفة]:** `{target}`\n🛡️ **وقف خسارة ضيق:** `{stop}`"
+            elif "بيع" in signal_type:
+                target = round(price * 0.995, 4)
+                stop = round(price * 1.005, 4)
+                action_tip = f"⚡ **[أهداف سكالبينج خاطفة]:** `{target}`\n🛡️ **وقف خسارة ضيق:** `{stop}`"
+            else:
+                action_tip = "👀 وضع السكالب نشط، لكن السيولة الإجمالية ضعيفة للاختراق الخاطف."
         else:
-            action_tip = "👀 السيولة غير كافية حالياً لتأكيد الاتجاه، يرجى انتظار انتهاء التجميع للزوج."
+            # صياغة الأهداف الموجية الافتراضية الطويلة المستقرة في حال إغلاق وضع السكالب
+            if "شراء" in signal_type:
+                target = round(price * 1.04, 4)
+                stop = round(price * 0.98, 4)
+                action_tip = f"🎯 **الأهداف المتوقعة للموجة:** `{target}`\n🛡️ **وقف حماية الحساب:** `{stop}`"
+            elif "بيع" in signal_type:
+                target = round(price * 0.96, 4)
+                stop = round(price * 1.02, 4)
+                action_tip = f"🎯 **الأهداف المتوقعة للموجة:** `{target}`\n🛡️ **وقف حماية الحساب:** `{stop}`"
+            else:
+                action_tip = "👀 السيولة غير كافية حالياً لتأكيد الاتجاه، يرجى انتظار انتهاء التجمع للزوج."
 
+        style_label = "⚡ وضع السكالب (خاطف)" if self.scalp_mode_active else "🏆 وضع السوينغ (موجي)"
         report = (
-            f"🦅 **[رادار الفرص الفورية المؤسسي لـ {coin_name}]:**\n\n"
+            f"🦅 **[رادار الفرص الفورية المؤسسي لـ {coin_name}]:**\n"
+            f"📊 **نمط الرصد الحالي:** `{style_label}`\n\n"
             f"💰 **السعر الحالي المباشر:** `${price:,}`\n"
             f"📊 **الاتجاه والفرصة اللحظية:** {signal_type}\n"
             f"🧠 **معدل قوة الإشارة الفنية:** `{score}%`\n"
@@ -127,7 +148,7 @@ class InstitutionalControlPanelV2:
         @self.bot.message_handler(commands=['start', 'menu'])
         def handle_start_command(message):
             self.current_menu_state = "MAIN"
-            text = "👑 **تم تفعيل رادار السيولة والمذيع الآلي للأسواق بنجاح V2.4** 👑\nالآن سيقوم البوت بإرسال مسج مستقل تلقائي فور افتتاح أي سوق عالمي كقناة إشعارات حية لك!"
+            text = "👑 **تم ترقية منظومة الوحش إلى النسخة الشاملة V4.0 النخبوية** 👑\nالآن تم تفعيل آلية الفصل بين الصفقات الموجية والسكالب الخاطف، بالإضافة إلى المذيع الدقيق للمحافظ البنكية للأسواق الكبرى!"
             self.bot.send_message(message.chat.id, text, reply_markup=self.get_main_menu_keyboard(), parse_mode="Markdown")
 
         @self.bot.message_handler(func=lambda msg: True)
@@ -168,7 +189,15 @@ class InstitutionalControlPanelV2:
                 return
 
             if self.current_menu_state == "MAIN":
-                if "تشغيل البوت" in text or "إيقاف البوت" in text:
+                # ⚡ ترقية V4: معالجة ضغط زر السكالبينج الديناميكي من القائمة
+                if "وضع السكالب:" in text:
+                    self.scalp_mode_active = not self.scalp_mode_active
+                    status_label = "🟢 تم تفعيله بنجاح! المحرك يقتنص الآن الأهداف السريعة (اضرب واهرب)." if self.scalp_mode_active else "🏆 تم العودة لنمط الصفقات الكبيرة والبعيدة (Swing)."
+                    alert = f"⚡ **[تحديث النمط المؤسسي]:**\n{status_label}"
+                    self.bot.send_message(chat_id, alert, reply_markup=self.get_main_menu_keyboard(), parse_mode="Markdown")
+                    return
+
+                elif "تشغيل البوت" in text or "إيقاف البوت" in text:
                     self.bot_status = "STOPPED" if self.bot_status == "RUNNING" else "RUNNING"
                     alert = f"⚙️ تم تعديل حالة البوت إلى: {self.bot_status}"
                 elif "🧠 الذكاء:" in text:
