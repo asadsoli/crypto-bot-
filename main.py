@@ -24,7 +24,8 @@ from execution_engine import ExecutionEngineV1
 # 🔥 ترقية V3 الصارمة: استدعاء المحركات المحدثة والمقفلة بنجاح
 from signal_engine import SignalEngineV3
 from risk_manager import InstitutionalRiskManagerV3
-from control_panel import TelegramLayerV3 as InstitutionalControlPanelV3
+# 🟢 ربط الكلاس المدمج الجديد ومطابقته 100% لتجنب الـ ImportError
+from control_panel import InstitutionalControlPanelV2 as InstitutionalControlPanelV3
 
 # ========================================================
 # خادم الويب لإرضاء سيرفر Render والـ UptimeRobot
@@ -112,9 +113,9 @@ def main():
         self_learning_engine=self_learning_engine, risk_manager=risk_manager
     )
 
-    # 🔥 ترقية V3: تهيئة لوحة التحكم المحدثة بالأزرار وسماحية الفحص تحت الطلب المخصص
+    # 🟢 مطابقة الكائن والمدخلات بدقة مع لوحة الأزرار المدمجة لمنع فشل الـ Deploy
     control_panel = InstitutionalControlPanelV3(
-        token=TELEGRAM_TOKEN, signal_engine=signal_engine, market=None, news=news_engine, risk=risk_manager, time_engine=time_engine
+        token=TELEGRAM_TOKEN, risk_manager=risk_manager, quality_engine=quality_engine, self_learning_engine=self_learning_engine
     )
     
     panel_thread = threading.Thread(target=run_control_panel, args=(control_panel,), daemon=True)
@@ -128,8 +129,10 @@ def main():
 
     while True:
         try:
-            if control_panel.is_bot_active:  # التحقق من حالة تشغيل البوت عبر الزر الأخضر/الأحمر لـ V3
-                
+            # 🟢 التوافق المرن: قراءة الحالة من لوحة التحكم لتحديد نشاط البوت
+            is_active = (control_panel.bot_status == "RUNNING")
+            
+            if is_active:  
                 # الدوران الفوري الآلي على سلة العملات الأربعة الحية المعتمدة
                 for active_pair in monitored_assets:
                     current_price = get_real_crypto_price(active_pair)
@@ -143,8 +146,12 @@ def main():
                             current_session = f"Session_Hour_{current_hour}"
                         
                         if current_session != last_reported_session:
-                            # استدعاء المذيع المؤسسي المطور لبث الإشعار التلقائي عبر التليغرام
-                            control_panel.broadcast_session_alert(CHANNEL_ID, current_session, is_weekend=(time.strftime("%a") in ["Sat", "Sun"]))
+                            # 🟢 استدعاء آمن للمذيع التلقائي إذا توفر في الموديلات الأخرى أو بثه للقناة
+                            if hasattr(control_panel, 'broadcast_session_alert'):
+                                control_panel.broadcast_session_alert(CHANNEL_ID, current_session, is_weekend=(time.strftime("%a") in ["Sat", "Sun"]))
+                            else:
+                                msg = f"🚨 [تنبيه مؤسسي V3]: بدأت الآن جلسة {current_session}. سيولة جديدة تتدفق إلى الأسواق! 🌍"
+                                control_panel.bot.send_message(CHANNEL_ID, msg)
                             last_reported_session = current_session
                     except Exception as e:
                         logging.error(f"⚠️ فشل مذيع الجلسات V3 من بث التنبيه: {e}")
