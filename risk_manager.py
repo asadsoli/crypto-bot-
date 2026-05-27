@@ -74,15 +74,15 @@ class InstitutionalRiskManagerV3:
             logging.warning(f"⚠️ تنبيه المخاطر: نسبة الثقة {confidence}% في مرحلة المراقبة والحذر")
         
         # 2. فحص كثرة الصفقات المفتوحة وآلية التحرير التلقائي (Dynamic Auto-Healing)
-        # تخصيص الحدود والأوقات برمجياً بناءً على النمط المفعل لمنع تجميد البوت
+        # 🛠️ [تعديل شريكك]: تقليص المدة لمنع تكدس الذاكرة بما أن البوت يعمل كمحاكي فقط على تليغرام
         if is_scalping_signal:
-            max_holding_duration = datetime.timedelta(minutes=15) # صفقات السكالب سريعة جداً، تحرير خلال 15 دقيقة لو علقت
+            max_holding_duration = datetime.timedelta(minutes=5)  # صفقات السكالب تحرر برمجياً وتختفي بعد 5 دقائق لتفريغ الذاكرة
             max_concurrent_trades = 6                             # السماح بفتح حتى 6 صفقات سكالب سريعة ومتوازية
         else:
-            max_holding_duration = datetime.timedelta(hours=4)    # صفقات السوينغ تحتاج مدة أطول لتتحرك (4 ساعات)
-            max_concurrent_trades = 3                             # حد أقصى 3 صفقات متزامنة في السوينغ
+            max_holding_duration = datetime.timedelta(hours=2)    # صفقات السوينغ تحرر برمجياً بعد ساعتين بدلاً من 4 لتسريع التدوير التجريبي
+            max_concurrent_trades = 4                             # رفع حد السوينغ إلى 4 لمنحك إشارات أكثر في الفحص اليومي
 
-        # فحص إجباري لتنظيف وتحرير الصفقات القديمة العالقة قبل اتخاذ القرار
+        # فحص إجباري متقدم لتنظيف وتحرير الصفقات القديمة العالقة قبل اتخاذ قرار العتبة
         pairs_to_release = []
         for trade_pair, trade_info in self.active_trades.items():
             opened_at_str = trade_info.get('opened_at')
@@ -93,15 +93,16 @@ class InstitutionalRiskManagerV3:
 
         # تحرير الأزواج العالقة ذاتياً دون الحاجة لإعادة تشغيل البوت أو حظر الرادار
         for trade_pair in pairs_to_release:
-            logging.warning(f"🔄 إصلاح ذاتي آلي V4: تم رصد صفقة قديمة عالقة على زوج {trade_pair}. يتم التحرير برمجياً الآن...")
+            logging.warning(f"🔄 إصلاح ذاتي آلي V4 [تحديث الذاكرة]: تم تنظيف صفقة محاكاة قديمة على زوج {trade_pair}.")
             if trade_pair in self.active_trades:
                 del self.active_trades[trade_pair]
 
+        # 🛠️ [تعديل شريكك]: تم نقل فحص العدد إلى هنا (بعد عملية التنظيف مباشرة) لضمان دقة الـ Cache الحالية
         if len(self.active_trades) >= max_concurrent_trades:
             return {'status': 'BLOCK', 'reason': f"❌ حظر المخاطر: تم الوصول للحد الأقصى من الصفقات المتزامنة المسموحة لهذا النمط (حد أقصى {max_concurrent_trades})"}
         
         if pair in self.active_trades:
-            return {'status': 'BLOCK', 'reason': f"❌ حظر المخاطر: توجد صفقة مفتوحة بالفعل على زوج {pair}"}
+            return {'status': 'BLOCK', 'reason': f"❌ حظر المخاطر: توجد صفقة مفتوحة بالفعل في الذاكرة لزوج {pair}"}
 
         # 3. فحص حالة السوق العامة (Risk Regime) والظروف الجيوسياسية والأخبار الخطيرة
         news_analysis = current_market_conditions.get('news_analysis', {})
@@ -120,7 +121,6 @@ class InstitutionalRiskManagerV3:
 
         # 5. فلتر التقلب العشوائي (Volatility Filter)
         if current_market_conditions.get('is_market_choppy', False) and not is_scalping_signal:
-            # السكالبينج يمكنه التداول في الأسواق العرضية الحركية السريعة، بينما السوينغ يمنع تماماً
             return {'status': 'BLOCK', 'reason': "❌ حظر المخاطر: السوق يتحرك بشكل عشوائي وبدون اتجاه واضح (Choppy Market)"}
 
         # 6. حساب إدارة المخاطرة الديناميكية وحجم العقد الموزون (Dynamic Risk Allocation)
@@ -177,7 +177,6 @@ class InstitutionalRiskManagerV3:
             self.daily_loss_counter += 1
             logging.warning(f"🚨 تنبيه إدارة المخاطر: تم تسجيل صفقة خاسرة. إجمالي خسائر اليوم المتتالية: {self.daily_loss_counter}")
             
-            # هندسة سقف الحظر: السكالبينج السريع يعطي مرونة حتى 4 استوبات، بينما السوينغ يقفل المحفظة عند 2
             allowed_losses = 4 if is_scalping_trade else self.max_daily_losses_allowed
             lock_duration_hours = 12 if is_scalping_trade else 24
             
@@ -185,6 +184,5 @@ class InstitutionalRiskManagerV3:
                 self.emergency_lock_until = datetime.datetime.utcnow() + datetime.timedelta(hours=lock_duration_hours)
                 logging.error(f"🛑 تم تفعيل قفل الأمان الطارئ لـ V4! حظر التداول بالكامل لمدة {lock_duration_hours} ساعة حماية للمحفظة من تقلبات الجلسة.")
         else:
-            # إذا ربحت الصفقة، يتم تصفير العداد فوراً لتأكيد استقرار بيئة التداول والسيولة
             self.daily_loss_counter = 0
-        
+                
