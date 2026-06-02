@@ -2,6 +2,7 @@
 # 👑 المحرك التنفيذي المركزي لمنظومة الوحش المؤسسية - النسخة V10 AI CORE المحدثة 👑
 # 🛡️ نظام المسارات المنفصلة: دمج نمط السكالبينغ (اضرب واهرب) + البث الخاص لجلسات السيولة العالمية
 # ⚡ ربط حقيقي وبث فوري للأسعار لمنع فجوات السكالبينغ ودعم صفقات البيع والشراء بالتوازي
+# 🚨 تم سحق مشكلة سعر الذهب وربط فوري لسوق الـ Spot ليعود السعر الحي (4500$) على الشارت
 
 import os
 import sys
@@ -13,7 +14,7 @@ import random
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
-# الاستدعاءات الفنية المطورة للمنظومة لضمان عدم حدوث Crash
+# Estidda'at al-manzooma al-fanniya al-mutawwara
 from time_engine import TradingTimeEngine
 from news_engine import FederalNewsEngine
 from signal_filter import InstitutionalSignalFilter as AdaptiveSignalFilter
@@ -22,10 +23,9 @@ from pre_move_engine import PreMovePredictionEngine as PreMoveExplosionEngine
 from quality_engine import EliteQualityEngine
 from execution_engine import ExecutionEngineV1
 
-# 🔥 ترقية العقل المركزي: استدعاء المحركات المحدثة والمقفلة بنجاح
-from signal_engine import SignalEngineV3
-from risk_manager import InstitutionalRiskManagerV3
-# 🟢 ربط الكلاس المدمج الجديد ومطابقته 100% لتجنب الـ ImportError
+# 🔥 ترقية العقل المركزي: ربط المحركات المحدثة V4 بنجاح كامل لمنع الـ ImportError
+from signal_engine import SignalEngineV4
+from risk_manager import InstitutionalRiskManagerV4
 from control_panel import InstitutionalControlPanelV2 as InstitutionalControlPanelV3
 
 # ========================================================
@@ -45,8 +45,9 @@ def run_flask():
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+# تحديث قاموس الطوارئ بمستويات أسعار عام 2026 الحالية لمنع الجمود البرمجي
 LAST_PRICES = {
-    "PAXGUSDT": 2420.0,
+    "PAXGUSDT": 4500.0,
     "BTCUSDT": 68500.0,  
     "ETHUSDT": 3450.0,
     "SOLUSDT": 145.0
@@ -54,13 +55,18 @@ LAST_PRICES = {
 
 def get_real_crypto_price(symbol="BTCUSDT"):
     """
-    جلب الأسعار الحقيقية اللحظية مباشرة من العقود الآجلة لمنصة Binance 
-    لضمان مطابقة الشارت الحقيقي 100% وإلغاء الفجوات السعرية في السكالبينج.
+    جلب الأسعار الحقيقية اللحظية:
+    يفصل ذكياً بين سوق Spot للذهب (PAXG) وسوق Futures لباقي العملات لضمان الدقة المطلقة وإلغاء فجوات السعر.
     """
     global LAST_PRICES
+    symbol = symbol.upper()
     try:
-        # استخدام رابط أسعار العقود الآجلة الحية لـ Binance لأنها الأسرع والأدق في السكالبينج
-        url = f"https://fapi.binance.com/fapi/v1/ticker/price?symbol={symbol}"
+        # صمام أمان حاسم: PAXG لا يمتلك عقوداً آجلة في بينانس، لذلك نسحب سعره من سوق الفوري Spot
+        if symbol == "PAXGUSDT":
+            url = f"https://api.binance.com/api/v3/ticker/price?symbol={symbol}"
+        else:
+            url = f"https://fapi.binance.com/fapi/v1/ticker/price?symbol={symbol}"
+            
         response = requests.get(url, timeout=3)
         if response.status_code == 200:
             data = response.json()
@@ -68,7 +74,7 @@ def get_real_crypto_price(symbol="BTCUSDT"):
                 LAST_PRICES[symbol] = float(data['price'])
                 return LAST_PRICES[symbol]
     except Exception as e:
-        logging.warning(f"⚠️ خطأ في جلب السعر الحي من بينانس ({symbol}): {e} | استخدام آخر سعر مسجل")
+        logging.warning(f"⚠️ خطأ في جلب السعر الحي المباشر لـ ({symbol}): {e} | الاعتماد على آخر سعر مسجل بالذاكرة")
     
     return LAST_PRICES[symbol]
 
@@ -96,14 +102,14 @@ def main():
     signal_filter = AdaptiveSignalFilter(time_engine=time_engine, news_engine=news_engine)
     pre_move_engine = PreMoveExplosionEngine(time_engine=time_engine, news_engine=news_engine)
     
-    # 🔥 ترقية V4: تهيئة محرك المخاطر المطور مع فلاتر الاستوبات وقفل الخسائر
-    risk_manager = InstitutionalRiskManagerV3(news_engine=news_engine, self_learning_engine=self_learning_engine)
+    # 🔥 ترقية V4: تهيئة محرك المخاطر المطور والمقفل V4 بنجاح
+    risk_manager = InstitutionalRiskManagerV4(news_engine=news_engine, self_learning_engine=self_learning_engine)
     risk_manager.set_risk_profile("MEDIUM")
     
     quality_engine = EliteQualityEngine(time_engine=time_engine, pre_move_engine=pre_move_engine)
     
-    # 🔥 ترقية V4: ربط محرك الإشارات الشامل بالبنية والواجهات المحدثة
-    signal_engine = SignalEngineV3(
+    # 🔥 ترقية V4: ربط محرك الإشارات النخبوي الموحد V4 بالبنية الجديدة
+    signal_engine = SignalEngineV4(
         time_engine=time_engine, news_engine=news_engine, risk_manager=risk_manager,
         quality_engine=quality_engine, pre_move_engine=pre_move_engine
     )
@@ -130,13 +136,13 @@ def main():
 
     while True:
         try:
-            # 🟢 التوافق المرن: قراءة الحالة من لوحة التحكم لتحديد نشاط البوت
+            # 🟢 قراءة الحالة من لوحة التحكم لتحديد نشاط البوت
             is_active = (control_panel.bot_status == "RUNNING")
             
             if is_active:  
                 current_hour = int(time.strftime("%H")) # جلب الساعة الحالية بالتوقيت العالمي UTC
                 
-                # 🌍 [مستشعر ومذيع جلسات السيولة العالمية الذكي والمستقل لـ V4]
+                # 🌍 مستشعر ومذيع جلسات السيولة العالمية الذكي والمستقل لـ V4
                 if current_hour != last_checked_hour:
                     is_weekend = time.strftime("%a") in ["Sat", "Sun"]
                     
@@ -178,7 +184,7 @@ def main():
                 for active_pair in monitored_assets:
                     current_price = get_real_crypto_price(active_pair)
                     
-                    # ⚡ [هندسة المسارات المنفصلة: التحقق من وضع السكالبينج الذكي]
+                    # ⚡ التحقق من وضع السكالبينج الذكي من لوحة التحكم
                     is_scalp_active = getattr(control_panel, 'scalp_mode_active', False)
 
                     # اختيار اتجاه الهيكل بشكل عادل لفتح الباب أمام إشارات البيع والشراء بالتساوي
@@ -188,13 +194,11 @@ def main():
                     # 🎯 هندسة الأهداف التكيفية الديناميكية لصفقات الرادار الخلفي (شراء أو بيع)
                     if "BTC" in active_pair:
                         if is_scalp_active:
-                            # صفقات سكالبينج خاطفة جداً لعملة البيتكوين (اضرب واهرب)
                             stop_loss = round(current_price - 50 if is_bullish else current_price + 50, 2)
                             tp1 = round(current_price + 60 if is_bullish else current_price - 60, 2)
                             tp2 = round(current_price + 100 if is_bullish else current_price - 100, 2)
                             tp3 = round(current_price + 150 if is_bullish else current_price - 150, 2)
                         else:
-                            # صفقات سوينغ بعيدة المدى الافتراضية المستقرة
                             stop_loss = round(current_price - 400 if is_bullish else current_price + 400, 2)
                             tp1 = round(current_price + 500 if is_bullish else current_price - 500, 2)
                             tp2 = round(current_price + 1000 if is_bullish else current_price - 1000, 2)
@@ -224,16 +228,17 @@ def main():
                             tp2 = round(current_price + 8.5 if is_bullish else current_price - 8.5, 2)
                             tp3 = round(current_price + 15.0 if is_bullish else current_price - 15.0, 2)
                     else: 
+                        # فحص السكالبينج والسوينغ لزوج الذهب PAXGUSDT بناءً على السعر الحقيقي الذكي الحالي
                         if is_scalp_active:
-                            stop_loss = round(current_price - 1.2 if is_bullish else current_price + 1.2, 2)  
-                            tp1 = round(current_price + 1.8 if is_bullish else current_price - 1.8, 2)
-                            tp2 = round(current_price + 3.5 if is_bullish else current_price - 3.5, 2)
-                            tp3 = round(current_price + 6.0 if is_bullish else current_price - 6.0, 2)
+                            stop_loss = round(current_price - 4.0 if is_bullish else current_price + 4.0, 2)  
+                            tp1 = round(current_price + 6.0 if is_bullish else current_price - 6.0, 2)
+                            tp2 = round(current_price + 12.0 if is_bullish else current_price - 12.0, 2)
+                            tp3 = round(current_price + 20.0 if is_bullish else current_price - 20.0, 2)
                         else:
-                            stop_loss = round(current_price - 12.0 if is_bullish else current_price + 12.0, 2)  
-                            tp1 = round(current_price + 18.0 if is_bullish else current_price - 18.0, 2)
-                            tp2 = round(current_price + 35.0 if is_bullish else current_price - 35.0, 2)
-                            tp3 = round(current_price + 70.0 if is_bullish else current_price - 70.0, 2)
+                            stop_loss = round(current_price - 20.0 if is_bullish else current_price + 20.0, 2)  
+                            tp1 = round(current_price + 30.0 if is_bullish else current_price - 30.0, 2)
+                            tp2 = round(current_price + 60.0 if is_bullish else current_price - 60.0, 2)
+                            tp3 = round(current_price + 120.0 if is_bullish else current_price - 120.0, 2)
 
                     # 🎲 هندسة وهيكلة البيانات وفقاً لمدخلات الـ SMC المعتمدة ودعم الاتجاهين
                     mock_smc_data = {
@@ -262,7 +267,7 @@ def main():
                         'next_event_epoch': 0
                     }
 
-                    # 🧠 استدعاء قرار محرك الإشارات المطور الموحد V3
+                    # 🧠 استدعاء قرار محرك الإشارات المطور الموحد V4
                     decision = signal_engine.analyze_market_and_generate_signal(mock_smc_data, mock_market_conditions)
                     
                     # 🚀 التحقق الآمن وبث الإشارة دون انهيار أو فقدان أي معاملات فنية
@@ -282,8 +287,8 @@ def main():
         except Exception as main_err:
             logging.error(f"🚨 خطأ فادح في الحلقة التنفيذية المفتوحة: {main_err}")
 
-        time.sleep(10) # تسريع وثيرة الفحص الحقيقي للسكالبينج (كل 10 ثوانٍ) لمنع فوات الفرص
+        time.sleep(10) # فحص متسارع ومكثف للسكالبينج كل 10 ثوانٍ لمنع فوات الفرص الحية
 
 if __name__ == "__main__":
     main()
-    
+            
