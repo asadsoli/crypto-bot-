@@ -1,6 +1,7 @@
 # signal_filter.py
 # 👑 موديول الفلترة المؤسسية والتصفية النخبوية - النسخة V10 AI CORE المحدثة 👑
 # 🛡️ فلترة ثنائية المسار: اقتناص الشراء في الصعود وتفعيل البيع (Short) في ذروة الذعر الجيوسياسي والـ Risk OFF
+# 🚨 مضاف إليها نظام الحماية الذكي لمنع تضارب أسعار الذهب (XAU vs PAXG) وضمان جلب السعر الحي الدقيق (4500$)
 
 import logging
 
@@ -14,17 +15,33 @@ class InstitutionalSignalFilter:
         
         # بوابات الفلترة الأدنى (Confidence Gate) - تم تعديلها لتناسب مرونة السكالبينج
         self.min_confidence_score = 50.0  # حد أدنى مرن لمنع تفويت فرص السكالبينج الخاطفة
+        
+        # حد الأمان لأسعار الذهب لمنع الأخطاء البرمجية الناتجة عن التحديثات الصباحية القديمة
+        self.expected_gold_floor = 4000.0  # الحد الأدنى المتوقع لسعر الذهب في بيئة السوق الحالية لعام 2026
 
     def filter_signal(self, raw_signal: dict, current_market_conditions: dict) -> dict:
         """
         تصفية الإشارات الواردة لضمان الجودة العالية فقط.
         تحليل متقاطع ذكي يدعم صفقات البيع والشراء بناءً على بيئة الماكرو.
+        تتضمن فحصاً صارماً لمنع جلب الأسعار الخاطئة أو القديمة لزوج PAXGUSDT.
         """
         pair = raw_signal.get('pair', 'UNKNOWN').upper()
-        # استبدال XAU بـ PAXG تلقائياً إن وجد في الإشارة لضمان حصر التداول في الذهب الرقمي
-        if 'XAU' in pair:
-            pair = pair.replace('XAU', 'PAXG')
-            raw_signal['pair'] = pair
+        
+        # 1. نظام المعالجة الذكي لرمز الذهب دون تشويه السعر السائد على الشارت
+        if 'XAU' in pair or 'PAXG' in pair:
+            # توحيد التسمية لضمان التداول على الذهب الرقمي بالسيولة الصحيحة
+            if 'XAU' in pair:
+                pair = pair.replace('XAU', 'PAXG')
+                raw_signal['pair'] = pair
+            
+            # فحص السعر الوارد في الإشارة لمنع غلطة الـ 2420.00 إذا كان السعر الحقيقي 4500$
+            entry_price = float(raw_signal.get('entry_price', raw_signal.get('price', 0.0)))
+            if entry_price > 0.0 and entry_price < self.expected_gold_floor:
+                logging.error(f"❌ خطأ فادح في جلب الأسعار: تم رصد سعر مشوه للذهب ({entry_price}) بينما السعر الحقيقي الحالي يقارب الـ 4500$!")
+                return {
+                    'status': 'REJECTED',
+                    'reason': f"فشل فلتر سلامة الأسعار: السكور الوارد للذهب ({entry_price}) قديم أو مقسم بشكل خاطئ بالذاكرة. السعر المتوقع فوق {self.expected_gold_floor}"
+                }
 
         logging.info(f"🔍 فحص فلترة مؤسسية للإشارة على زوج: {pair}")
 
@@ -32,12 +49,12 @@ class InstitutionalSignalFilter:
         structure = raw_signal.get('structure', '')
         is_short_trade = "Bearish" in structure
 
-        # 1. فلترة الثقة (Confidence Gate)
+        # 2. فلترة الثقة (Confidence Gate)
         confidence = raw_signal.get('confidence_score', raw_signal.get('base_confidence', 0.0))
         if confidence < self.min_confidence_score:
             return {'status': 'REJECTED', 'reason': f"فشل بوابة الثقة: {confidence}% أقل من الحد الأدنى {self.min_confidence_score}%"}
 
-        # 2. فلترة الجلسات والسيولة (Session Filter)
+        # 3. فلترة الجلسات والسيولة (Session Filter)
         active_sessions = self.time_engine.get_active_sessions()
         session_power = self.time_engine.calculate_session_power()
         
@@ -46,7 +63,7 @@ class InstitutionalSignalFilter:
             if not raw_signal.get('is_scalping_signal', False):
                 return {'status': 'REJECTED', 'reason': "فشل فلتر الجلسة: الجلسة الآسيوية ضعيفة السيولة لهذه العملة في الفريمات الكبيرة"}
 
-        # 3. فلترة الأخبار والماكرو والوضع الجيوسياسي (News & Macro Filter)
+        # 4. فلترة الأخبار والماكرو والوضع الجيوسياسي (News & Macro Filter)
         news_status = current_market_conditions.get('news_analysis', {})
         if news_status.get('risk_regime') == 'Risk OFF':
             if is_short_trade:
@@ -59,12 +76,12 @@ class InstitutionalSignalFilter:
                 else:
                     logging.info("⚠️ وضع السوق Risk OFF ويتم اعتماد الشراء على PAXG كملاذ آمن بحذر شديد.")
 
-        # 4. فلترة التوقيت للأحداث الاقتصادية القوية (Event Timing Filter)
+        # 5. فلترة التوقيت للأحداث الاقتصادية القوية (Event Timing Filter)
         event_timing = self.news_engine.get_event_timing_status(current_market_conditions.get('next_event_epoch', 0))
         if event_timing['action'] == 'STOP_TRADING':
             return {'status': 'REJECTED', 'reason': f"فشل فلتر التوقيت: إيقاف إجباري بسبب {event_timing['desc']}"}
         
-        # 5. دمج الأوزان وتعديل الـ Score النهائي بناءً على بيئة السوق
+        # 6. دمج الأوزان وتعديل الـ Score النهائي بناءً على بيئة السوق
         ai_score = raw_signal.get('ai_score', raw_signal.get('base_ai_score', 0.0))
         # تعديل السكور بناءً على قوة الجلسة، مع وضع حد مرن للسكالبينج الخاطف لضمان عدم تفويت الفرص
         multiplier = session_power.get('multiplier', 1.0)
@@ -80,7 +97,7 @@ class InstitutionalSignalFilter:
         
         return {
             'status': 'APPROVED',
-            'reason': "اجتازت الصفقة الفلترة المؤسسية بنجاح عالي وتوافقت مع حركة السيولة",
+            'reason': "اجتازت الصفقة الفلترة المؤسسية بنجاح عالي وتوافقت مع حركة السيولة الصحيحة"،
             'filtered_signal': raw_signal
-                    }
+        }
         
