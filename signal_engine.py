@@ -1,13 +1,14 @@
 # SignalEngineV4.py
 # ⚡ محرك الإشارات المؤسسي المطور بالكامل - النسخة V4.0 النخبوية ⚡
 # 🛡️ قناص الصفقات: دمج متكامل ومستقل لآلية أهداف السكالبينج الخاطفة وصفقات السوينغ الموجية
+# 🚨 مضاف إليه صمام أمان الأسعار لمنع تضارب أسعار الذهب وضمان مطابقة شارت الـ 4500$ الحالي لعام 2026
 
 import logging
 import datetime
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-class SignalEngineV3:
+class SignalEngineV4:
     def __init__(self, time_engine, news_engine, risk_manager, quality_engine, pre_move_engine):
         self.time_engine = time_engine
         self.news_engine = news_engine
@@ -17,6 +18,9 @@ class SignalEngineV3:
         
         # 🪙 السلة الذهبية للأزواج الأربعة المعتمدة للرادار الخلفي
         self.watchlist_pairs = ["BTCUSDT", "PAXGUSDT", "ETHUSDT", "SOLUSDT"]
+        
+        # حد الأمان البرمجي الحاسم لمنع جلب الأسعار التاريخية القديمة للذهب
+        self.gold_absolute_floor = 4000.0
 
     def analyze_market_and_generate_signal(self, smc_data: dict, market_conditions: dict, force_scalp: bool = False) -> dict:
         """
@@ -24,9 +28,17 @@ class SignalEngineV3:
         يتكيف ديناميكياً لتوليد أهداف واستوبات مخصصة للسكالب الخاطف أو السوينغ الطويل.
         """
         pair = smc_data.get('pair', 'UNKNOWN').upper()
+        
         # استبدال الذهب التقليدي بالذهب الرقمي المشفر بشكل صارم ومثبت
-        if 'XAU' in pair:
-            pair = pair.replace('XAU', 'PAXG')
+        if 'XAU' in pair or 'PAXG' in pair:
+            if 'XAU' in pair:
+                pair = pair.replace('XAU', 'PAXG')
+            
+            # فحص السعر لمنع الغلطة الصباحية (2420) وضمان التوافق مع مستويات الـ 4500 الحالية
+            check_price = smc_data.get('current_price', 0.0)
+            if check_price > 0.0 and check_price < self.gold_absolute_floor:
+                logging.error(f"❌ تم حظر إشارة {pair} داخل محرك الإشارات: السعر الممرر ({check_price}) قديم جداً ولا يطابق الشارت الحي الحقيقي!")
+                return {'status': 'NO_SIGNAL', 'reason': f"خطأ في تغذية الأسعار: سعر الذهب الممرر {check_price} أقل من حد الأمان المؤسسي {self.gold_absolute_floor}"}
 
         logging.info(f"📊 جاري فحص الشروط الفنية والمؤسسية لزوج: {pair}")
 
@@ -111,20 +123,30 @@ class SignalEngineV3:
             raw_signal['ai_score'] = min(raw_signal['ai_score'] + 10, 100)
 
         # ب: مزامنة تقييم الجودة ونظام النخبة Quality & Elite Sync
-        quality_res = self.quality_engine.calculate_quality_score(raw_signal, market_conditions)
-        if not quality_res['is_tradable']:
-            return {'status': 'FILTERED', 'reason': quality_res['reject_reason']}
+        if self.quality_engine:
+            quality_res = self.quality_engine.calculate_quality_score(raw_signal, market_conditions)
+            if not quality_res['is_tradable']:
+                return {'status': 'FILTERED', 'reason': quality_res['reject_reason']}
+            raw_signal['quality_score'] = quality_res['quality_score']
+            raw_signal['classification'] = quality_res['classification']
+            raw_signal['trade_style'] = quality_res['trade_style']
+        else:
+            # حماية افتراضية في حال كان محرك الجودة معطلاً حالياً
+            raw_signal['quality_score'] = 75.0
+            raw_signal['classification'] = 'Normal'
+            raw_signal['trade_style'] = 'SWING'
 
         # ج: المزامنة والتحقق الإجباري من إدارة المخاطر Dynamic Risk Sync
-        risk_res = self.risk_manager.can_open_trade(raw_signal, market_conditions)
-        if risk_res['status'] == 'BLOCK':
-            return {'status': 'BLOCKED_BY_RISK', 'reason': risk_res['reason']}
+        if self.risk_manager:
+            risk_res = self.risk_manager.can_open_trade(raw_signal, market_conditions)
+            if risk_res['status'] == 'BLOCK':
+                return {'status': 'BLOCKED_BY_RISK', 'reason': risk_res['reason']}
+            raw_signal['allocated_risk'] = risk_res['allocated_risk_percentage']
+        else:
+            # حماية افتراضية للمخاطرة في حال كان موديول إدارة المخاطر معطلاً حالياً
+            raw_signal['allocated_risk'] = 0.01
 
         # تجميع وحقن البيانات المفلترة بالكامل لتمريرها لمحرك التنفيذ
-        raw_signal['quality_score'] = quality_res['quality_score']
-        raw_signal['classification'] = quality_res['classification']
-        raw_signal['trade_style'] = quality_res['trade_style']
-        raw_signal['allocated_risk'] = risk_res['allocated_risk_percentage']
         raw_signal['session_context'] = self.time_engine.get_active_sessions()[0] if (self.time_engine and self.time_engine.get_active_sessions()) else 'Out of Sessions'
 
         return {
@@ -155,7 +177,7 @@ class SignalEngineV3:
             if res['status'] == 'TRIGGERED':
                 sig = res['signal_data']
                 # شرط صارم: لا نرسل خارج اللوحة إلا النخبة الفولاذية
-                if sig['classification'] == 'Elite' and sig['confidence_score'] >= 85.0:
+                if sig.get('classification') == 'Elite' and sig.get('confidence_score', 0) >= 85.0:
                     sig['is_autonomous'] = True
                     autonomous_signals.append(sig)
                     
@@ -194,4 +216,4 @@ class SignalEngineV3:
             report['reason'] = res.get('reason', 'السوق غير مستقر أو الهيكل غير مكتمل.')
             
         return report
-                    
+        
