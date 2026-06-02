@@ -1,5 +1,5 @@
 # execution_engine.py
-# 👑 المحرك التنفيذي المركزي لبث الصفقات وإدارة النتائج - النسخة V11 AI CORE المحصنة ضد أخطاء التنسيق 👑
+# 👑 المحرك التنفيذي المركزي لبث الصفقات وإدارة النتائج - النسخة V12 النخبوية المحصنة 👑
 # 🛡️ توافق كامل مع مسارات السكالبينج ودعم إشارات البيع والشراء بناءً على الهيكلية المؤسسية (SMC)
 
 import logging
@@ -21,12 +21,11 @@ class ExecutionEngineV1:
         """
         if not text:
             return ""
-        # هروب آمن من الرموز الخاصة التي تفسد تنسيق الـ Markdown الكلاسيكي
         return str(text).replace("_", "\\_").replace("*", "\\*").replace("[", "\\[").replace("]", "\\]").replace("`", "\\`")
 
     def execute_and_broadcast_signal(self, signal_result: dict) -> bool:
         """
-        📤 استقبال الإشارة المعتمدة، إرسالها لتيليغرام، وتثبيت إدارتها برمجياً
+        📤 استقبال الإشارة المعتمدة، إرسالها لتيليغرام، وتثبيت إدارتها برمجياً بنمط مؤسسي نظيف
         """
         if signal_result.get('status') != 'TRIGGERED':
             return False
@@ -53,24 +52,45 @@ class ExecutionEngineV1:
         # جلب التوقيت الحالي بشكل آمن في حال عدم وجود تايم ستامب جاهز
         current_timestamp = data.get('timestamp', str(int(time.time())))
 
-        # صياغة رسالة الإشارة باللغة العربية 100% بنمط مؤسسي مخصص للقناة واللوحة مع تنسيق محمي
+        # 🎯 جلب وتنسيق الأسعار الفنية
+        entry = data.get('entry_price', data.get('current_price', 0.0))
+        sl = data.get('sl', data.get('stop_loss', 0.0))
+        tp1 = data.get('tp1', 0.0)
+        tp2 = data.get('tp2', 0.0)
+        tp3 = data.get('tp3', 0.0)
+
+        # 🪙 [فلتر الدقة وتصحيح أسعار أصول الذهب PAXG]
+        if "PAXG" in pair.upper():
+            entry_str = f"{float(entry):.2f}"
+            sl_str = f"{float(sl):.2f}"
+            tp1_str = f"{float(tp1):.2f}" if tp1 else "---"
+            tp2_str = f"{float(tp2):.2f}" if tp2 else "---"
+            tp3_str = f"{float(tp3):.2f}" if tp3 else "---"
+        else:
+            entry_str = str(entry)
+            sl_str = str(sl)
+            tp1_str = str(tp1) if tp1 else "---"
+            tp2_str = str(tp2) if tp2 else "---"
+            tp3_str = str(tp3) if tp3 else "---"
+
+        # صياغة رسالة الإشارة باللغة العربية 100% بنمط مؤسسي مخصص (تم استئصال العبارة القديمة بالكامل)
         telegram_message = (
             f"👑 **إشارة تداول مؤسسية معتمدة لـ القائد** 👑\n"
             f"----------------------------------------\n"
             f"📊 **نمط التداول:** {trade_style}\n"
             f"🪙 **الزوج:** `{pair}`\n"
             f"**نوع الصفقة:** {signal_type}\n\n"
-            f"📊 **نقطة الدخول الحالية:** {data.get('entry_price', data.get('current_price'))}\n"
-            f"🛑 **وقف الخسارة (SL):** {data.get('sl', data.get('stop_loss'))}\n"
-            f"🎯 **الهدف الأول (TP1):** {data.get('tp1')}\n"
-            f"🎯 **الهدف الثاني (TP2):** {data.get('tp2')}\n"
-            f"🎯 **الهدف الثالث (TP3):** {data.get('tp3')}\n\n"
+            f"📊 **نقطة الدخول الحالية:** {entry_str}\n"
+            f"🛑 **وقف الخسارة (SL):** {sl_str}\n"
+            f"🎯 **الهدف الأول (TP1):** {tp1_str}\n"
+            f"🎯 **الهدف الثاني (TP2):** {tp2_str}\n"
+            f"🎯 **الهدف الثالث (TP3):** {tp3_str}\n\n"
             f"💎 **جودة الصفقة:** {classification} ({quality_score}/100)\n"
             f"🧠 **نسبة الثقة:** {confidence_score}%\n"
             f"🛡️ **المخاطرة المخصصة:** {allocated_risk}% من رأس المال\n"
             f"🌍 **الجلسة الحالية:** {session_context}\n"
             f"----------------------------------------\n"
-            f"⚠️ *تتم إدارة الصفقة تلقائياً بواسطة محرك التعديل الديناميكي و الـ Break Even المتصل بالتابلت.*"
+            f"⚠️ *تتم إدارة الصفقة تلقائياً بواسطة محرك التعديل الديناميكي ونظام الـ Break Even المؤسسي.*"
         )
 
         try:
@@ -90,15 +110,12 @@ class ExecutionEngineV1:
 
     def close_and_finalize_trade(self, pair: str, trade_data: dict, outcome: str):
         """
-        🔄 عند إغلاق الصفقة (ضربت الهدف أو الوقف)، يتم فك الحجز وإرسال النتيجة 
-        إلى نظام التعلم الذاتي Self-Learning Engine للتطور التلقائي وضبط أوزان الأهداف.
+        🔄 عند إغلاق الصفقة، يتم فك الحجز وإرسال النتيجة إلى نظام التعلم الذاتي
         """
         try:
-            # فك قفل المخاطر عن الزوج لإتاحة الفرص الجديدة فوراً في السكالبينج
             if self.risk_manager and hasattr(self.risk_manager, 'remove_active_trade'):
                 self.risk_manager.remove_active_trade(pair)
             
-            # تدوير النتيجة داخل ذاكرة الذكاء الاصطناعي لتحديث الأوزان التكيفية والـ Optimization
             if self.self_learning_engine and hasattr(self.self_learning_engine, 'update_trade_result'):
                 self.self_learning_engine.update_trade_result(trade_data, result=outcome)
             
