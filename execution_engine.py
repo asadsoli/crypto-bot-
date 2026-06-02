@@ -1,5 +1,5 @@
 # execution_engine.py
-# 👑 المحرك التنفيذي المركزي لبث الصفقات وإدارة النتائج - النسخة V10 AI CORE المحدثة 👑
+# 👑 المحرك التنفيذي المركزي لبث الصفقات وإدارة النتائج - النسخة V11 AI CORE المحصنة ضد أخطاء التنسيق 👑
 # 🛡️ توافق كامل مع مسارات السكالبينج ودعم إشارات البيع والشراء بناءً على الهيكلية المؤسسية (SMC)
 
 import logging
@@ -15,6 +15,15 @@ class ExecutionEngineV1:
         self.self_learning_engine = self_learning_engine
         self.risk_manager = risk_manager
 
+    def clean_markdown(self, text: str) -> str:
+        """
+        تجميع وتطهير النصوص الحية من الرموز الحساسة التي تسبب انهيار التليغرام (Error 400)
+        """
+        if not text:
+            return ""
+        # هروب آمن من الرموز الخاصة التي تفسد تنسيق الـ Markdown الكلاسيكي
+        return str(text).replace("_", "\\_").replace("*", "\\*").replace("[", "\\[").replace("]", "\\]").replace("`", "\\`")
+
     def execute_and_broadcast_signal(self, signal_result: dict) -> bool:
         """
         📤 استقبال الإشارة المعتمدة، إرسالها لتيليغرام، وتثبيت إدارتها برمجياً
@@ -25,25 +34,26 @@ class ExecutionEngineV1:
         # جلب البيانات المفلترة أو بيانات الإشارة الأساسية بشكل آمن لمنع التضارب
         data = signal_result['filtered_signal'] if 'filtered_signal' in signal_result else signal_result.get('signal_data', signal_result)
         
-        pair = data.get('pair', 'UNKNOWN')
-        structure = data.get('structure', '')
-        trade_style = signal_result.get('trade_style', '⚡ SCALPING (خاطفة)')
+        # 🔥 حقن الفلتر الحامي وتطهير المعطيات النصية قبل دمجها بالرسالة
+        pair = self.clean_markdown(data.get('pair', 'UNKNOWN'))
+        structure_raw = data.get('structure', '')
+        trade_style = self.clean_markdown(signal_result.get('trade_style', '⚡ SCALPING (خاطفة)'))
+        classification = self.clean_markdown(data.get('classification', '🎖️ ELITE TARGET'))
+        session_context = self.clean_markdown(data.get('session_context', 'LIVE INJECTION'))
         
-        # 🟢 مطابقة نوع الصفقة ذكياً بناءً على الهيكلية المؤسسية المدعومة في التحديث الجديد
-        is_short = "Bearish" in structure
+        # 🟢 مطابقة نوع الصفقة ذكياً بناءً على الهيكلية المؤسسية قبل التطهير النصي
+        is_short = "Bearish" in structure_raw
         signal_type = "🔴 SELL (بيع مكشوف)" if is_short else "🟢 BUY (شراء صاعد)"
         
         # جلب القيم الفنية بشكل آمن مع وضع قيم افتراضية من الحسابات الحية لمنع الـ KeyError
-        classification = data.get('classification', '🎖️ ELITE TARGET')
         quality_score = data.get('quality_score', round(data.get('base_ai_score', 89.5), 1))
         confidence_score = round(data.get('confidence_score', data.get('base_confidence', 88.0)), 1)
         allocated_risk = data.get('allocated_risk', 1.5) # القيمة الافتراضية لحماية الحساب
-        session_context = data.get('session_context', 'LIVE INJECTION')
         
         # جلب التوقيت الحالي بشكل آمن في حال عدم وجود تايم ستامب جاهز
         current_timestamp = data.get('timestamp', str(int(time.time())))
 
-        # صياغة رسالة الإشارة باللغة العربية 100% بنمط مؤسسي مخصص للقناة واللوحة
+        # صياغة رسالة الإشارة باللغة العربية 100% بنمط مؤسسي مخصص للقناة واللوحة مع تنسيق محمي
         telegram_message = (
             f"👑 **إشارة تداول مؤسسية معتمدة لـ القائد** 👑\n"
             f"----------------------------------------\n"
@@ -64,9 +74,9 @@ class ExecutionEngineV1:
         )
 
         try:
-            # 1. إرسال الإشارة الاحترافية لقناة تيليغرام فوراً بدعم التنسيق المطور
+            # 1. إرسال الإشارة الاحترافية المطهّرة لقناة تيليغرام فوراً بسلام وتثبيت التنسيق
             self.bot.send_message(self.channel_id, telegram_message, parse_mode="Markdown")
-            logging.info(f"🚀 تم إرسال إشارة {pair} بنجاح إلى قناة تيليغرام وتحديد الاتجاه كـ [{'SELL' if is_short else 'BUY'}].")
+            logging.info(f"🚀 تم تنظيف وتمرير إشارة {pair} بنجاح إلى قناة تيليغرام وتحديد الاتجاه كـ [{'SELL' if is_short else 'BUY'}].")
 
             # 2. حجز وإقفال الزوج في سجل إدارة المخاطر لحمايته ومنع التداخل
             if self.risk_manager and hasattr(self.risk_manager, 'register_active_trade'):
