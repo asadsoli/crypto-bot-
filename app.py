@@ -1,11 +1,12 @@
 # TelegramLayerV3.py
-# ⚡ طبقة التيليغرام ولوحة التحكم المطورة بالكامل - النسخة V3 ⚡
-# 🛡️ تحافظ على كافة الميزات السابقة مدمجاً بها: زر الفحص تحت الطلب، مذيع الجلسات، وزر تصفير الأقفال العالقة
+# 👑 طبقة التيليغرام ولوحة التحكم المطورة بالكامل - النسخة V10 AI CORE المحصنة أمنياً 👑
+# 🛡️ نظام الأمان الصارم: قفل الـ Chat ID لـ القائد + زر الفحص تحت الطلب ومذيع الجلسات الحية
 
-import telebot
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+import os
 import logging
 import datetime
+import telebot
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -50,6 +51,10 @@ class TelegramLayerV3:
         self.news = news
         self.risk = risk
         self.time_engine = time_engine
+
+        # 🔒 جلب الآي دي الخاص بالقائد من خيارات السيرفر (افتراضياً يوضع كـ String لتجنب أخطاء الفحص)
+        # يمكنك وضعه هنا مباشرة في الكود أو كمتغير بيئة أمني في سيرفر ريندر باسم MY_CHAT_ID
+        self.admin_chat_id = os.getenv("MY_CHAT_ID", "YOUR_TELEGRAM_CHAT_ID_HERE")
 
         # 🔥 استدعاء الـ BrainCore المطور V3
         self.brain = BrainCore(
@@ -142,14 +147,32 @@ class TelegramLayerV3:
             chat_id = call.message.chat.id
             data = call.data
 
+            # 🔒 [جدار الحماية الفولاذي المقفل بـ Chat ID]
+            # التحقق من أن المستخدم الحالي هو "القائد" حصرياً لحماية الحسابات
+            if self.admin_chat_id != "YOUR_TELEGRAM_CHAT_ID_HERE" and str(chat_id) != str(self.admin_chat_id):
+                self.bot.answer_callback_query(call.id, "❌ خطأ أمني: لوحة التحكم هذه مشفرة ومقيدة بالكامل للقائد فقط!", show_alert=True)
+                logging.warning(f"⚠️ محاولة اختراق وتدخل أمني مرفوضة من الـ Chat ID: {chat_id}")
+                return
+
             if data == "analyze":
                 self.bot.answer_callback_query(call.id, "جاري سحب لقطة السوق وتحليل الـ SMC...")
                 if self.signal_engine:
-                    # محاكاة بنية البيانات الحية المتوافقة مع مخرجات محرك إشارات V3 المطور
+                    # تفعيل هيكل مرن يدعم محاكاة الصعود والهبوط بالتناوب للفحص اللحظي
+                    import random
+                    chosen_structure = random.choice(['BOS_Bullish', 'BOS_Bearish'])
+                    is_bull = "Bullish" in chosen_structure
+                    
                     mock_smc = {
-                        'pair': self.current_asset, 'structure': 'BOS_Bullish', 'liquidity_swept': True,
-                        'at_order_block_or_fvg': True, 'rsi': 52, 'ema_supporting': True, 'current_price': 77309.29,
-                        'stop_loss': 76859.29, 'base_confidence': 81.9, 'base_ai_score': 85.0
+                        'pair': self.current_asset, 
+                        'structure': chosen_structure, 
+                        'liquidity_swept': True,
+                        'at_order_block_or_fvg': True, 
+                        'rsi': 52 if is_bull else 68, 
+                        'ema_supporting': True, 
+                        'current_price': 77309.29,
+                        'stop_loss': 76859.29 if is_bull else 77809.29, 
+                        'base_confidence': 81.9, 
+                        'base_ai_score': 85.0
                     }
                     mock_market = {'news_analysis': {'risk_regime': 'Risk ON'}, 'next_event_epoch': 0, 'is_market_choppy': False}
                     
@@ -286,4 +309,4 @@ class TelegramLayerV3:
     def start_polling(self):
         """بدء استقبال النبضات الفورية من السيرفر"""
         self.bot.infinity_polling()
-            
+                    
