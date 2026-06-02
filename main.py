@@ -1,7 +1,7 @@
 # main.py
-# 👑 المحرك التنفيذي المركزي لمنظومة الوحش المؤسسية - النسخة V4.0 الكبرى 👑
+# 👑 المحرك التنفيذي المركزي لمنظومة الوحش المؤسسية - النسخة V10 AI CORE المحدثة 👑
 # 🛡️ نظام المسارات المنفصلة: دمج نمط السكالبينغ (اضرب واهرب) + البث الخاص لجلسات السيولة العالمية
-# ⚡ متوافق 100% مع سيرفرات Render و UptimeRobot وخالٍ من أخطاء التعارض
+# ⚡ ربط حقيقي وبث فوري للأسعار لمنع فجوات السكالبينغ ودعم صفقات البيع والشراء بالتوازي
 
 import os
 import sys
@@ -22,7 +22,7 @@ from pre_move_engine import PreMovePredictionEngine as PreMoveExplosionEngine
 from quality_engine import EliteQualityEngine
 from execution_engine import ExecutionEngineV1
 
-# 🔥 ترقية V4 الصارمة: استدعاء المحركات المحدثة والمقفلة بنجاح
+# 🔥 ترقية العقل المركزي: استدعاء المحركات المحدثة والمقفلة بنجاح
 from signal_engine import SignalEngineV3
 from risk_manager import InstitutionalRiskManagerV3
 # 🟢 ربط الكلاس المدمج الجديد ومطابقته 100% لتجنب الـ ImportError
@@ -52,26 +52,25 @@ LAST_PRICES = {
     "SOLUSDT": 145.0
 }
 
-def get_real_crypto_price(symbol="PAXGUSDT"):
+def get_real_crypto_price(symbol="BTCUSDT"):
+    """
+    جلب الأسعار الحقيقية اللحظية مباشرة من العقود الآجلة لمنصة Binance 
+    لضمان مطابقة الشارت الحقيقي 100% وإلغاء الفجوات السعرية في السكالبينج.
+    """
     global LAST_PRICES
-    coin_fsym = symbol.replace("USDT", "")
     try:
-        url = f"https://min-api.cryptocompare.com/data/price?fsym={coin_fsym}&tsyms=USD"
-        response = requests.get(url, timeout=4)
+        # استخدام رابط أسعار العقود الآجلة الحية لـ Binance لأنها الأسرع والأدق في السكالبينج
+        url = f"https://fapi.binance.com/fapi/v1/ticker/price?symbol={symbol}"
+        response = requests.get(url, timeout=3)
         if response.status_code == 200:
             data = response.json()
-            if "USD" in data:
-                LAST_PRICES[symbol] = float(data['USD'])
+            if 'price' in data:
+                LAST_PRICES[symbol] = float(data['price'])
                 return LAST_PRICES[symbol]
     except Exception as e:
-        logging.warning(f"⚠️ خطأ شبكة، استخدام التذبذب: {e}")
+        logging.warning(f"⚠️ خطأ في جلب السعر الحي من بينانس ({symbol}): {e} | استخدام آخر سعر مسجل")
     
-    # تذبذب حي ذكي لضمان استمرار المحاكاة واستقرار الرصد الفوري
-    if "BTC" in symbol: LAST_PRICES[symbol] += random.uniform(-50.0, 70.0)
-    elif "ETH" in symbol: LAST_PRICES[symbol] += random.uniform(-5.0, 7.0)
-    elif "SOL" in symbol: LAST_PRICES[symbol] += random.uniform(-1.0, 1.5)
-    else: LAST_PRICES[symbol] += random.uniform(-0.5, 0.8)
-    return round(LAST_PRICES[symbol], 2)
+    return LAST_PRICES[symbol]
 
 def run_control_panel(panel):
     try:
@@ -182,60 +181,64 @@ def main():
                     # ⚡ [هندسة المسارات المنفصلة: التحقق من وضع السكالبينج الذكي]
                     is_scalp_active = getattr(control_panel, 'scalp_mode_active', False)
 
-                    # 🎯 هندسة الأهداف التكيفية الديناميكية لصفقات الرادار الخلفي
+                    # اختيار اتجاه الهيكل بشكل عادل لفتح الباب أمام إشارات البيع والشراء بالتساوي
+                    chosen_structure = random.choice(['BOS_Bullish', 'CHoCH_Bullish', 'BOS_Bearish', 'CHoCH_Bearish'])
+                    is_bullish = "Bullish" in chosen_structure
+
+                    # 🎯 هندسة الأهداف التكيفية الديناميكية لصفقات الرادار الخلفي (شراء أو بيع)
                     if "BTC" in active_pair:
                         if is_scalp_active:
                             # صفقات سكالبينج خاطفة جداً لعملة البيتكوين (اضرب واهرب)
-                            stop_loss = round(current_price - random.randint(35, 60), 2)
-                            tp1 = round(current_price + random.randint(40, 70), 2)
-                            tp2 = round(current_price + random.randint(80, 110), 2)
-                            tp3 = round(current_price + random.randint(130, 180), 2)
+                            stop_loss = round(current_price - 50 if is_bullish else current_price + 50, 2)
+                            tp1 = round(current_price + 60 if is_bullish else current_price - 60, 2)
+                            tp2 = round(current_price + 100 if is_bullish else current_price - 100, 2)
+                            tp3 = round(current_price + 150 if is_bullish else current_price - 150, 2)
                         else:
                             # صفقات سوينغ بعيدة المدى الافتراضية المستقرة
-                            stop_loss = round(current_price - random.randint(300, 450), 2)
-                            tp1 = round(current_price + random.randint(400, 600), 2)
-                            tp2 = round(current_price + random.randint(900, 1200), 2)
-                            tp3 = round(current_price + random.randint(1800, 2400), 2)
+                            stop_loss = round(current_price - 400 if is_bullish else current_price + 400, 2)
+                            tp1 = round(current_price + 500 if is_bullish else current_price - 500, 2)
+                            tp2 = round(current_price + 1000 if is_bullish else current_price - 1000, 2)
+                            tp3 = round(current_price + 2000 if is_bullish else current_price - 2000, 2)
                             
                     elif "ETH" in active_pair:
                         if is_scalp_active:
-                            stop_loss = round(current_price - 3.5, 2)
-                            tp1 = round(current_price + 4.5, 2)
-                            tp2 = round(current_price + 9.0, 2)
-                            tp3 = round(current_price + 15.0, 2)
+                            stop_loss = round(current_price - 3.5 if is_bullish else current_price + 3.5, 2)
+                            tp1 = round(current_price + 4.5 if is_bullish else current_price - 4.5, 2)
+                            tp2 = round(current_price + 9.0 if is_bullish else current_price - 9.0, 2)
+                            tp3 = round(current_price + 15.0 if is_bullish else current_price - 15.0, 2)
                         else:
-                            stop_loss = round(current_price - 30.0, 2)
-                            tp1 = round(current_price + 45.0, 2)
-                            tp2 = round(current_price + 90.0, 2)
-                            tp3 = round(current_price + 180.0, 2)
+                            stop_loss = round(current_price - 30.0 if is_bullish else current_price + 30.0, 2)
+                            tp1 = round(current_price + 45.0 if is_bullish else current_price - 45.0, 2)
+                            tp2 = round(current_price + 90.0 if is_bullish else current_price - 90.0, 2)
+                            tp3 = round(current_price + 180.0 if is_bullish else current_price - 180.0, 2)
                             
                     elif "SOL" in active_pair:
                         if is_scalp_active:
-                            stop_loss = round(current_price - 0.35, 2)
-                            tp1 = round(current_price + 0.50, 2)
-                            tp2 = round(current_price + 0.95, 2)
-                            tp3 = round(current_price + 1.60, 2)
+                            stop_loss = round(current_price - 0.35 if is_bullish else current_price + 0.35, 2)
+                            tp1 = round(current_price + 0.50 if is_bullish else current_price - 0.50, 2)
+                            tp2 = round(current_price + 0.95 if is_bullish else current_price - 0.95, 2)
+                            tp3 = round(current_price + 1.60 if is_bullish else current_price - 1.60, 2)
                         else:
-                            stop_loss = round(current_price - 2.5, 2)
-                            tp1 = round(current_price + 4.0, 2)
-                            tp2 = round(current_price + 8.5, 2)
-                            tp3 = round(current_price + 15.0, 2)
+                            stop_loss = round(current_price - 2.5 if is_bullish else current_price + 2.5, 2)
+                            tp1 = round(current_price + 4.0 if is_bullish else current_price - 4.0, 2)
+                            tp2 = round(current_price + 8.5 if is_bullish else current_price - 8.5, 2)
+                            tp3 = round(current_price + 15.0 if is_bullish else current_price - 15.0, 2)
                     else: 
                         if is_scalp_active:
-                            stop_loss = round(current_price - 1.2, 2)  
-                            tp1 = round(current_price + 1.8, 2)
-                            tp2 = round(current_price + 3.5, 2)
-                            tp3 = round(current_price + 6.0, 2)
+                            stop_loss = round(current_price - 1.2 if is_bullish else current_price + 1.2, 2)  
+                            tp1 = round(current_price + 1.8 if is_bullish else current_price - 1.8, 2)
+                            tp2 = round(current_price + 3.5 if is_bullish else current_price - 3.5, 2)
+                            tp3 = round(current_price + 6.0 if is_bullish else current_price - 6.0, 2)
                         else:
-                            stop_loss = round(current_price - 12.0, 2)  
-                            tp1 = round(current_price + 18.0, 2)
-                            tp2 = round(current_price + 35.0, 2)
-                            tp3 = round(current_price + 70.0, 2)
+                            stop_loss = round(current_price - 12.0 if is_bullish else current_price + 12.0, 2)  
+                            tp1 = round(current_price + 18.0 if is_bullish else current_price - 18.0, 2)
+                            tp2 = round(current_price + 35.0 if is_bullish else current_price - 35.0, 2)
+                            tp3 = round(current_price + 70.0 if is_bullish else current_price - 70.0, 2)
 
-                    # 🎲 هندسة وهيكلة البيانات وفقاً لمدخلات الـ SMC المعتمدة
+                    # 🎲 هندسة وهيكلة البيانات وفقاً لمدخلات الـ SMC المعتمدة ودعم الاتجاهين
                     mock_smc_data = {
                         'pair': active_pair,
-                        'structure': random.choice(['BOS_Bullish', 'CHoCH_Bullish', 'BOS_Bullish']),
+                        'structure': chosen_structure,
                         'liquidity_swept': True,
                         'at_order_block_or_fvg': True,
                         'current_price': current_price,
@@ -243,18 +246,18 @@ def main():
                         'tp1': tp1, 'tp2': tp2, 'tp3': tp3,
                         'base_confidence': random.uniform(86.0, 92.0),
                         'base_ai_score': random.uniform(88.0, 94.0),
-                        'rsi': random.randint(40, 55),
+                        'rsi': random.randint(35, 65) if is_bullish else random.randint(55, 75),
                         'ema_supporting': True,
                         'volume_spike': True,
                         'orderbook_imbalance': 0.68,
-                        'is_scalping_signal': is_scalp_active # تمرير نوع الإشارة للمحركات الداخلية كعلامة تمييز
+                        'is_scalping_signal': is_scalp_active 
                     }
 
                     mock_market_conditions = {
                         'vix_index': 13.8,
-                        'dxy_trend': 'Bearish',
+                        'dxy_trend': 'Bearish' if is_bullish else 'Bullish',
                         'prediction_probability_score': 89.0,
-                        'news_analysis': {'impact_score': 1, 'sentiment': 'Bullish', 'risk_regime': 'Risk ON'},
+                        'news_analysis': {'impact_score': 1, 'sentiment': 'Bullish' if is_bullish else 'Bearish', 'risk_regime': 'Risk ON'},
                         'is_market_choppy': False,
                         'next_event_epoch': 0
                     }
@@ -265,7 +268,6 @@ def main():
                     # 🚀 التحقق الآمن وبث الإشارة دون انهيار أو فقدان أي معاملات فنية
                     if decision.get('status') == 'TRIGGERED':
                         try:
-                            # وسم الإشارة بنوعها ليعرف موديول التنفيذ صياغتها بالشكل الاحترافي
                             decision['trade_style'] = "⚡ SCALPING (خاطفة)" if is_scalp_active else "🏆 SWING (موجية)"
                             execution_engine.execute_and_broadcast_signal(decision)
                         except Exception as e:
@@ -280,8 +282,8 @@ def main():
         except Exception as main_err:
             logging.error(f"🚨 خطأ فادح في الحلقة التنفيذية المفتوحة: {main_err}")
 
-        time.sleep(60) # فحص مستقر وحماية للسيرفر من الحظر كل دقيقة متواصلة
+        time.sleep(10) # تسريع وثيرة الفحص الحقيقي للسكالبينج (كل 10 ثوانٍ) لمنع فوات الفرص
 
 if __name__ == "__main__":
     main()
-                
+    
