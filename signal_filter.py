@@ -1,7 +1,7 @@
 # signal_filter.py
-# 👑 موديول الفلترة المؤسسية والتصفية النخبوية - النسخة V10 AI CORE المحدثة 👑
+# 👑 موديول الفلترة المؤسسية والتصفية النخبوية - النسخة V11 AI CORE المحدثة 👑
 # 🛡️ فلترة ثنائية المسار: اقتناص الشراء في الصعود وتفعيل البيع (Short) في ذروة الذعر الجيوسياسي والـ Risk OFF
-# 🚨 مضاف إليها نظام الحماية الذكي لمنع تضارب أسعار الذهب (XAU vs PAXG) وضمان جلب السعر الحي الدقيق (4500$)
+# 🚨 تم سحق خطأ الفاصلة العربية وتأمين فلاتر السيولة لتعمل بالتوازي مع السعر المباشر (4500$)
 
 import logging
 
@@ -67,7 +67,7 @@ class InstitutionalSignalFilter:
         news_status = current_market_conditions.get('news_analysis', {})
         if news_status.get('risk_regime') == 'Risk OFF':
             if is_short_trade:
-                # 🟢 تعديل جوهري: إذا كان الوضع Risk OFF والصفقة بيع (Short)، نرحب بها لأن السوق ينهار!
+                # 🟢 قبول صفقات البيع (Short) أثناء انهيار السوق والـ Risk OFF للاستفادة من الهبوط المؤسسي
                 logging.info(f"🚨 وضع السوق Risk OFF ولكن يتم قبول صفقة البيع [{pair}] للاستفادة من الهبوط المؤسسي.")
             else:
                 # إذا كان الوضع Risk OFF والصفقة شراء (Long)، نمنع العملات البديلة ونسمح فقط بالذهب كملاذ آمن
@@ -83,7 +83,6 @@ class InstitutionalSignalFilter:
         
         # 6. دمج الأوزان وتعديل الـ Score النهائي بناءً على بيئة السوق
         ai_score = raw_signal.get('ai_score', raw_signal.get('base_ai_score', 0.0))
-        # تعديل السكور بناءً على قوة الجلسة، مع وضع حد مرن للسكالبينج الخاطف لضمان عدم تفويت الفرص
         multiplier = session_power.get('multiplier', 1.0)
         adjusted_score = ai_score * multiplier
         
@@ -95,9 +94,10 @@ class InstitutionalSignalFilter:
         raw_signal['adjusted_score'] = min(adjusted_score, 100.0)
         raw_signal['session_context'] = session_power.get('power', 'NORMAL')
         
+        # 🟢 تم استبدال الفاصلة العربية (،) بفاصلة برمجية صحيحة (,) لتأمين تشغيل المنظومة بالكامل
         return {
             'status': 'APPROVED',
-            'reason': "اجتازت الصفقة الفلترة المؤسسية بنجاح عالي وتوافقت مع حركة السيولة الصحيحة"،
+            'reason': "اجتازت الصفقة الفلترة المؤسسية بنجاح عالي وتوافقت مع حركة السيولة الصحيحة",
             'filtered_signal': raw_signal
-        }
-        
+                                                                                                  }
+            
