@@ -1,13 +1,14 @@
 # InstitutionalRiskManagerV4.py
 # ⚡ محرك إدارة المخاطر المؤسسية المطور بالكامل - النسخة V4.0 النخبوية ⚡
 # 🛡️ الحارس الذكي: فصل كامل لمعايير صفقات السكالبينج (الخاطفة) عن السوينغ (الموجية بعيدة المدى)
+# 🚨 مضاف إليه طبقة الأمان والتعافي التلقائي في حال تعطل محركات التعلم أو الأخبار لمنع تشويه الأسعار الحالية (4500$)
 
 import logging
 import datetime
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-class InstitutionalRiskManagerV3:
+class InstitutionalRiskManagerV4:
     def __init__(self, news_engine, self_learning_engine):
         # ربط إدارة المخاطر بمحرك الأخبار ونظام التعلم الذاتي
         self.news_engine = news_engine
@@ -74,12 +75,11 @@ class InstitutionalRiskManagerV3:
             logging.warning(f"⚠️ تنبيه المخاطر: نسبة الثقة {confidence}% في مرحلة المراقبة والحذر")
         
         # 2. فحص كثرة الصفقات المفتوحة وآلية التحرير التلقائي (Dynamic Auto-Healing)
-        # 🛠️ [تعديل شريكك]: تقليص المدة لمنع تكدس الذاكرة بما أن البوت يعمل كمحاكي فقط على تليغرام
         if is_scalping_signal:
             max_holding_duration = datetime.timedelta(minutes=5)  # صفقات السكالب تحرر برمجياً وتختفي بعد 5 دقائق لتفريغ الذاكرة
             max_concurrent_trades = 6                             # السماح بفتح حتى 6 صفقات سكالب سريعة ومتوازية
         else:
-            max_holding_duration = datetime.timedelta(hours=2)    # صفقات السوينغ تحرر برمجياً بعد ساعتين بدلاً من 4 لتسريع التدوير التجريبي
+            max_holding_duration = datetime.timedelta(hours=2)    # صفقات السوينغ تحرر برمجياً بعد ساعتين لتسريع التدوير التجريبي
             max_concurrent_trades = 4                             # رفع حد السوينغ إلى 4 لمنحك إشارات أكثر في الفحص اليومي
 
         # فحص إجباري متقدم لتنظيف وتحرير الصفقات القديمة العالقة قبل اتخاذ قرار العتبة
@@ -87,17 +87,20 @@ class InstitutionalRiskManagerV3:
         for trade_pair, trade_info in self.active_trades.items():
             opened_at_str = trade_info.get('opened_at')
             if opened_at_str:
-                opened_at = datetime.datetime.fromisoformat(opened_at_str)
-                if current_time - opened_at > max_holding_duration:
+                try:
+                    opened_at = datetime.datetime.fromisoformat(opened_at_str)
+                    if current_time - opened_at > max_holding_duration:
+                        pairs_to_release.append(trade_pair)
+                except Exception:
                     pairs_to_release.append(trade_pair)
 
-        # تحرير الأزواج العالقة ذاتياً دون الحاجة لإعادة تشغيل البوت أو حظر الرادار
+        # تحرير الأزواج العالقة ذاتياً دون الحاجة لإعادة تشغيل البوت
         for trade_pair in pairs_to_release:
             logging.warning(f"🔄 إصلاح ذاتي آلي V4 [تحديث الذاكرة]: تم تنظيف صفقة محاكاة قديمة على زوج {trade_pair}.")
             if trade_pair in self.active_trades:
                 del self.active_trades[trade_pair]
 
-        # 🛠️ [تعديل شريكك]: تم نقل فحص العدد إلى هنا (بعد عملية التنظيف مباشرة) لضمان دقة الـ Cache الحالية
+        # فحص عدد الصفقات النشطة بعد عملية التنظيف مباشرة
         if len(self.active_trades) >= max_concurrent_trades:
             return {'status': 'BLOCK', 'reason': f"❌ حظر المخاطر: تم الوصول للحد الأقصى من الصفقات المتزامنة المسموحة لهذا النمط (حد أقصى {max_concurrent_trades})"}
         
@@ -111,30 +114,45 @@ class InstitutionalRiskManagerV3:
                 return {'status': 'BLOCK', 'reason': "❌ حظر المخاطر: السوق في حالة Risk OFF (أخبار ماكرو أو جيوسياسية قوية)، يمنع التداول"}
 
         # 4. فلتر التوقيت للأحداث الاقتصادي (Event Timing Lock)
-        event_time_epoch = current_market_conditions.get('next_event_epoch', 0)
-        timing_status = self.news_engine.get_event_timing_status(event_time_epoch)
-        if timing_status['action'] in ['STOP_TRADING', 'REDUCE_TRADING']:
-            if timing_status['action'] == 'STOP_TRADING':
-                return {'status': 'BLOCK', 'reason': f"❌ حظر المخاطر: قفل زمني مفعل بسبب {timing_status['desc']}"}
-            else:
-                logging.info("⚠️ تقليص المخاطرة إجباريًا بسبب قرب حدث اقتصادي.")
+        action_status = 'ALLOW'
+        action_desc = "طبيعي"
+        
+        if self.news_engine:
+            try:
+                event_time_epoch = current_market_conditions.get('next_event_epoch', 0)
+                timing_status = self.news_engine.get_event_timing_status(event_time_epoch)
+                action_status = timing_status.get('action', 'ALLOW')
+                action_desc = timing_status.get('desc', 'طبيعي')
+            except Exception:
+                pass
+                
+        if action_status == 'STOP_TRADING':
+            return {'status': 'BLOCK', 'reason': f"❌ حظر المخاطر: قفل زمني مفعل بسبب {action_desc}"}
+        elif action_status == 'REDUCE_TRADING':
+            logging.info("⚠️ تقليص المخاطرة إجباريًا بسبب قرب حدث اقتصادي.")
 
         # 5. فلتر التقلب العشوائي (Volatility Filter)
         if current_market_conditions.get('is_market_choppy', False) and not is_scalping_signal:
             return {'status': 'BLOCK', 'reason': "❌ حظر المخاطر: السوق يتحرك بشكل عشوائي وبدون اتجاه واضح (Choppy Market)"}
 
-        # 6. حساب إدارة المخاطرة الديناميكية وحجم العقد الموزون (Dynamic Risk Allocation)
-        adaptive_weights = self.self_learning_engine.get_adaptive_config()
-        learning_multiplier = adaptive_weights.get('risk_multiplier', 1.0)
+        # 6. حساب إدارة المخاطرة الديناميكية وحجم العقد الموزون مع صمام حماية ضد تعطل موديول التعلم
+        learning_multiplier = 1.0
+        if self.self_learning_engine:
+            try:
+                adaptive_weights = self.self_learning_engine.get_adaptive_config()
+                learning_multiplier = adaptive_weights.get('risk_multiplier', 1.0)
+            except Exception:
+                logging.warning("⚠️ محرك التعلم الذاتي عاطل حالياً؛ تم تفعيل معامل الأمان الافتراضي (1.0).")
+                learning_multiplier = 1.0
         
-        base_risk_percentage = self.risk_profiles[self.current_profile]
+        base_risk_percentage = self.risk_profiles.get(self.current_profile, 0.005)
         final_risk_percentage = base_risk_percentage * learning_multiplier
         
         # ⚡ موازنة لوتات السكالبينج: تقليص حجم عقود السكالب بمقدار النصف لحماية تراكمية للمحفظة
         if is_scalping_signal:
             final_risk_percentage *= 0.5
         
-        if timing_status['action'] == 'REDUCE_TRADING':
+        if action_status == 'REDUCE_TRADING':
             final_risk_percentage *= 0.5
 
         return {
@@ -182,7 +200,7 @@ class InstitutionalRiskManagerV3:
             
             if self.daily_loss_counter >= allowed_losses:
                 self.emergency_lock_until = datetime.datetime.utcnow() + datetime.timedelta(hours=lock_duration_hours)
-                logging.error(f"🛑 تم تفعيل قفل الأمان الطارئ لـ V4! حظر التداول بالكامل لمدة {lock_duration_hours} ساعة حماية للمحفظة من تقلبات الجلسة.")
+                logging.error(f"🛑 تم تفعيل قفل الأمان الطارئ لـ V4! حظر التداول بالكامل لمدة {lock_duration_hours} ساعة حماية للمحفظة.")
         else:
             self.daily_loss_counter = 0
-                
+            
