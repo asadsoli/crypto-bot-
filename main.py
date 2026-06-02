@@ -1,6 +1,6 @@
 # main.py
-# 👑 المحرك التنفيذي المركزي لمنظومة الوحش المؤسسية - النسخة V10 AI CORE المحدثة 👑
-# 🛡️ نظام المسارات المنفصلة: دمج نمط السكالبينغ (اضرب واهرب) + البث الخاص لجلسات السيولة العالمية
+# 👑 المحرك التنفيذي المركزي لمنظومة الوحش المؤسسية - النسخة V11 AI CORE المحدثة 👑
+# 🛡️ نظام المسارات المنفصلة المعزولة لحل مشكلة الـ Port Timeout على Render نهائياً
 # ⚡ ربط حقيقي وبث فوري للأسعار لمنع فجوات السكالبينغ ودعم صفقات البيع والشراء بالتوازي
 # 🚨 تم سحق مشكلة سعر الذهب وربط فوري لسوق الـ Spot ليعود السعر الحي (4500$) على الشارت
 
@@ -38,8 +38,10 @@ app_flask = Flask('')
 def home():
     return "⚡ ULTRA V10 AI CORE V4 SCALPING CORE IS LIVE & RUNNING PROUDLY!"
 
-def run_flask():
+def run_flask_main_thread():
+    """تشغيل خادم الويب في المسار الرئيسي بشكل مباشر ليحجز البورت فوراً ويرضي Render"""
     port = int(os.environ.get("PORT", 8080))
+    logging.info(f"✨ [Render Protection] خادم الويب متمسك بالبورت الحركي الفوري: {port}")
     app_flask.run(host='0.0.0.0', port=port)
 # ========================================================
 
@@ -78,75 +80,28 @@ def get_real_crypto_price(symbol="BTCUSDT"):
     
     return LAST_PRICES[symbol]
 
-def run_control_panel(panel):
-    try:
-        panel.start_polling()
-    except Exception as e:
-        logging.error(f"❌ حدث خطأ في لوحة تحكم تليغرام V4: {e}")
 
-def main():
-    logging.info("👑 جاري تشغيل النظام البرمجي المؤسسي الشامل لـ النسخة V4 السكالبينج الشاملة...")
-
-    # تشغيل خادم ويب فلاسك لـ Render في خلفية منفصلة لمنع الاستبعاد
-    flask_thread = threading.Thread(target=run_flask, daemon=True)
-    flask_thread.start()
-
-    TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "YOUR_BOT_TOKEN_HERE")
-    CHANNEL_ID = os.getenv("CHANNEL_ID", "YOUR_CHANNEL_ID_HERE")
-
-    # تهيئة الاعتماديات الفنية والمحركات الذكية للمشروع
-    time_engine = TradingTimeEngine()
-    news_engine = FederalNewsEngine()
-    self_learning_engine = SelfLearningEngine()
-    
-    signal_filter = AdaptiveSignalFilter(time_engine=time_engine, news_engine=news_engine)
-    pre_move_engine = PreMoveExplosionEngine(time_engine=time_engine, news_engine=news_engine)
-    
-    # 🔥 ترقية V4: تهيئة محرك المخاطر المطور والمقفل V4 بنجاح
-    risk_manager = InstitutionalRiskManagerV4(news_engine=news_engine, self_learning_engine=self_learning_engine)
-    risk_manager.set_risk_profile("MEDIUM")
-    
-    quality_engine = EliteQualityEngine(time_engine=time_engine, pre_move_engine=pre_move_engine)
-    
-    # 🔥 ترقية V4: ربط محرك الإشارات النخبوي الموحد V4 بالبنية الجديدة
-    signal_engine = SignalEngineV4(
-        time_engine=time_engine, news_engine=news_engine, risk_manager=risk_manager,
-        quality_engine=quality_engine, pre_move_engine=pre_move_engine
-    )
-    
-    execution_engine = ExecutionEngineV1(
-        telegram_token=TELEGRAM_TOKEN, channel_id=CHANNEL_ID,
-        self_learning_engine=self_learning_engine, risk_manager=risk_manager
-    )
-
-    # 🟢 مطابقة الكائن والمدخلات بدقة مع لوحة الأزرار المدمجة لمنع فشل الـ Deploy
-    control_panel = InstitutionalControlPanelV3(
-        token=TELEGRAM_TOKEN, risk_manager=risk_manager, quality_engine=quality_engine, self_learning_engine=self_learning_engine
-    )
-    
-    panel_thread = threading.Thread(target=run_control_panel, args=(control_panel,), daemon=True)
-    panel_thread.start()
-
-    # قاموس لتتبع حالة الأسواق العالمية (منع التكرار ومعالجة الساعات برمجياً)
+def trading_radar_loop(control_panel, signal_engine, execution_engine, monitored_assets):
+    """عزل الحلقة التكرارية اللانهائية للسكالبينج والرادار في Thread منفصل تماماً لحماية البورت"""
     last_checked_hour = -1
-    logging.info("🚀 تم تشغيل بوابات المراقبة والرادار الخلفي النخبوي لـ V4 حياً الآن...")
-
-    # قائمة العملات الأربعة الذهبية الأساسية التي يتم فحصها دورياً في الخلفية
-    monitored_assets = ["BTCUSDT", "PAXGUSDT", "ETHUSDT", "SOLUSDT"]
-
+    CHANNEL_ID = os.getenv("CHANNEL_ID", "YOUR_CHANNEL_ID_HERE")
+    
+    logging.info("🚀 تم تشغيل بوابات المراقبة والرادار الخلفي النخبوي لـ V4 حياً في مسار معزول...")
+    
     while True:
         try:
-            # 🟢 قراءة الحالة من لوحة التحكم لتحديد نشاط البوت
-            is_active = (control_panel.bot_status == "RUNNING")
-            
+            # 🟢 قراءة الحالة من لوحة التحكم لتحديد نشاط البوت (دعم مرن وآمن للحالتين)
+            is_active = False
+            if hasattr(control_panel, 'bot_status'):
+                is_active = (control_panel.bot_status == "RUNNING")
+            elif hasattr(control_panel, 'is_bot_active'):
+                is_active = control_panel.is_bot_active
+
             if is_active:  
                 current_hour = int(time.strftime("%H")) # جلب الساعة الحالية بالتوقيت العالمي UTC
                 
                 # 🌍 مستشعر ومذيع جلسات السيولة العالمية الذكي والمستقل لـ V4
                 if current_hour != last_checked_hour:
-                    is_weekend = time.strftime("%a") in ["Sat", "Sun"]
-                    
-                    # خريطة توقيت افتتاح وإغلاق الأسواق العالمية الصارمة (UTC)
                     session_events = {
                         0:  ("سوق طوكيو (الآسيوي)", "افتتاح 🟢"),
                         9:  ("سوق طوكيو (الآسيوي)", "إغلاق 🔴"),
@@ -158,8 +113,6 @@ def main():
                     
                     if current_hour in session_events:
                         session_name, session_status = session_events[current_hour]
-                        
-                        # هندسة الرسالة الخاصة النخبوية التي تطلبها لشريكك
                         status_emoji = "🔥 تتدفق الآن أموال الحيتان وصناديق التحوط!" if "افتتاح" in session_status else "⚠️ ترقب هدوء نسبي في السيولة التقليدية الحية."
                         private_alert_msg = (
                             f"🌍 **[رادار السيولة الذكي - إشعار خاص]**\n"
@@ -170,9 +123,7 @@ def main():
                         )
                         
                         try:
-                            # إرسال الرسالة الخاصة مباشرة للوحة التحكم الخاصة بك
                             if hasattr(control_panel, 'bot') and control_panel.bot:
-                                # البث العام للقناة لتظل منورة دائماً
                                 control_panel.bot.send_message(CHANNEL_ID, private_alert_msg, parse_mode="Markdown")
                                 logging.info(f"📢 تم بث حالة {session_name} - {session_status} بنجاح.")
                         except Exception as session_err:
@@ -183,15 +134,11 @@ def main():
                 # الدوران الفوري الآلي على سلة العملات الأربعة الحية المعتمدة
                 for active_pair in monitored_assets:
                     current_price = get_real_crypto_price(active_pair)
-                    
-                    # ⚡ التحقق من وضع السكالبينج الذكي من لوحة التحكم
                     is_scalp_active = getattr(control_panel, 'scalp_mode_active', False)
 
-                    # اختيار اتجاه الهيكل بشكل عادل لفتح الباب أمام إشارات البيع والشراء بالتساوي
                     chosen_structure = random.choice(['BOS_Bullish', 'CHoCH_Bullish', 'BOS_Bearish', 'CHoCH_Bearish'])
                     is_bullish = "Bullish" in chosen_structure
 
-                    # 🎯 هندسة الأهداف التكيفية الديناميكية لصفقات الرادار الخلفي (شراء أو بيع)
                     if "BTC" in active_pair:
                         if is_scalp_active:
                             stop_loss = round(current_price - 50 if is_bullish else current_price + 50, 2)
@@ -228,7 +175,6 @@ def main():
                             tp2 = round(current_price + 8.5 if is_bullish else current_price - 8.5, 2)
                             tp3 = round(current_price + 15.0 if is_bullish else current_price - 15.0, 2)
                     else: 
-                        # فحص السكالبينج والسوينغ لزوج الذهب PAXGUSDT بناءً على السعر الحقيقي الذكي الحالي
                         if is_scalp_active:
                             stop_loss = round(current_price - 4.0 if is_bullish else current_price + 4.0, 2)  
                             tp1 = round(current_price + 6.0 if is_bullish else current_price - 6.0, 2)
@@ -240,37 +186,22 @@ def main():
                             tp2 = round(current_price + 60.0 if is_bullish else current_price - 60.0, 2)
                             tp3 = round(current_price + 120.0 if is_bullish else current_price - 120.0, 2)
 
-                    # 🎲 هندسة وهيكلة البيانات وفقاً لمدخلات الـ SMC المعتمدة ودعم الاتجاهين
                     mock_smc_data = {
-                        'pair': active_pair,
-                        'structure': chosen_structure,
-                        'liquidity_swept': True,
-                        'at_order_block_or_fvg': True,
-                        'current_price': current_price,
-                        'stop_loss': stop_loss,
-                        'tp1': tp1, 'tp2': tp2, 'tp3': tp3,
-                        'base_confidence': random.uniform(86.0, 92.0),
-                        'base_ai_score': random.uniform(88.0, 94.0),
-                        'rsi': random.randint(35, 65) if is_bullish else random.randint(55, 75),
-                        'ema_supporting': True,
-                        'volume_spike': True,
-                        'orderbook_imbalance': 0.68,
-                        'is_scalping_signal': is_scalp_active 
+                        'pair': active_pair, 'structure': chosen_structure, 'liquidity_swept': True, 'at_order_block_or_fvg': True,
+                        'current_price': current_price, 'stop_loss': stop_loss, 'tp1': tp1, 'tp2': tp2, 'tp3': tp3,
+                        'base_confidence': random.uniform(86.0, 92.0), 'base_ai_score': random.uniform(88.0, 94.0),
+                        'rsi': random.randint(35, 65) if is_bullish else random.randint(55, 75), 'ema_supporting': True,
+                        'volume_spike': True, 'orderbook_imbalance': 0.68, 'is_scalping_signal': is_scalp_active 
                     }
 
                     mock_market_conditions = {
-                        'vix_index': 13.8,
-                        'dxy_trend': 'Bearish' if is_bullish else 'Bullish',
-                        'prediction_probability_score': 89.0,
+                        'vix_index': 13.8, 'dxy_trend': 'Bearish' if is_bullish else 'Bullish', 'prediction_probability_score': 89.0,
                         'news_analysis': {'impact_score': 1, 'sentiment': 'Bullish' if is_bullish else 'Bearish', 'risk_regime': 'Risk ON'},
-                        'is_market_choppy': False,
-                        'next_event_epoch': 0
+                        'is_market_choppy': False, 'next_event_epoch': 0
                     }
 
-                    # 🧠 استدعاء قرار محرك الإشارات المطور الموحد V4
                     decision = signal_engine.analyze_market_and_generate_signal(mock_smc_data, mock_market_conditions)
                     
-                    # 🚀 التحقق الآمن وبث الإشارة دون انهيار أو فقدان أي معاملات فنية
                     if decision.get('status') == 'TRIGGERED':
                         try:
                             decision['trade_style'] = "⚡ SCALPING (خاطفة)" if is_scalp_active else "🏆 SWING (موجية)"
@@ -287,8 +218,71 @@ def main():
         except Exception as main_err:
             logging.error(f"🚨 خطأ فادح في الحلقة التنفيذية المفتوحة: {main_err}")
 
-        time.sleep(10) # فحص متسارع ومكثف للسكالبينج كل 10 ثوانٍ لمنع فوات الفرص الحية
+        time.sleep(10)
+
+
+def main():
+    logging.info("👑 جاري تشغيل النظام البرمجي المؤسسي الشامل لـ النسخة V11 السكالبينج الشاملة...")
+
+    TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "YOUR_BOT_TOKEN_HERE")
+    CHANNEL_ID = os.getenv("CHANNEL_ID", "YOUR_CHANNEL_ID_HERE")
+
+    # تهيئة الاعتماديات الفنية والمحركات الذكية للمشروع
+    time_engine = TradingTimeEngine()
+    news_engine = FederalNewsEngine()
+    self_learning_engine = SelfLearningEngine()
+    
+    signal_filter = AdaptiveSignalFilter(time_engine=time_engine, news_engine=news_engine)
+    pre_move_engine = PreMoveExplosionEngine(time_engine=time_engine, news_engine=news_engine)
+    
+    risk_manager = InstitutionalRiskManagerV4(news_engine=news_engine, self_learning_engine=self_learning_engine)
+    risk_manager.set_risk_profile("MEDIUM")
+    
+    quality_engine = EliteQualityEngine(time_engine=time_engine, pre_move_engine=pre_move_engine)
+    
+    signal_engine = SignalEngineV4(
+        time_engine=time_engine, news_engine=news_engine, risk_manager=risk_manager,
+        quality_engine=quality_engine, pre_move_engine=pre_move_engine
+    )
+    
+    execution_engine = ExecutionEngineV1(
+        telegram_token=TELEGRAM_TOKEN, channel_id=CHANNEL_ID,
+        self_learning_engine=self_learning_engine, risk_manager=risk_manager
+    )
+
+    control_panel = InstitutionalControlPanelV3(
+        token=TELEGRAM_TOKEN, risk_manager=risk_manager, quality_engine=quality_engine, self_learning_engine=self_learning_engine
+    )
+    
+    # ----------------------------------------------------
+    # 🔥 [عزل تليغرام والرادار بالكامل لمنع الـ Port Timeout]
+    # ----------------------------------------------------
+    
+    # [1] تشغيل مستمع أزرار تليغرام (Polling) في مسار معزول لكي لا يعلق الكود
+    def run_polling_isolated():
+        try:
+            control_panel.start_polling()
+        except Exception as e:
+            logging.error(f"❌ حدث خطأ في لوحة تحكم تليغرام V4: {e}")
+
+    panel_thread = threading.Thread(target=run_polling_isolated, daemon=True)
+    panel_thread.start()
+
+    # [2] تشغيل حلقة التداول المستمرة والسكالبينج في خلفية منفصلة تماماً
+    monitored_assets = ["BTCUSDT", "PAXGUSDT", "ETHUSDT", "SOLUSDT"]
+    trading_thread = threading.Thread(
+        target=trading_radar_loop, 
+        args=(control_panel, signal_engine, execution_engine, monitored_assets), 
+        daemon=True
+    )
+    trading_thread.start()
+
+    # ----------------------------------------------------
+    # 🟢 [إرضاء سيرفر Render الفوري والمسيطر على خط النهاية]
+    # ----------------------------------------------------
+    # نترك المسار الرئيسي والأخير بالكامل لـ Flask ليمسك البورت دون تأخير ثانية واحدة
+    run_flask_main_thread()
 
 if __name__ == "__main__":
     main()
-            
+                            
