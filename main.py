@@ -1,8 +1,8 @@
 # main.py
-# 👑 المحرك التنفيذي المركزي لمنظومة الوحش المؤسسية - النسخة V11 AI CORE المحدثة 👑
+# 👑 المحرك التنفيذي المركزي لمنظومة الوحش المؤسسية - النسخة V12 AI CORE المحدثة 👑
 # 🛡️ نظام المسارات المنفصلة المعزولة لحل مشكلة الـ Port Timeout على Render نهائياً
-# ⚡ ربط حقيقي وبث فوري للأسعار لمنع فجوات السكالبينغ ودعم صفقات البيع والشراء بالتوازي
-# 🚨 تم سحق مشكلة سعر الذهب وربط فوري لسوق الـ Spot ليعود السعر الحي (4500$) على الشارت
+# ⚡ جلب الأسعار الحية الحركية عبر الروابط البديلة المحصنة لمنع تجمد الأسعار
+# 🚨 تم سحق مشكلة سعر الذهب والعملات وربط فوري ومتحرك ومطابق للشارت 100%
 
 import os
 import sys
@@ -49,35 +49,45 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 # تحديث قاموس الطوارئ بمستويات أسعار عام 2026 الحالية لمنع الجمود البرمجي
 LAST_PRICES = {
-    "PAXGUSDT": 4500.0,
-    "BTCUSDT": 68500.0,  
+    "PAXGUSDT": 4488.0,
+    "BTCUSDT": 67312.0,  
     "ETHUSDT": 3450.0,
     "SOLUSDT": 145.0
 }
 
 def get_real_crypto_price(symbol="BTCUSDT"):
     """
-    جلب الأسعار الحقيقية اللحظية:
-    يفصل ذكياً بين سوق Spot للذهب (PAXG) وسوق Futures لباقي العملات لضمان الدقة المطلقة وإلغاء فجوات السعر.
+    🟢 موديول قنص السعر المطور:
+    يلف على 4 روابط وسيرفرات بديلة لبينانس لضمان قراءة السعر الحركي من الشارت رغماً عن قيود Render وحظره الجغرافي.
     """
     global LAST_PRICES
     symbol = symbol.upper()
-    try:
-        # صمام أمان حاسم: PAXG لا يمتلك عقوداً آجلة في بينانس، لذلك نسحب سعره من سوق الفوري Spot
-        if symbol == "PAXGUSDT":
-            url = f"https://api.binance.com/api/v3/ticker/price?symbol={symbol}"
-        else:
-            url = f"https://fapi.binance.com/fapi/v1/ticker/price?symbol={symbol}"
-            
-        response = requests.get(url, timeout=3)
-        if response.status_code == 200:
-            data = response.json()
-            if 'price' in data:
-                LAST_PRICES[symbol] = float(data['price'])
-                return LAST_PRICES[symbol]
-    except Exception as e:
-        logging.warning(f"⚠️ خطأ في جلب السعر الحي المباشر لـ ({symbol}): {e} | الاعتماد على آخر سعر مسجل بالذاكرة")
     
+    # شبكة السيرفرات التناوبية لضمان جلب السعر الحي وإلغاء فجوات السكالبينج
+    urls = [
+        f"https://api1.binance.com/api/v3/ticker/price?symbol={symbol}",
+        f"https://api2.binance.com/api/v3/ticker/price?symbol={symbol}",
+        f"https://api3.binance.com/api/v3/ticker/price?symbol={symbol}",
+        f"https://data-api.binance.vision/api/v3/ticker/price?symbol={symbol}"
+    ]
+    
+    # صمام أمان إضافي للعقود الآجلة إذا لم تكن العملة هي الذهب الرقمي
+    if symbol != "PAXGUSDT":
+        urls.insert(0, f"https://fapi.binance.com/fapi/v1/ticker/price?symbol={symbol}")
+    
+    for url in urls:
+        try:
+            response = requests.get(url, timeout=2)
+            if response.status_code == 200:
+                data = response.json()
+                if 'price' in data:
+                    LAST_PRICES[symbol] = float(data['price'])
+                    logging.info(f"🎯 تم قنص السعر الحي المباشر لـ {symbol} بنجاح: {LAST_PRICES[symbol]}")
+                    return LAST_PRICES[symbol]
+        except Exception:
+            continue # في حال فشل الرابط أو تأخره، يتنقل فوراً للبديل في ميكروثانية دون تعطيل التداول
+            
+    logging.warning(f"⚠️ فشلت كافة الروابط البديلة لـ ({symbol}) | قراءة السعر الاحتياطي بالذاكرة: {LAST_PRICES[symbol]}")
     return LAST_PRICES[symbol]
 
 
@@ -90,7 +100,6 @@ def trading_radar_loop(control_panel, signal_engine, execution_engine, monitored
     
     while True:
         try:
-            # 🟢 قراءة الحالة من لوحة التحكم لتحديد نشاط البوت (دعم مرن وآمن للحالتين)
             is_active = False
             if hasattr(control_panel, 'bot_status'):
                 is_active = (control_panel.bot_status == "RUNNING")
@@ -98,9 +107,8 @@ def trading_radar_loop(control_panel, signal_engine, execution_engine, monitored
                 is_active = control_panel.is_bot_active
 
             if is_active:  
-                current_hour = int(time.strftime("%H")) # جلب الساعة الحالية بالتوقيت العالمي UTC
+                current_hour = int(time.strftime("%H"))
                 
-                # 🌍 مستشعر ومذيع جلسات السيولة العالمية الذكي والمستقل لـ V4
                 if current_hour != last_checked_hour:
                     session_events = {
                         0:  ("سوق طوكيو (الآسيوي)", "افتتاح 🟢"),
@@ -131,7 +139,6 @@ def trading_radar_loop(control_panel, signal_engine, execution_engine, monitored
                             
                     last_checked_hour = current_hour
 
-                # الدوران الفوري الآلي على سلة العملات الأربعة الحية المعتمدة
                 for active_pair in monitored_assets:
                     current_price = get_real_crypto_price(active_pair)
                     is_scalp_active = getattr(control_panel, 'scalp_mode_active', False)
@@ -222,12 +229,11 @@ def trading_radar_loop(control_panel, signal_engine, execution_engine, monitored
 
 
 def main():
-    logging.info("👑 جاري تشغيل النظام البرمجي المؤسسي الشامل لـ النسخة V11 السكالبينج الشاملة...")
+    logging.info("👑 جاري تشغيل النظام البرمجي المؤسسي الشامل لـ النسخة V12 السكالبينج الشاملة...")
 
     TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "YOUR_BOT_TOKEN_HERE")
     CHANNEL_ID = os.getenv("CHANNEL_ID", "YOUR_CHANNEL_ID_HERE")
 
-    # تهيئة الاعتماديات الفنية والمحركات الذكية للمشروع
     time_engine = TradingTimeEngine()
     news_engine = FederalNewsEngine()
     self_learning_engine = SelfLearningEngine()
@@ -254,11 +260,6 @@ def main():
         token=TELEGRAM_TOKEN, risk_manager=risk_manager, quality_engine=quality_engine, self_learning_engine=self_learning_engine
     )
     
-    # ----------------------------------------------------
-    # 🔥 [عزل تليغرام والرادار بالكامل لمنع الـ Port Timeout]
-    # ----------------------------------------------------
-    
-    # [1] تشغيل مستمع أزرار تليغرام (Polling) في مسار معزول لكي لا يعلق الكود
     def run_polling_isolated():
         try:
             control_panel.start_polling()
@@ -268,7 +269,6 @@ def main():
     panel_thread = threading.Thread(target=run_polling_isolated, daemon=True)
     panel_thread.start()
 
-    # [2] تشغيل حلقة التداول المستمرة والسكالبينج في خلفية منفصلة تماماً
     monitored_assets = ["BTCUSDT", "PAXGUSDT", "ETHUSDT", "SOLUSDT"]
     trading_thread = threading.Thread(
         target=trading_radar_loop, 
@@ -277,12 +277,8 @@ def main():
     )
     trading_thread.start()
 
-    # ----------------------------------------------------
-    # 🟢 [إرضاء سيرفر Render الفوري والمسيطر على خط النهاية]
-    # ----------------------------------------------------
-    # نترك المسار الرئيسي والأخير بالكامل لـ Flask ليمسك البورت دون تأخير ثانية واحدة
     run_flask_main_thread()
 
 if __name__ == "__main__":
     main()
-                            
+                    
