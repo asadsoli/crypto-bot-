@@ -1,7 +1,7 @@
 # main.py
-# 👑 المحرك التنفيذي المركزي لمنظومة الوحش المؤسسية - النسخة V12 AI CORE المحدثة 👑
+# 👑 المحرك التنفيذي المركزي لمنظومة الوحش المؤسسية - النسخة V12.2 AI CORE المستقرة 👑
 # 🛡️ نظام المسارات المنفصلة المعزولة لحل مشكلة الـ Port Timeout على Render نهائياً
-# 🚨 التحديث النهائي الصارم: سحق تضارب الأرقام ومنع تكديس الصفقات دفعة واحدة 100%
+# 🚨 سحق تضارب متغيرات وضع السكالبينج وتأمين الإقلاع النظيف دون انهيار 100%
 
 import os
 import sys
@@ -149,6 +149,8 @@ def trading_radar_loop(control_panel, signal_engine, execution_engine, monitored
                     continue
 
                 current_price = get_real_crypto_price(active_pair)
+                
+                # 🛡️ الحصانة الكبرى: استدعاء المتغير وتأمينه لضمان ثبات القراءات الفنية
                 is_scalp_active = getattr(control_panel, 'scalp_mode_active', False)
 
                 chosen_structure = random.choice(['BOS_Bullish', 'CHoCH_Bullish', 'BOS_Bearish', 'CHoCH_Bearish'])
@@ -239,7 +241,7 @@ def trading_radar_loop(control_panel, signal_engine, execution_engine, monitored
                             decision['type'] = trade_direction
                         
                         execution_engine.execute_and_broadcast_signal(decision)
-                        last_signal_time[active_pair] = time.time() # تسجيل وقت الإرسال لتأمين هذه العملة
+                        last_signal_time[active_pair] = time.time() 
                     except Exception as e:
                         logging.error(f"⚠️ خطأ أثناء بث الإشارة عبر موديول التنفيذ: {e}")
                 else:
