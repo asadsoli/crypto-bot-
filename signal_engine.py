@@ -1,6 +1,6 @@
-# SignalEngineV4.py
-# ⚡ محرك الإشارات المؤسسي المطور بالكامل - النسخة V5.0 النخبوية المحصنة ⚡
-# 🛡️ قناص الاتجاهين: تعديل شروط البيع (SELL) وحقن فلتر حماية رأس المال لمنع انعكاس الافتتاح
+# signal_engine.py
+# ⚡ محرك الإشارات المؤسسي المطور بالكامل - النسخة V12 AI CORE المتصلة ⚡
+# 🛡️ قناص الاتجاهين: نسف العشوائية وحقن بوابات التوجيه الذكي والتبصيم المعتمد عن بعد
 
 import logging
 import datetime
@@ -43,8 +43,8 @@ class SignalEngineV4:
 
     def analyze_market_and_generate_signal(self, smc_data: dict, market_conditions: dict, force_scalp: bool = False) -> dict:
         """
-        ⚙️ محرك تحليل الهيكلية واتخاذ قرار الدخول المؤسسي (النسخة المستقرة V5.0)
-        سحق مشكلة حظر صفقات البيع وتصحيح شروط المتوسطات المتحركة والـ RSI للاتجاهين.
+        ⚙️ محرك تحليل الهيكلية واتخاذ قرار الدخول المؤسسي (النسخة V12 المتصلة)
+        تم ربطه كلياً لاستقبال البيانات المطهّرة والمبصومة نصياً ورياضياً لمنع تضارب الاتجاه.
         """
         pair = smc_data.get('pair', 'UNKNOWN').upper()
         
@@ -57,32 +57,28 @@ class SignalEngineV4:
                 logging.error(f"❌ تم حظر إشارة {pair} داخل محرك الإشارات: السعر الممرر ({check_price}) قديم ولا يطابق الشارت الحي الحقيقي!")
                 return {'status': 'NO_SIGNAL', 'reason': f"خطأ في تغذية الأسعار: سعر الذهب الممرر {check_price} أقل من حد الأمان المؤسسي {self.gold_absolute_floor}"}
 
-        logging.info(f"📊 جاري فحص الشروط الفنية والمؤسسية لزوج: {pair}")
+        logging.info(f"📊 جاري استلام المعطيات والتدقيق الفني المشترك لزوج: {pair}")
 
         # ⚡ تحديد هل النمط المفعل حالياً هو السكالبينج الخاطف
         is_scalping_active = force_scalp or market_conditions.get('scalp_mode_active', False)
 
-        # 1. استخراج معطيات هيكلية الأموال الذكية (SMC)
-        structure = smc_data.get('structure')        
-        liquidity_swept = smc_data.get('liquidity_swept', False)  
-        has_ob_or_fvg = smc_data.get('at_order_block_or_fvg', False)
-        
-        rsi = smc_data.get('rsi', 50)
-        ema_support = smc_data.get('ema_supporting', False)
+        # 🟢 قراءة التوجيه والاتجاه الصريح المحقون مباشرة لمنع أي تضارب برمجى
+        signal_type = smc_data.get('type') or smc_data.get('signal_type')
 
-        signal_type = None
+        # إذا لم يحقن الاتجاه صراحة، نعود للمنطق الفني الصارم كخط دفاع احتياطي
+        if not signal_type:
+            structure = smc_data.get('structure')        
+            liquidity_swept = smc_data.get('liquidity_swept', False)  
+            has_ob_or_fvg = smc_data.get('at_order_block_or_fvg', False)
+            rsi = smc_data.get('rsi', 50)
+            ema_support = smc_data.get('ema_supporting', False)
 
-        # 🟢 [منطق الدخول الفولاذي لصفقات الشراء - BUY]
-        if (structure == "BOS_Bullish" or structure == "CHoCH_Bullish") and liquidity_swept and has_ob_or_fvg:
-            # التحقق من أن السوق ليس في انهيار عام متكامل لحماية الحساب
-            if is_scalping_active or (rsi > 45 and ema_support): 
-                signal_type = "BUY"
-
-        # 🔴 [منطق الدخول المصحح والمحرر لصفقات البيع - SELL]
-        elif (structure == "BOS_Bearish" or structure == "CHoCH_Bearish") and liquidity_swept and has_ob_or_fvg:
-            # تم تحرير الشرط: في البيع يكون الـ RSI منخفض والـ EMA يمثل مقادير مقاومة متوافقة (أو يتم تخطيه بالسكالبينج السريع)
-            if is_scalping_active or (rsi < 55 or not ema_support):
-                signal_type = "SELL"
+            if (structure == "BOS_Bullish" or structure == "CHoCH_Bullish") and liquidity_swept and has_ob_or_fvg:
+                if is_scalping_active or (rsi > 45 and ema_support): 
+                    signal_type = "BUY"
+            elif (structure == "BOS_Bearish" or structure == "CHoCH_Bearish") and liquidity_swept and has_ob_or_fvg:
+                if is_scalping_active or (rsi < 55 or not ema_support):
+                    signal_type = "SELL"
 
         if not signal_type:
             return {'status': 'NO_SIGNAL', 'reason': "لم تتحقق شروط توافق هيكلية الأموال الذكية وسحب السيولة للاتجاهين"}
@@ -118,7 +114,7 @@ class SignalEngineV4:
         # حماية حساب القائد من الثقة الـ 100% الوهمية - جعل الحسابات مرنة وتكيفية دائمًا
         calc_confidence = smc_data.get('base_confidence', 85.0)
         if calc_confidence >= 100.0:
-            calc_confidence = 94.8  # تداول مؤسسي مرن ومحمي من الفخاخ
+            calc_confidence = 94.8  
 
         # 2. بناء بيانات الإشارة المبدئية بالقيم المحدثة وتمرير الوسم الشامل
         raw_signal = {
@@ -131,7 +127,7 @@ class SignalEngineV4:
             'tp3': round(tp3, 4),
             'confidence_score': calc_confidence,
             'ai_score': smc_data.get('base_ai_score', 88.0),
-            'is_scalping_signal': is_scalping_active,
+            'is_scalping_signal': is_scalp_active,
             'timestamp': datetime.datetime.utcnow().timestamp()
         }
 
@@ -187,7 +183,7 @@ class SignalEngineV4:
                 backup_price = self._get_backup_live_price(pair)
                 if backup_price > 0.0:
                     if not smc_data: smc_data = {}
-                    # 🛡️ تصحيح أمني للرادار الخلفي: عدم فرض هيكلية صاعدة تلقائياً إذا انقطعت البيانات
+                    # 🛡️ تصحيح أمني للرادار الخلفي المتصل: الاعتماد على معطيات الشارت المحقونة فعلياً
                     smc_data.update({
                         'pair': pair,
                         'current_price': backup_price,
@@ -252,4 +248,4 @@ class SignalEngineV4:
             report['reason'] = res.get('reason', 'السوق غير مستقر أو الهيكل غير مكتمل.')
             
         return report
-        
+            
