@@ -1,7 +1,6 @@
-# InstitutionalRiskManagerV4.py
-# ⚡ محرك إدارة المخاطر المؤسسية المطور بالكامل - النسخة V4.0 النخبوية ⚡
-# 🛡️ الحارس الذكي: فصل كامل لمعايير صفقات السكالبينج (الخاطفة) عن السوينغ (الموجية بعيدة المدى)
-# 🚨 مضاف إليه طبقة الأمان والتعافي التلقائي في حال تعطل محركات التعلم أو الأخبار لمنع تشويه الأسعار الحالية (4500$)
+# risk_manager.py
+# ⚡ محرك إدارة المخاطر المؤسسية المطور بالكامل - النسخة V4.1 النخبوية المحصنة ⚡
+# 🛡️ سحق فخ قفل حساب القائد وضبط استنباط صفقات السكالبينج ديناميكياً لتفادي جمود الـ 24 ساعة
 
 import logging
 import datetime
@@ -51,15 +50,15 @@ class InstitutionalRiskManagerV4:
 
         current_time = datetime.datetime.utcnow()
 
-        # ⚡ فحص ما إذا كانت الإشارة القادمة من مسار السكالبينج
-        is_scalping_signal = signal_data.get('is_scalping_signal', False)
+        # ⚡ فحص ما إذا كانت الإشارة القادمة من مسار السكالبينج (تنظيف القراءة والتحقق المزدوج)
+        is_scalping_signal = signal_data.get('is_scalping_signal', False) or signal_data.get('is_scalping_signal') == True
 
         # 🔥 ميزة حماية المحفظة الرقمية التلقائية من التداولات المتتالية الهابطة
         if self.emergency_lock_until and current_time < self.emergency_lock_until:
             remaining_lock = self.emergency_lock_until - current_time
             return {
                 'status': 'BLOCK', 
-                'reason': f"❌ حظر المخاطر الصارم V4: النظام مقفل تلقائياً لحماية المحفظة بسبب ضرب الاستوبات المتتالية. متبقي: {remaining_lock.seconds // 3600} ساعة."
+                'reason': f"❌ حظر المخاطر الصارم V4.1: النظام مقفل تلقائياً لحماية المحفظة بسبب ضرب الاستوبات المتتالية. متبقي: {remaining_lock.seconds // 3600} ساعة."
             }
 
         # 🛡️ إذا كان هذا مجرد "طلب فحص مخصص تحت الطلب من الرادار اليدوي"، يتم تجاوز فلاتر الحظر
@@ -157,35 +156,48 @@ class InstitutionalRiskManagerV4:
 
         return {
             'status': 'ALLOW',
-            'reason': "✔ تمت الموافقة من إدارة المخاطر المؤسسية المحدثة V4",
+            'reason': "✔ تمت الموافقة من إدارة المخاطر المؤسسية المحدثة V4.1",
             'allocated_risk_percentage': round(final_risk_percentage, 4),
             'pair': pair
         }
 
-    def register_active_trade(self, pair: str, id: str, risk_amount: float, is_scalping: bool = False):
-        """تسجيل الصفقة عند فتحها بنجاح لمنع التداخل وحفظ نوعها"""
+    def register_active_trade(self, pair: str, id: str, risk_amount: float, is_scalping: bool = None):
+        """تسجيل الصفقة عند فتحها بنجاح مع استنباط ذكي لنمط السكالبينج لتفادي جمود التمرير الخارجي"""
         if 'XAU' in pair:
             pair = pair.replace('XAU', 'PAXG')
-        self.active_trades[pair] = {
+            
+        pair_upper = pair.upper()
+        
+        # 🧠 هندسة الاستنباط الذكي لـ V4.1 لمنع فخ سقوط قيمة البارامتر من الملفات التنفيذية
+        if is_scalping is None:
+            # إذا كانت المخاطرة المخصصة صغيرة جداً أو مستدعاة من بيئة معينة، نعتبرها سكالبينج تلقائياً لحماية العداد
+            base_risk = self.risk_profiles.get(self.current_profile, 0.005)
+            if risk_amount < base_risk:
+                is_scalping = True
+            else:
+                is_scalping = False
+
+        self.active_trades[pair_upper] = {
             'trade_id': id,
             'risk_allocated': risk_amount,
             'is_scalping': is_scalping,
             'opened_at': datetime.datetime.utcnow().isoformat()
         }
-        logging.info(f"🔒 تم قفل زوج {pair} في سجل المخاطر. نمط سكالب: {is_scalping}")
+        logging.info(f"🔒 [Risk Verification] تم قفل زوج {pair_upper} في سجل المخاطر. النمط المستنبط للسكالب: {is_scalping}")
 
     def remove_active_trade(self, pair: str, is_loss: bool = False):
-        """إزالة الصفقة من السجل عند إغلاقها وتحديث عداد الخسائر الذكي التكيفي لـ V4"""
-        if 'XAU' in pair:
-            pair = pair.replace('XAU', 'PAXG')
+        """إزالة الصفقة من السجل عند إغلاقها وتحديث عداد الخسائر الذكي التكيفي لـ V4.1"""
+        pair_upper = pair.upper()
+        if 'XAU' in pair_upper:
+            pair_upper = pair_upper.replace('XAU', 'PAXG')
         
         is_scalping_trade = False
-        if pair in self.active_trades:
-            is_scalping_trade = self.active_trades[pair].get('is_scalping', False)
-            del self.active_trades[pair]
-            logging.info(f"🔓 تم تحرير زوج {pair} وجاهز لاستقبال صفقات جديدة.")
+        if pair_upper in self.active_trades:
+            is_scalping_trade = self.active_trades[pair_upper].get('is_scalping', False)
+            del self.active_trades[pair_upper]
+            logging.info(f"🔓 تم تحرير زوج {pair_upper} وجاهز لاستقبال صفقات جديدة.")
 
-        # 🔥 ميزة حماية V4 التكيفية: مراقبة وتفعيل عداد الخسائر اليومية المتتالية حسب نمط الصفقة
+        # 🔥 ميزة حماية V4.1 التكيفية: مراقبة وتفعيل عداد الخسائر اليومية المتتالية حسب نمط الصفقة
         if is_loss:
             today = datetime.date.today()
             if self.last_loss_date != today:
@@ -200,7 +212,7 @@ class InstitutionalRiskManagerV4:
             
             if self.daily_loss_counter >= allowed_losses:
                 self.emergency_lock_until = datetime.datetime.utcnow() + datetime.timedelta(hours=lock_duration_hours)
-                logging.error(f"🛑 تم تفعيل قفل الأمان الطارئ لـ V4! حظر التداول بالكامل لمدة {lock_duration_hours} ساعة حماية للمحفظة.")
+                logging.error(f"🛑 تم تفعيل قفل الأمان الطارئ لـ V4.1! حظر التداول بالكامل لمدة {lock_duration_hours} ساعة حماية للمحفظة.")
         else:
             self.daily_loss_counter = 0
             
