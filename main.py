@@ -2,7 +2,7 @@
 # 👑 المحرك التنفيذي المركزي لمنظومة الوحش المؤسسية - النسخة V12 AI CORE المحدثة 👑
 # 🛡️ نظام المسارات المنفصلة المعزولة لحل مشكلة الـ Port Timeout على Render نهائياً
 # ⚡ جلب الأسعار الحية الحركية عبر الروابط البديلة المحصنة لمنع تجمد الأسعار
-# 🚨 التحديث النهائي: تطهير الرادار التلقائي الخلفي وإطلاق صفقات الـ SELL والـ BUY بدقة كاملة $100\%$
+# 🚨 التحديث النهائي الصارم: سحق تضارب الأرقام وإطلاق صفقات الـ SELL والـ BUY بتوافق رياضي متكامل 100%
 
 import os
 import sys
@@ -143,6 +143,9 @@ def trading_radar_loop(control_panel, signal_engine, execution_engine, monitored
 
                     chosen_structure = random.choice(['BOS_Bullish', 'CHoCH_Bullish', 'BOS_Bearish', 'CHoCH_Bearish'])
                     is_bullish = "Bullish" in chosen_structure
+                    
+                    # 🟢 تحديد نوع الصفقة بشكل صريح وربطه بالهيكلية لمنع الخلط في التسمية والنص صراحة
+                    trade_direction = "BUY" if is_bullish else "SELL"
 
                     if "BTC" in active_pair:
                         if is_scalp_active:
@@ -191,11 +194,12 @@ def trading_radar_loop(control_panel, signal_engine, execution_engine, monitored
                             tp2 = round(current_price + 60.0 if is_bullish else current_price - 60.0, 2)
                             tp3 = round(current_price + 120.0 if is_bullish else current_price - 120.0, 2)
 
-                    # 💎 التعديل الجوهري الحاسم لفك حظر الـ SELL التلقائي:
-                    # تم ربط الـ RSI ودعم المتوسط (ema_supporting) حركياً وديناميكياً باتجاه الهيكلية لمنع تضارب الشروط
+                    # 💎 حقن المتغيرات المحدثة بالكامل مع فرض اتجاه الصفقة الصريح والنوع لحظر التضارب
                     mock_smc_data = {
                         'pair': active_pair, 
                         'structure': chosen_structure, 
+                        'type': trade_direction,          # 🔥 تمرير الاتجاه الصريح للمحرك الداخلي
+                        'signal_type': trade_direction,   # 🔥 تأمين إضافي لبعض المحركات الفرعية
                         'liquidity_swept': True, 
                         'at_order_block_or_fvg': True,
                         'current_price': current_price, 
@@ -204,7 +208,7 @@ def trading_radar_loop(control_panel, signal_engine, execution_engine, monitored
                         'base_confidence': random.uniform(88.0, 93.5), 
                         'base_ai_score': random.uniform(89.5, 95.0),
                         'rsi': random.randint(35, 48) if not is_bullish else random.randint(52, 68), 
-                        'ema_supporting': False if not is_bullish else True, # 🟢 تم التحرير! تصبح False في الهبوط لتعني أن المتوسط مقاومة علوية تدعم الـ SELL صراحة
+                        'ema_supporting': False if not is_bullish else True, 
                         'volume_spike': True, 
                         'orderbook_imbalance': 0.68, 
                         'is_scalping_signal': is_scalp_active 
@@ -224,6 +228,10 @@ def trading_radar_loop(control_panel, signal_engine, execution_engine, monitored
                     if decision.get('status') == 'TRIGGERED':
                         try:
                             decision['trade_style'] = "⚡ SCALPING (خاطفة)" if is_scalp_active else "🏆 SWING (موجية)"
+                            # لضمان عدم قيام المحرك الداخلي بإعادة الكتابة على النوع الصحيح:
+                            if 'type' not in decision or decision['type'] != trade_direction:
+                                decision['type'] = trade_direction
+                            
                             execution_engine.execute_and_broadcast_signal(decision)
                         except Exception as e:
                             logging.error(f"⚠️ خطأ أثناء بث الإشارة عبر موديول التنفيذ: {e}")
@@ -293,4 +301,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
+                    
