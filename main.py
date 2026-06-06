@@ -100,7 +100,10 @@ def trading_radar_loop(control_panel, signal_engine, execution_engine, monitored
     
     while True:
         try:
+            # 🛡️ الدرع البرمجي: تعريف استباقي لمنع NameError في حالة تأخر الـ control_panel
+            is_scalp_active = getattr(control_panel, 'scalp_mode_active', False)
             is_active = False
+            
             if hasattr(control_panel, 'bot_status'):
                 is_active = (control_panel.bot_status == "RUNNING")
             elif hasattr(control_panel, 'is_bot_active'):
@@ -150,9 +153,6 @@ def trading_radar_loop(control_panel, signal_engine, execution_engine, monitored
 
                 current_price = get_real_crypto_price(active_pair)
                 
-                # 🛡️ الحصانة الكبرى: استدعاء المتغير وتأمينه لضمان ثبات القراءات الفنية
-                is_scalp_active = getattr(control_panel, 'scalp_mode_active', False)
-
                 chosen_structure = random.choice(['BOS_Bullish', 'CHoCH_Bullish', 'BOS_Bearish', 'CHoCH_Bearish'])
                 is_bullish = "Bullish" in chosen_structure
                 trade_direction = "BUY" if is_bullish else "SELL"
