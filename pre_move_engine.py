@@ -1,6 +1,7 @@
-# PreMovePredictionEngineV4.py
-# ⚡ محرك التنبؤ المسبق المطور بالكامل - النسخة V4.0 النخبوية ⚡
+# pre_move_engine.py
+# ⚡ محرك التنبؤ المسبق المطور بالكامل - النسخة V4.2 النخبوية المحصنة ⚡
 # 🔮 التنبؤ بالانفجارات السعرية قبل حدوثها بناءً على السيولة وضغط النطاق المؤسسي
+# 🎯 سحق فخ موديول الوقت ومطابقة دالة فحص الجلسات مع المحرك المركزي V12 بنجاح
 
 import logging
 import math
@@ -18,7 +19,6 @@ class PreMovePredictionEngine:
         📊 1. ضغط السوق (Market Compression)
         يقيس النطاق والتقلب المنخفض كمؤشر لاقتراب الانفجار السعري.
         """
-        # إذا كان عرض نطاق البولنجر منخفض ونسبة الـ ATR ضعيفة، فهذا يعني انضغاطاً شديداً
         is_compressed = bollinger_bandwidth < 0.02 or atr_ratio < 0.5
         score = 0
         if bollinger_bandwidth < 0.015:
@@ -41,11 +41,10 @@ class PreMovePredictionEngine:
         رصد تجميع طلبات الشراء/البيع بالقرب من مناطق الدعم والمقاومة الثابتة لصيد الوقف.
         """
         score = 0
-        # اختلال توازن الطلبات (Orderbook Imbalance) يشير لتراكم أوامر مؤسسية قوية
         if abs(orderbook_imbalance) > 0.65:
             score += 20
         if near_key_levels:
-            score += 20 # اقتراب السعر من مستوى سيولة رئيسي (Equal Highs / Lows)
+            score += 20 
             
         return {
             'liquidity_score': score,
@@ -58,10 +57,8 @@ class PreMovePredictionEngine:
         التنبؤ ببداية الحركة عبر رصد التغير التدريجي في زاوية الـ RSI واقتراب تقاطعات الـ EMA.
         """
         score = 0
-        # ميلان الـ RSI (RSI Slope) يوضح وجود حركة خفية مبكرة تحت السطح
         if abs(rsi_slope) > 0.15:
             score += 20
-        # اقتراب المسافة بين الـ EMA يعني استعدادها للتقاطع والانفجار
         if ema_distance < 0.05:
             score += 20
             
@@ -73,14 +70,14 @@ class PreMovePredictionEngine:
     def predict_explosion_probability(self, market_data: dict, current_market_conditions: dict) -> dict:
         """
         🔮 4 & 5. احتمالية الانفجار ودمج السوق والأخبار
-        حساب النتيجة النهائية ونسبة احتمالية حدوث الانفجار السعري القادم بمرونة V4.
+        حساب النتيجة النهائية ونسبة احتمالية حدوث الانفجار السعري القادم بمرونة V4.2.
         """
         pair = market_data.get('pair', 'UNKNOWN').upper()
         if 'XAU' in pair:
             pair = pair.replace('XAU', 'PAXG')
 
-        # 🛠️ [تحديث شريكك الذكي]: معالجة مرنة للقيم لضمان عدم تصفير المحرك عند غياب قراءة الـ API
-        bb_width = market_data.get('bb_width', 0.018)  # جعل القيمة الافتراضية تميل للضغط لتنشيط الفحص التقديري
+        # 🛠️ معالجة مرنة للقيم لضمان عدم تصفير المحرك عند غياب قراءة الـ API
+        bb_width = market_data.get('bb_width', 0.018)  
         atr_ratio = market_data.get('atr_ratio', 0.45)
         ob_imbalance = market_data.get('ob_imbalance', 0.5)
         near_key_levels = market_data.get('near_key_levels', True)
@@ -94,27 +91,34 @@ class PreMovePredictionEngine:
         
         base_probability_score = comp_res['compression_score'] + liq_res['liquidity_score'] + mom_res['momentum_score']
 
-        # 2. دمج الجلسات الزمنية بذكاء ديناميكي لـ V4
-        active_sessions = self.time_engine.get_active_sessions() if self.time_engine else []
+        # 2. دمج الجلسات الزمنية بذكاء ديناميكي محصن متوافق مع الـ TimeEngine المطهّر
+        active_sessions = []
+        if self.time_engine:
+            try:
+                # استدعاء الفحص الحقيقي للمحرك المركزي وسحب الجلسة الحية
+                time_status = self.time_engine.check_trading_time()
+                current_session = time_status.get('session', 'UNKNOWN')
+                active_sessions = [current_session]
+            except Exception:
+                active_sessions = []
         
-        if 'London' in active_sessions or 'New_York' in active_sessions:
+        if 'London' in active_sessions or 'New_York' in active_sessions or 'US' in active_sessions or 'EU' in active_sessions:
             base_probability_score += 15
-        elif 'Asian' in active_sessions:
-            # 🛠️ [تعديل شريكك]: في نمط السكالبينج، الجلسة الآسيوية ممتازة للحركات الخاطفة، فلا نخصم نقاطاً عنيفة
+        elif 'Asian' in active_sessions or 'Tokyo' in active_sessions:
             is_scalping = market_data.get('is_scalping_signal', False)
             base_probability_score += 5 if is_scalping else -5 
 
-        # 3. دمج الأخبار الكبرى والمؤثرة
-        news_analysis = current_market_conditions.get('news_analysis', {})
-        impact_score = news_analysis.get('impact_score', 1)
+        # 3. دمج الأخبار الكبرى والمؤثرة مع صمام أمان
+        news_analysis = current_market_conditions.get('news_analysis', {}) if current_market_conditions else {}
+        impact_score = news_analysis.get('impact_score', 1) if news_analysis else 1
         
         if impact_score >= 4:
-            base_probability_score += 25  # زخم الأخبار الكبرى يسرّع الانفجار السعري الحتمي
+            base_probability_score += 25  
 
         # تحديد تصنيف احتمالية الانفجار النهائي وحصر النتيجة بين 0% و 100%
         final_score = max(0, min(base_probability_score, 100))
         
-        # 🛠️ [تعديل الأمان]: إذا كانت الحسبة الفنية صفرية تماماً نتيجة حظر مؤكد، يتم خفض التصنيف بوضوح
+        # 🛠️ معالجة الأمان والتحقق من حظر حارس المخاطر الصارم
         if market_data.get('is_blocked_by_risk', False):
             final_score = 0
             probability_level = "Low"
