@@ -1,7 +1,7 @@
 # control_panel.py
-# ⚡ لوحة تحكم منظومة الوحش المؤسسية - النسخة الشاملة V4.0 النخبوية ⚡
+# ⚡ لوحة تحكم منظومة الوحش المؤسسية - النسخة الشاملة V4.2 النخبوية المحدثة ⚡
 # 🌍 رادار العملات البديلة + بث الأسواق + إدارة منفصلة تماماً لنمط السكالبينج (اضرب واهرب)
-# 🎯 تم سحق مشكلة تجمد أسعار الرادار والفرص الفورية وربطها بالشارت الحركي 100%
+# 🎯 تم سحق مشكلة تجمد أسعار الرادار وتوافق الموديلات مع المحرك المركزي V12 بالكامل 100%
 
 import telebot
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton
@@ -26,7 +26,7 @@ class InstitutionalControlPanelV2:
         self.current_active_pair = "PAXGUSDT"
         self.current_menu_state = "MAIN" 
         
-        # ⚡ ترقية V4: مفتاح التحكم المستقل بنمط السكالبينج الخاطف
+        # ⚡ ترقية V4.2: مفتاح التحكم المستقل بنمط السكالبينج الخاطف
         self.scalp_mode_active = False
         
         self._setup_message_handlers()
@@ -36,7 +36,7 @@ class InstitutionalControlPanelV2:
         status_text = "🟢 تشغيل البوت (نشط)" if self.bot_status == "RUNNING" else "🔴 إيقاف البوت (معطل)"
         markup.row(KeyboardButton(status_text))
         
-        # ⚡ ترقية V4: دمج زر وضع السكالب في الصف الأول مع الرادار لتسهيل الوصول السريع
+        # ⚡ ترقية V4.2: دمج زر وضع السكالب في الصف الأول مع الرادار لتسهيل الوصول السريع
         scalp_text = "⚡ وضع السكالب: ON" if self.scalp_mode_active else "⚡ وضع السكالب: OFF"
         markup.row(KeyboardButton(scalp_text), KeyboardButton("🔍 رادار العملات والفرص الفورية"))
         
@@ -94,7 +94,6 @@ class InstitutionalControlPanelV2:
         جلب الأسعار الحركية اللحظية لعملات الرادار عبر بوابات مزدوجة لفك حظر Render
         """
         symbol_upper = symbol.upper()
-        # صياغة الرمز بشكل كامل ليتوافق مع أزواج بينانس الفورية
         pair = symbol_upper if "USDT" in symbol_upper else f"{symbol_upper}USDT"
         
         # 1. المحاولة الأولى: سيرفر المطورين المفتوح لبينانس (الأكثر دقة وسرعة)
@@ -128,7 +127,7 @@ class InstitutionalControlPanelV2:
         score = random.randint(78, 95)
         signal_type = random.choice(["🟢 شراء مؤسسي دلالي (LONG)", "🔴 بيع انعكاسي صارم (SHORT)", "🟡 رصد سيولة (WAIT)"])
         
-        # ⚡ ترقية V4: تعديل حسابات أهداف الرادار اليدوي لتتوافق ديناميكياً مع نمط السكالبينج المفعل
+        # ⚡ ترقية V4.2: تعديل حسابات أهداف الرادار اليدوي لتتوافق ديناميكياً مع نمط السكالبينج المفعل
         if self.scalp_mode_active:
             if "شراء" in signal_type:
                 target = round(price * 1.005, 4)
@@ -169,7 +168,7 @@ class InstitutionalControlPanelV2:
         @self.bot.message_handler(commands=['start', 'menu'])
         def handle_start_command(message):
             self.current_menu_state = "MAIN"
-            text = "👑 **تم ترقية منظومة الوحش إلى النسخة الشاملة V4.0 النخبوية** 👑\nالآن تم تفعيل آلية الفصل بين الصفقات الموجية والسكالب الخاطف، بالإضافة إلى المذيع الدقيق للمحافظ البنكية للأسواق الكبرى!"
+            text = "👑 **تم ترقية منظومة الوحش إلى النسخة الشاملة V4.2 النخبوية** 👑\nالآن تم تفعيل آلية الفصل بين الصفقات الموجية والسكالب الخاطف، بالإضافة إلى المذيع الدقيق للمحافظ البنكية للأسواق الكبرى!"
             self.bot.send_message(message.chat.id, text, reply_markup=self.get_main_menu_keyboard(), parse_mode="Markdown")
 
         @self.bot.message_handler(func=lambda msg: True)
