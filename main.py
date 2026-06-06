@@ -13,7 +13,7 @@ import random
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
-# Estidda'at al-manzooma al-fanniya al-mutawwara
+# استدعاءات المنظومة الفنية المطورة
 from time_engine import TradingTimeEngine
 from news_engine import FederalNewsEngine
 from signal_filter import InstitutionalSignalFilter as AdaptiveSignalFilter
@@ -35,7 +35,7 @@ app_flask = Flask('')
 
 @app_flask.route('/')
 def home():
-    return "⚡ ULTRA V10 AI CORE V4 SCALPING CORE IS LIVE & RUNNING PROUDLY!"
+    return "⚡ ULTRA V12 AI CORE V4 SCALPING CORE IS LIVE & RUNNING PROUDLY!"
 
 def run_flask_main_thread():
     """تشغيل خادم الويب في المسار الرئيسي بشكل مباشر ليحجز البورت فوراً ويرضي Render"""
@@ -309,4 +309,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-                
+    
