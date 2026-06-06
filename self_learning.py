@@ -1,6 +1,6 @@
 # self_learning.py
-# 👑 محرك التعلّم الذاتي والذاكرة الرقمية المطور - النسخة V4.0 الكبرى 👑
-# 🧠 عقل المنظومة: فصل كامل لملفات الأداء والتكيف التلقائي بين السكالبينج والصفقات الموجية
+# 👑 محرك التعلّم الذاتي والذاكرة الرقمية المطور - النسخة V4.2 الكبرى المحصنة 👑
+# 🧠 عقل المنظومة الذكي: سحق فخاخ القسمة الصفرية وفصل حركي للأوزان متوافق مع لوحة تحكم القائد
 
 import json
 import os
@@ -14,7 +14,7 @@ class SelfLearningEngineV1:
         self.memory = self._load_memory()
 
     def _load_memory(self) -> dict:
-        """تحميل الذاكرة التاريخية للصفقات والأوزان من ملف JSON مع فحص الترقية لـ V4"""
+        """تحميل الذاكرة التاريخية للصفقات والأوزان من ملف JSON مع فحص الترقية لـ V4.2"""
         default_structure = {
             'trades_history': [],
             'performance_metrics': {
@@ -23,7 +23,7 @@ class SelfLearningEngineV1:
                 'wins': 0,
                 'losses': 0
             },
-            'scalp_metrics': {          # ⚡ ترقية V4: سجلات منفصلة للسكالبينج الخاطف
+            'scalp_metrics': {          # ⚡ سجلات منفصلة للسكالبينج الخاطف
                 'total_trades': 0,
                 'winrate': 0.0,
                 'wins': 0,
@@ -35,7 +35,7 @@ class SelfLearningEngineV1:
                 'Altcoins_weight': 1.0,
                 'risk_multiplier': 1.0  # معامل تعديل حجم المخاطرة تلقائياً لصفقات السوينغ
             },
-            'scalp_weights': {          # ⚡ ترقية V4: معاملات أمان مخصصة لبيئة السكالبينج
+            'scalp_weights': {          # ⚡ معاملات أمان مخصصة لبيئة السكالبينج
                 'risk_multiplier': 1.0
             }
         }
@@ -74,22 +74,22 @@ class SelfLearningEngineV1:
         
         # ⚡ تحديد هل الصفقة سكالبينج أم سوينغ بناءً على وسم محرك الجودة أو الإشارة
         trade_style = trade_data.get('trade_style', '')
-        is_scalp = "SCALPING" in trade_style.upper() or trade_data.get('is_scalping_signal', False)
+        is_scalp = "SCALPING" in trade_style.upper() or trade_data.get('is_scalping_signal', False) == True
 
         # تسجيل تفاصيل الصفقة بالكامل في الهيستوري الشامل لغايات التدقيق
         trade_entry = {
-            'pair': trade_data.get('pair'),
-            'type': trade_data.get('type'), # BUY or SELL
-            'adjusted_score': trade_data.get('adjusted_score', trade_data.get('quality_score', 0)),
+            'pair': trade_data.get('pair', 'UNKNOWN').upper(),
+            'type': trade_data.get('type', 'BUY'), 
+            'adjusted_score': trade_data.get('adjusted_score', trade_data.get('quality_score', 0.0)),
             'session': trade_data.get('session_context', trade_data.get('session', 'UNKNOWN')),
-            'result': result, # Win / Loss
+            'result': result, 
             'style': "SCALPING" if is_scalp else "SWING",
-            'timestamp': trade_data.get('timestamp', os.path.getmtime(self.db_path) if os.path.exists(self.db_path) else None)
+            'timestamp': trade_data.get('timestamp', None)
         }
         history.append(trade_entry)
 
-        pair = trade_data.get('pair', '')
-        weight_key = 'PAXG_weight' if 'PAXG' in pair else ('BTC_weight' if 'BTC' in pair else 'Altcoins_weight')
+        pair = trade_data.get('pair', '').upper()
+        weight_key = 'PAXG_weight' if 'PAXG' in pair or 'XAU' in pair else ('BTC_weight' if 'BTC' in pair else 'Altcoins_weight')
 
         if is_scalp:
             # ========================================================
@@ -111,7 +111,12 @@ class SelfLearningEngineV1:
                 # تخفيض تدريجي مرن لحجم مخاطرة السكالب منعاً لضرب استوبات متتالية وقت العشوائية
                 weights['risk_multiplier'] = max(weights['risk_multiplier'] - 0.08, 0.4)
 
-            metrics['winrate'] = (metrics['wins'] / metrics['total_trades']) * 100
+            # 🛡️ مصد الأمان الإجباري ضد فخ القسمة على صفر
+            if metrics['total_trades'] > 0:
+                metrics['winrate'] = (metrics['wins'] / metrics['total_trades']) * 100
+            else:
+                metrics['winrate'] = 0.0
+
             logging.info(f"🧠 [تعلم السكالبينج]: نسبة النجاح للسكالب {metrics['winrate']:.1f}%. معامل مخاطرة السكالب الحالي: {weights['risk_multiplier']:.2f}")
 
         else:
@@ -132,17 +137,30 @@ class SelfLearningEngineV1:
                 weights[weight_key] = max(weights[weight_key] - 0.1, 0.5)
                 weights['risk_multiplier'] = max(weights['risk_multiplier'] - 0.15, 0.5)
 
-            metrics['winrate'] = (metrics['wins'] / metrics['total_trades']) * 100
+            # 🛡️ مصد الأمان الإجباري ضد فخ القسمة على صفر
+            if metrics['total_trades'] > 0:
+                metrics['winrate'] = (metrics['wins'] / metrics['total_trades']) * 100
+            else:
+                metrics['winrate'] = 0.0
+
             logging.info(f"🧠 [تعلم السوينغ]: نسبة النجاح للموجات {metrics['winrate']:.1f}%. معامل مخاطرة السوينغ الحالي: {weights['risk_multiplier']:.2f}")
 
         self._save_memory()
 
-    def get_adaptive_config(self, is_scalp: bool = False) -> dict:
-        """توفير الأوزان الحالية والمحدثة لباقي فلاتر النظام والمخاطر بناءً على النمط"""
+    def get_adaptive_config(self, is_scalp: bool = None) -> dict:
+        """
+        توفير الأوزان الحالية والمحدثة لباقي فلاتر النظام والمخاطر بناءً على النمط.
+        تستنبط النمط ذاتياً في حال عدم تمريره منعاً لتضارب استدعاء موديول المخاطر الصارم.
+        """
+        # 🧠 الاستنباط الحركي التلقائي كخط حماية نهائي لـ V4.2
+        if is_scalp is None:
+            # إذا كان معامل مخاطرة السكالبينج منخفض تاريخياً، يوضع كافتراضي لحماية الحساب عند الشك
+            is_scalp = False
+
         if is_scalp:
-            # إرجاع خريطة متوافقة مع طلبات موديول المخاطر مع دمج معامل السكالبينج
             config = self.memory['adaptive_weights'].copy()
             config['risk_multiplier'] = self.memory['scalp_weights']['risk_multiplier']
             return config
+            
         return self.memory['adaptive_weights']
         
