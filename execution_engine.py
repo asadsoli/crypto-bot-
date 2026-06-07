@@ -152,4 +152,3 @@ class ExecutionEngineV1:
             logging.info(f"🧠 تم ترحيل بيانات صفقة {pair_upper} المغلقة بنتيجة [{outcome}] إلى ملف التعلم الذاتي بنجاح.")
         except Exception as e:
             logging.error(f"⚠️ خطأ أثناء إغلاق وترحيل بيانات الصفقة: {e}")
-            
