@@ -296,7 +296,7 @@ def main():
         while True:
             try:
                 logging.info("🔄 جاري محاولة تشغيل الاستماع لتليغرام (Polling) بعناد...")
-                # تم استدعاء start_polling بدون معاملات لتتوافق مع تعريف الكلاس الخاص بك
+                # استدعاء نظيف ومباشر بدون معاملات لمنع الخطأ
                 control_panel.start_polling()
             except Exception as e:
                 logging.error(f"❌ حدث انقطاع في تليغرام، جاري إعادة المحاولة خلال 10 ثوانٍ: {e}")
@@ -317,4 +317,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-                    
+    
