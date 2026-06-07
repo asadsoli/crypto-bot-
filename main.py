@@ -13,6 +13,9 @@ import random
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
+# تعريف المتغيرات العالمية بشكل صريح لمنع خطأ NameError
+is_scalp_active = False
+
 # استدعاءات المنظومة الفنية المطورة
 from time_engine import TradingTimeEngine
 from news_engine import FederalNewsEngine
@@ -90,6 +93,7 @@ def get_real_crypto_price(symbol="BTCUSDT"):
 
 def trading_radar_loop(control_panel, signal_engine, execution_engine, monitored_assets):
     """عزل الحلقة التكرارية اللانهائية للسكالبينج والرادار في Thread منفصل تماماً لحماية البورت"""
+    global is_scalp_active
     last_checked_hour = -1
     CHANNEL_ID = os.getenv("CHANNEL_ID", "YOUR_CHANNEL_ID_HERE")
     
@@ -99,10 +103,8 @@ def trading_radar_loop(control_panel, signal_engine, execution_engine, monitored
     logging.info("🚀 تم تشغيل بوابات المراقبة والرادار الخلفي النخبوي لـ V4 حياً في مسار معزول...")
     
     while True:
-        # تعريف وقائي لمنع خطأ NameError
-        is_scalp_active = False 
         try:
-            # 🛡️ الدرع البرمجي: تعريف استباقي لمنع NameError في حالة تأخر الـ control_panel
+            # 🛡️ الدرع البرمجي: تحديث الحالة من اللوحة
             is_scalp_active = getattr(control_panel, 'scalp_mode_active', False)
             is_active = False
             
@@ -144,11 +146,9 @@ def trading_radar_loop(control_panel, signal_engine, execution_engine, monitored
                             
                     last_checked_hour = current_hour
 
-                # 🔥 تفكيك التكديس: نختار عملة واحدة عشوائياً لفحصها في هذه الدورة بدلاً من فحص الجميع معاً
                 active_pair = random.choice(monitored_assets)
                 current_time_now = time.time()
                 
-                # صمام أمان: إذا أرسلت هذه العملة إشارة قبل أقل من 45 ثانية، يتم تخطيها لمنع الإغراق
                 if current_time_now - last_signal_time[active_pair] < 45:
                     time.sleep(2)
                     continue
@@ -296,7 +296,8 @@ def main():
         while True:
             try:
                 logging.info("🔄 جاري محاولة تشغيل الاستماع لتليغرام (Polling) بعناد...")
-                control_panel.start_polling(none_stop=True, interval=0, long_polling_timeout=20)
+                # تم استدعاء start_polling بدون معاملات لتتوافق مع تعريف الكلاس الخاص بك
+                control_panel.start_polling()
             except Exception as e:
                 logging.error(f"❌ حدث انقطاع في تليغرام، جاري إعادة المحاولة خلال 10 ثوانٍ: {e}")
                 time.sleep(10)
@@ -316,4 +317,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-        
