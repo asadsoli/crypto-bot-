@@ -1,6 +1,8 @@
-pyTelegramBotAPI==4.26.0
+PyTelegramBotAPI==4.26.0
 scikit-learn>=1.6.0
 numpy>=2.1.0
 flask
 pytz
 gunicorn
+requests
+pandas
