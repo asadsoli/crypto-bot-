@@ -9,11 +9,14 @@ import time
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class ExecutionEngineV1:
-    def __init__(self, telegram_token, channel_id, self_learning_engine, risk_manager):
+    def __init__(self, telegram_token, channel_id, self_learning_engine, risk_manager, is_scalp_active=True):
         self.bot = telebot.TeleBot(telegram_token)
         self.channel_id = channel_id
         self.self_learning_engine = self_learning_engine
         self.risk_manager = risk_manager
+        
+        # 🛡️ الحالة التشغيلية للمحرك (تمت إضافتها لمنع الخطأ الفادح)
+        self.is_scalp_active = is_scalp_active
         
         # 🛡️ سجل الطوارئ اللحظي لمنع تكرار بث نفس العملة دفعة واحدة (Anti-Flood Cache)
         self.last_broadcast_time = {}
@@ -31,6 +34,11 @@ class ExecutionEngineV1:
         """
         📤 استقبال الإشارة المعتمدة، إرسالها لتيليغرام، وتثبيت إدارتها برمجياً بنمط مؤسسي نظيف
         """
+        # 🚨 [إصلاح جذري] التحقق من حالة التفعيل قبل البدء
+        if not self.is_scalp_active:
+            logging.info("⏸️ المحرك التنفيذي في وضع الإيقاف (is_scalp_active=False).")
+            return False
+
         if signal_result.get('status') != 'TRIGGERED':
             return False
 
@@ -144,4 +152,4 @@ class ExecutionEngineV1:
             logging.info(f"🧠 تم ترحيل بيانات صفقة {pair_upper} المغلقة بنتيجة [{outcome}] إلى ملف التعلم الذاتي بنجاح.")
         except Exception as e:
             logging.error(f"⚠️ خطأ أثناء إغلاق وترحيل بيانات الصفقة: {e}")
-        
+            
