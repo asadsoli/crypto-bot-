@@ -293,10 +293,13 @@ def main():
     )
     
     def run_polling_isolated():
-        try:
-            control_panel.start_polling()
-        except Exception as e:
-            logging.error(f"❌ حدث خطأ في لوحة تحكم تليغرام V4: {e}")
+        while True:
+            try:
+                logging.info("🔄 جاري محاولة تشغيل الاستماع لتليغرام (Polling) بعناد...")
+                control_panel.start_polling(none_stop=True, interval=0, long_polling_timeout=20)
+            except Exception as e:
+                logging.error(f"❌ حدث انقطاع في تليغرام، جاري إعادة المحاولة خلال 10 ثوانٍ: {e}")
+                time.sleep(10)
 
     panel_thread = threading.Thread(target=run_polling_isolated, daemon=True)
     panel_thread.start()
@@ -313,4 +316,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-                
+        
