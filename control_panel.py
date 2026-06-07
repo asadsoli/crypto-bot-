@@ -90,13 +90,10 @@ class InstitutionalControlPanelV2:
             logging.error(f"⚠️ فشل إرسال تنبيه الجلسة: {e}")
 
     def _fetch_live_price(self, symbol: str) -> float:
-        """
-        جلب الأسعار الحركية اللحظية لعملات الرادار عبر بوابات مزدوجة لفك حظر Render
-        """
+        """جلب الأسعار الحركية اللحظية لعملات الرادار عبر بوابات مزدوجة لفك حظر Render"""
         symbol_upper = symbol.upper()
         pair = symbol_upper if "USDT" in symbol_upper else f"{symbol_upper}USDT"
         
-        # 1. المحاولة الأولى: سيرفر المطورين المفتوح لبينانس (الأكثر دقة وسرعة)
         try:
             url = f"https://data-api.binance.vision/api/v3/ticker/price?symbol={pair}"
             res = requests.get(url, timeout=2).json()
@@ -105,7 +102,6 @@ class InstitutionalControlPanelV2:
         except:
             pass
 
-        # 2. المحاولة الثانية (المنقذ لفك الحظر الجغرافي السحابي): CryptoCompare المحدث بالـ USDT
         try:
             clean_coin = symbol_upper.replace("USDT", "")
             url = f"https://min-api.cryptocompare.com/data/price?fsym={clean_coin}&tsyms=USDT"
@@ -120,14 +116,12 @@ class InstitutionalControlPanelV2:
     def _generate_radar_report(self, coin_name: str, symbol: str):
         price = self._fetch_live_price(symbol)
         if price == 0.0:
-            # أسعار طوارئ ديناميكية قريبة من مستويات عام 2026 الحالية كخط دفاع أخير
             prices = {"BNB": 585.4, "XRP": 0.56, "ADA": 0.48, "LINK": 16.1, "DOT": 7.2, "DOGE": 0.15}
             price = prices.get(symbol.upper().replace("USDT", ""), 1.0)
             
         score = random.randint(78, 95)
         signal_type = random.choice(["🟢 شراء مؤسسي دلالي (LONG)", "🔴 بيع انعكاسي صارم (SHORT)", "🟡 رصد سيولة (WAIT)"])
         
-        # ⚡ ترقية V4.2: تعديل حسابات أهداف الرادار اليدوي لتتوافق ديناميكياً مع نمط السكالبينج المفعل
         if self.scalp_mode_active:
             if "شراء" in signal_type:
                 target = round(price * 1.005, 4)
@@ -270,6 +264,7 @@ class InstitutionalControlPanelV2:
                 self.current_menu_state = "MAIN"
                 self.bot.send_message(chat_id, f"🎯 تم تثبيت رادار الرصد التلقائي على: **{self.current_active_pair}**", reply_markup=self.get_main_menu_keyboard(), parse_mode="Markdown")
 
-    def start_polling(self):
-        self.bot.infinity_polling()
-        
+    def start_polling(self, **kwargs):
+        """تم تعديلها لتقبل المعاملات وتمريرها للمحرك لتجنب 409 Conflict"""
+        self.bot.infinity_polling(**kwargs)
+                    
