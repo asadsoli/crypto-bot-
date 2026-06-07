@@ -8,7 +8,7 @@ import datetime
 import telebot
 import time
 import random
-import threading  # ⚡ حقن مكتبة المسارات الموازية لفك التجميد عن السيرفر
+import threading
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -115,7 +115,6 @@ class TelegramLayerV3:
                 if self.signal_engine:
                     chosen_structure = random.choice(['BOS_Bullish', 'BOS_Bearish', 'CHoCH_Bullish', 'CHoCH_Bearish'])
                     is_bull = "Bullish" in chosen_structure
-                    
                     current_live_price = 93500.0 if "BTC" in self.current_asset else (4550.0 if "PAXG" in self.current_asset else 3400.0)
                     try:
                         from main import get_real_crypto_price
