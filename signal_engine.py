@@ -16,62 +16,54 @@ class SignalEngineV4:
         self.quality_engine = quality_engine
         self.pre_move_engine = pre_move_engine
         
-        # 🪙 السلة المركزية الموسعة للأزواج المعتمدة للرادار الخلفي للعملات الشغالة
         self.watchlist_pairs = ["BTCUSDT", "PAXGUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT"]
-        
-        # حد الأمان البرمجي الحاسم لمنع جلب الأسعار التاريخية القديمة للذهب
         self.gold_absolute_floor = 4000.0
 
     def _get_backup_live_price(self, symbol: str) -> float:
-        """صمام أمان حركي لكسر حظر Render وجلب السعر اللحظي الفوري لأي عملة في الرادار"""
-        symbol_upper = symbol.upper()
+        symbol_upper = str(symbol).upper()
         pair = symbol_upper if "USDT" in symbol_upper else f"{symbol_upper}USDT"
         
         try:
             url = f"https://data-api.binance.vision/api/v3/ticker/price?symbol={pair}"
             res = requests.get(url, timeout=2).json()
-            if "price" in res: return float(res["price"])
+            if res and "price" in res: return float(res["price"])
         except: pass
 
         try:
             clean_coin = symbol_upper.replace("USDT", "")
             url = f"https://min-api.cryptocompare.com/data/price?fsym={clean_coin}&tsyms=USDT"
             res = requests.get(url, timeout=2).json()
-            if "USDT" in res: return float(res["USDT"])
+            if res and "USDT" in res: return float(res["USDT"])
         except: pass
         return 0.0
 
     def analyze_market_and_generate_signal(self, smc_data: dict, market_conditions: dict, force_scalp: bool = False) -> dict:
-        """
-        ⚙️ محرك تحليل الهيكلية واتخاذ قرار الدخول المؤسسي (النسخة V12 المتصلة)
-        تم ربطه كلياً لاستقبال البيانات المطهّرة والمبصومة نصياً ورياضياً لمنع تضارب الاتجاه.
-        """
-        pair = smc_data.get('pair', 'UNKNOWN').upper()
+        # ضمان أن المدخلات ليست None
+        data = smc_data or {}
+        conditions = market_conditions or {}
+        
+        pair = str(data.get('pair', 'UNKNOWN')).upper()
         
         if 'XAU' in pair or 'PAXG' in pair:
             if 'XAU' in pair:
                 pair = pair.replace('XAU', 'PAXG')
             
-            check_price = smc_data.get('current_price', 0.0)
+            check_price = float(data.get('current_price', 0.0))
             if check_price > 0.0 and check_price < self.gold_absolute_floor:
-                logging.error(f"❌ تم حظر إشارة {pair} داخل محرك الإشارات: السعر الممرر ({check_price}) قديم ولا يطابق الشارت الحي الحقيقي!")
-                return {'status': 'NO_SIGNAL', 'reason': f"خطأ في تغذية الأسعار: سعر الذهب الممرر {check_price} أقل من حد الأمان المؤسسي {self.gold_absolute_floor}"}
+                logging.error(f"❌ تم حظر إشارة {pair} داخل محرك الإشارات: السعر الممرر ({check_price}) قديم!")
+                return {'status': 'NO_SIGNAL', 'reason': "خطأ في تغذية الأسعار"}
 
-        logging.info(f"📊 جاري استلام المعطيات والتدقيق الفني المشترك لزوج: {pair}")
+        logging.info(f"📊 جاري استلام المعطيات لزوج: {pair}")
 
-        # ⚡ تحديد هل النمط المفعل حالياً هو السكالبينج الخاطف
-        is_scalping_active = force_scalp or market_conditions.get('scalp_mode_active', False)
+        is_scalping_active = force_scalp or conditions.get('scalp_mode_active', False)
+        signal_type = data.get('type') or data.get('signal_type')
 
-        # 🟢 قراءة التوجيه والاتجاه الصريح المحقون مباشرة لمنع أي تضارب برمجى
-        signal_type = smc_data.get('type') or smc_data.get('signal_type')
-
-        # إذا لم يحقن الاتجاه صراحة، نعود للمنطق الفني الصارم كخط دفاع احتياطي
         if not signal_type:
-            structure = smc_data.get('structure')        
-            liquidity_swept = smc_data.get('liquidity_swept', False)  
-            has_ob_or_fvg = smc_data.get('at_order_block_or_fvg', False)
-            rsi = smc_data.get('rsi', 50)
-            ema_support = smc_data.get('ema_supporting', False)
+            structure = data.get('structure', '')
+            liquidity_swept = data.get('liquidity_swept', False)  
+            has_ob_or_fvg = data.get('at_order_block_or_fvg', False)
+            rsi = data.get('rsi', 50)
+            ema_support = data.get('ema_supporting', False)
 
             if (structure == "BOS_Bullish" or structure == "CHoCH_Bullish") and liquidity_swept and has_ob_or_fvg:
                 if is_scalping_active or (rsi > 45 and ema_support): 
@@ -81,12 +73,13 @@ class SignalEngineV4:
                     signal_type = "SELL"
 
         if not signal_type:
-            return {'status': 'NO_SIGNAL', 'reason': "لم تتحقق شروط توافق هيكلية الأموال الذكية وسحب السيولة للاتجاهين"}
+            return {'status': 'NO_SIGNAL', 'reason': "لم تتحقق شروط توافق هيكلية الأموال الذكية"}
 
-        # 🛡️ ضبط الاستوب والأهداف ديناميكياً وحساب العائد للمخاطرة (RR) حسب النمط المفعل
-        entry_price = smc_data.get('current_price')
-        raw_sl = smc_data.get('stop_loss', entry_price * 0.99)
-        atr_value = smc_data.get('atr', entry_price * 0.002) 
+        entry_price = float(data.get('current_price', 0.0))
+        if entry_price == 0.0: return {'status': 'NO_SIGNAL', 'reason': "السعر غير متاح"}
+        
+        raw_sl = float(data.get('stop_loss', entry_price * 0.99))
+        atr_value = float(data.get('atr', entry_price * 0.002)) 
         
         if is_scalping_active:
             if signal_type == "BUY":
@@ -111,12 +104,9 @@ class SignalEngineV4:
                 tp2 = entry_price - (final_sl - entry_price) * 2.0
                 tp3 = entry_price - (final_sl - entry_price) * 4.0
 
-        # حماية حساب القائد من الثقة الـ 100% الوهمية - جعل الحسابات مرنة وتكيفية دائمًا
-        calc_confidence = smc_data.get('base_confidence', 85.0)
-        if calc_confidence >= 100.0:
-            calc_confidence = 94.8  
+        calc_confidence = float(data.get('base_confidence', 85.0))
+        if calc_confidence >= 100.0: calc_confidence = 94.8  
 
-        # 2. بناء بيانات الإشارة المبدئية بالقيم المحدثة وتمرير الوسم الشامل
         raw_signal = {
             'pair': pair,
             'type': signal_type,
@@ -126,112 +116,91 @@ class SignalEngineV4:
             'tp2': round(tp2, 4),
             'tp3': round(tp3, 4),
             'confidence_score': calc_confidence,
-            'ai_score': smc_data.get('base_ai_score', 88.0),
-            'is_scalping_signal': is_scalp_active,
+            'ai_score': float(data.get('base_ai_score', 88.0)),
+            'is_scalping_signal': is_scalping_active,
             'timestamp': datetime.datetime.utcnow().timestamp()
         }
 
-        # 3. المزامنة المتقاطعة مع باقي محركات النظام الكامل (Sync Layers)
-        pred_res = self.pre_move_engine.predict_explosion_probability(smc_data, market_conditions) if self.pre_move_engine else {'explosion_probability': 'Medium'}
-        if pred_res.get('explosion_probability') == 'High':
-            raw_signal['confidence_score'] = min(raw_signal['confidence_score'] + 5, 98.5)
-            raw_signal['ai_score'] = min(raw_signal['ai_score'] + 5, 98.5)
+        if self.pre_move_engine:
+            pred_res = self.pre_move_engine.predict_explosion_probability(data, conditions) or {}
+            if pred_res.get('explosion_probability') == 'High':
+                raw_signal['confidence_score'] = min(raw_signal['confidence_score'] + 5, 98.5)
+                raw_signal['ai_score'] = min(raw_signal['ai_score'] + 5, 98.5)
 
         if self.quality_engine:
-            quality_res = self.quality_engine.calculate_quality_score(raw_signal, market_conditions)
-            if not quality_res['is_tradable']:
-                return {'status': 'FILTERED', 'reason': quality_res['reject_reason']}
-            raw_signal['quality_score'] = quality_res['quality_score']
-            raw_signal['classification'] = quality_res['classification']
-            raw_signal['trade_style'] = quality_res['trade_style']
+            quality_res = self.quality_engine.calculate_quality_score(raw_signal, conditions) or {}
+            if not quality_res.get('is_tradable', True):
+                return {'status': 'FILTERED', 'reason': quality_res.get('reject_reason', 'جودة منخفضة')}
+            raw_signal['quality_score'] = quality_res.get('quality_score', 82.0)
+            raw_signal['classification'] = quality_res.get('classification', 'Elite')
+            raw_signal['trade_style'] = quality_res.get('trade_style', 'SWING')
         else:
             raw_signal['quality_score'] = 82.0
             raw_signal['classification'] = 'Elite'
             raw_signal['trade_style'] = 'SWING'
 
         if self.risk_manager:
-            risk_res = self.risk_manager.can_open_trade(raw_signal, market_conditions)
-            if risk_res['status'] == 'BLOCK':
-                return {'status': 'BLOCKED_BY_RISK', 'reason': risk_res['reason']}
-            raw_signal['allocated_risk'] = risk_res['allocated_risk_percentage']
+            risk_res = self.risk_manager.can_open_trade(raw_signal, conditions) or {}
+            if risk_res.get('status') == 'BLOCK':
+                return {'status': 'BLOCKED_BY_RISK', 'reason': risk_res.get('reason', 'محظور من إدارة المخاطر')}
+            raw_signal['allocated_risk'] = risk_res.get('allocated_risk_percentage', 0.01)
         else:
             raw_signal['allocated_risk'] = 0.02
 
-        raw_signal['session_context'] = self.time_engine.get_active_sessions()[0] if (self.time_engine and self.time_engine.get_active_sessions()) else 'Out of Sessions'
+        if self.time_engine:
+            sessions = self.time_engine.get_active_sessions()
+            raw_signal['session_context'] = sessions[0] if sessions else 'Out of Sessions'
+        else:
+            raw_signal['session_context'] = 'Unknown'
 
-        return {
-            'status': 'TRIGGERED',
-            'signal_data': raw_signal
-        }
-
-    # =========================================================================
-    # 🔥 ميزات الرادار الخلفي المصححة والمحنية للاتجاهين
-    # =========================================================================
+        return {'status': 'TRIGGERED', 'signal_data': raw_signal}
 
     def run_autonomous_radar_scan(self, current_dashboard_pair: str, get_smc_data_func, market_conditions: dict) -> list:
-        """
-        🦅 رادار الفحص الخلفي المستقل المصحح لمنع حقن صفقات الشراء الوهمية وقت انهيار السوق
-        """
         autonomous_signals = []
         for pair in self.watchlist_pairs:
-            if pair == current_dashboard_pair.upper():
-                continue 
+            if pair == str(current_dashboard_pair).upper(): continue 
             
             smc_data = get_smc_data_func(pair)
-            
-            if not smc_data or smc_data.get('current_price', 0.0) == 0.0:
+            if not smc_data or float(smc_data.get('current_price', 0.0)) == 0.0:
                 backup_price = self._get_backup_live_price(pair)
                 if backup_price > 0.0:
-                    if not smc_data: smc_data = {}
-                    # 🛡️ تصحيح أمني للرادار الخلفي المتصل: الاعتماد على معطيات الشارت المحقونة فعلياً
-                    smc_data.update({
+                    smc_data = {
                         'pair': pair,
                         'current_price': backup_price,
-                        'structure': market_conditions.get('fallback_structure', 'BOS_Bearish'),  
+                        'structure': market_conditions.get('fallback_structure', 'BOS_Bearish'),
                         'liquidity_swept': True,
                         'at_order_block_or_fvg': True,
                         'base_confidence': 86.0,
                         'base_ai_score': 88.0
-                    })
-                else:
-                    continue 
+                    }
+                else: continue 
                 
             res = self.analyze_market_and_generate_signal(smc_data, market_conditions)
-            if res['status'] == 'TRIGGERED':
-                sig = res['signal_data']
-                if sig.get('classification') == 'Elite' and sig.get('confidence_score', 0) >= 85.0:
+            if res.get('status') == 'TRIGGERED':
+                sig = res.get('signal_data', {})
+                if sig.get('classification') == 'Elite' and float(sig.get('confidence_score', 0)) >= 85.0:
                     sig['is_autonomous'] = True
                     autonomous_signals.append(sig)
-                    
         return autonomous_signals
 
     def process_on_demand_request(self, custom_pair: str, get_smc_data_func, market_conditions: dict) -> dict:
-        """
-        🔍 مستشار الفحص الفوري المخصص (On-Demand Scan):
-        """
-        custom_pair = custom_pair.upper()
+        custom_pair = str(custom_pair).upper()
         smc_data = get_smc_data_func(custom_pair)
         
-        if not smc_data or smc_data.get('current_price', 0.0) == 0.0:
+        if not smc_data or float(smc_data.get('current_price', 0.0)) == 0.0:
             backup_price = self._get_backup_live_price(custom_pair)
             if backup_price > 0.0:
-                if not smc_data: smc_data = {}
-                smc_data.update({
+                smc_data = {
                     'pair': custom_pair,
                     'current_price': backup_price,
                     'structure': 'BOS_Bearish',
                     'liquidity_swept': True,
                     'at_order_block_or_fvg': True
-                })
-            else:
-                return {
-                    'pair': custom_pair,
-                    'status': 'ERROR',
-                    'message': '❌ تعذر جلب بيانات الحركة اللحظية للعملة من المنصة حالياً بسبب القيود السحابية.'
                 }
+            else:
+                return {'pair': custom_pair, 'status': 'ERROR', 'message': '❌ تعذر جلب بيانات الحركة اللحظية.'}
             
         res = self.analyze_market_and_generate_signal(smc_data, market_conditions)
-        
         report = {
             'pair': custom_pair,
             'current_price': smc_data.get('current_price'),
@@ -240,12 +209,9 @@ class SignalEngineV4:
             'timestamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         }
         
-        if res['status'] == 'TRIGGERED':
-            report['opportunity'] = 'AVAILABLE ✅'
-            report['signal_details'] = res['signal_data']
+        if res.get('status') == 'TRIGGERED':
+            report.update({'opportunity': 'AVAILABLE ✅', 'signal_details': res.get('signal_data')})
         else:
-            report['opportunity'] = 'NOT_AVAILABLE ❌'
-            report['reason'] = res.get('reason', 'السوق غير مستقر أو الهيكل غير مكتمل.')
-            
+            report.update({'opportunity': 'NOT_AVAILABLE ❌', 'reason': res.get('reason', 'السوق غير مستقر')})
         return report
-            
+                                           
