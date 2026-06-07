@@ -13,9 +13,6 @@ import random
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
-# تعريف المتغيرات العالمية بشكل صريح لمنع خطأ NameError
-is_scalp_active = False
-
 # استدعاءات المنظومة الفنية المطورة
 from time_engine import TradingTimeEngine
 from news_engine import FederalNewsEngine
@@ -49,7 +46,6 @@ def run_flask_main_thread():
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# تحديث قاموس الطوارئ بمستويات أسعار عام 2026 الحالية لمنع الجمود البرمجي
 LAST_PRICES = {
     "PAXGUSDT": 4340.0,
     "BTCUSDT": 60580.0,  
@@ -58,10 +54,6 @@ LAST_PRICES = {
 }
 
 def get_real_crypto_price(symbol="BTCUSDT"):
-    """
-    🟢 موديول قنص السعر المطور:
-    يلف على 4 روابط وسيرفرات بديلة لبينانس لضمان قراءة السعر الحركي من الشارت رغماً عن قيود Render وحظره الجغرافي.
-    """
     global LAST_PRICES
     symbol = symbol.upper()
     
@@ -93,21 +85,20 @@ def get_real_crypto_price(symbol="BTCUSDT"):
 
 def trading_radar_loop(control_panel, signal_engine, execution_engine, monitored_assets):
     """عزل الحلقة التكرارية اللانهائية للسكالبينج والرادار في Thread منفصل تماماً لحماية البورت"""
-    global is_scalp_active
     last_checked_hour = -1
     CHANNEL_ID = os.getenv("CHANNEL_ID", "YOUR_CHANNEL_ID_HERE")
     
-    # قاموس لتسجيل آخر وقت تم إرسال صفقة فيه لكل عملة لمنع التكديس والتكرار المباشر
     last_signal_time = {asset: 0 for asset in monitored_assets}
     
     logging.info("🚀 تم تشغيل بوابات المراقبة والرادار الخلفي النخبوي لـ V4 حياً في مسار معزول...")
     
     while True:
         try:
-            # 🛡️ الدرع البرمجي: تحديث الحالة من اللوحة
+            # 🛡️ الربط الديناميكي: سحب الحالة من اللوحة وتحديث المحرك التنفيذي مباشرة
             is_scalp_active = getattr(control_panel, 'scalp_mode_active', False)
-            is_active = False
+            execution_engine.is_scalp_active = is_scalp_active
             
+            is_active = False
             if hasattr(control_panel, 'bot_status'):
                 is_active = (control_panel.bot_status == "RUNNING")
             elif hasattr(control_panel, 'is_bot_active'):
