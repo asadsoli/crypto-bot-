@@ -99,6 +99,8 @@ def trading_radar_loop(control_panel, signal_engine, execution_engine, monitored
     logging.info("🚀 تم تشغيل بوابات المراقبة والرادار الخلفي النخبوي لـ V4 حياً في مسار معزول...")
     
     while True:
+        # تعريف وقائي لمنع خطأ NameError
+        is_scalp_active = False 
         try:
             # 🛡️ الدرع البرمجي: تعريف استباقي لمنع NameError في حالة تأخر الـ control_panel
             is_scalp_active = getattr(control_panel, 'scalp_mode_active', False)
@@ -225,7 +227,7 @@ def trading_radar_loop(control_panel, signal_engine, execution_engine, monitored
 
                 mock_market_conditions = {
                     'vix_index': 13.8, 
-                    'dxy_trend': 'Bearish' if is_bullish else 'Bullish', 
+                    'dxy_trend': 'Bearish' if is_bullish else 'Bearish' if is_bullish else 'Bullish', 
                     'prediction_probability_score': 89.0,
                     'news_analysis': {'impact_score': 1, 'sentiment': 'Bullish' if is_bullish else 'Bearish', 'risk_regime': 'Risk ON'},
                     'is_market_choppy': False, 
@@ -311,4 +313,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
+                
