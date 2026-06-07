@@ -141,5 +141,4 @@ class PreMovePredictionEngine:
             'probability_score': final_score,
             'description': desc,
             'compression_status': comp_res['is_compressed']
-            }
-        
+    }
