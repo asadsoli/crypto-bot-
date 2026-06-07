@@ -116,7 +116,6 @@ class TelegramLayerV3:
                     chosen_structure = random.choice(['BOS_Bullish', 'BOS_Bearish', 'CHoCH_Bullish', 'CHoCH_Bearish'])
                     is_bull = "Bullish" in chosen_structure
                     
-                    # 🪙 تحديث أسعار الصمام الاحتياطية لعام 2026 لمنع تعارض موديول الذهب
                     current_live_price = 93500.0 if "BTC" in self.current_asset else (4550.0 if "PAXG" in self.current_asset else 3400.0)
                     try:
                         from main import get_real_crypto_price
@@ -133,14 +132,13 @@ class TelegramLayerV3:
                     else:
                         sl_calc = round(current_live_price - 2.0 if is_bull else current_live_price + 2.0, 2)
                     
-                    # 🛡️ تصحيح أمني حاسم: مواءمة منطق الـ EMA والـ RSI بناءً على الاتجاه لمنع حظر الـ SELL
                     mock_smc = {
                         'pair': self.current_asset, 
                         'structure': chosen_structure, 
                         'liquidity_swept': True,
                         'at_order_block_or_fvg': True, 
                         'rsi': 54 if is_bull else 42, 
-                        'ema_supporting': True if is_bull else False, # تصحيح: في الهبوط الـ EMA يمثل مقاومة وليس دعماً صاعداً
+                        'ema_supporting': True if is_bull else False,
                         'current_price': current_live_price,
                         'stop_loss': sl_calc, 
                         'base_confidence': 93.4, 
@@ -192,7 +190,6 @@ class TelegramLayerV3:
                 
                 if self.signal_engine:
                     def get_mock_data(p):
-                        # مواءمة الفحص المخصص الفوري ليدعم الهيكلية الحالية ديناميكياً
                         return {'pair': p, 'current_price': live_custom_price, 'structure': 'CHoCH_Bearish', 'liquidity_swept': True, 'at_order_block_or_fvg': True, 'rsi': 44, 'ema_supporting': False, 'stop_loss': round(live_custom_price * 1.02, 2)}
                     
                     mock_market = {'news_analysis': {'risk_regime': 'Risk ON'}, 'next_event_epoch': 0, 'is_market_choppy': False}
@@ -273,19 +270,21 @@ class TelegramLayerV3:
             return False
 
     def _execute_polling(self):
-        """الدالة الداخلية لتشغيل البولينج مع آلية حماية من التجمد والـ 409"""
-        try:
-            logging.info("🧹 جاري تنظيف اتصالات تليغرام القديمة لمنع التعارض 409...")
-            self.bot.remove_webhook()
-            time.sleep(1)
-            logging.info("🚀 انطلق البث اللحظي للوحة التحكم في مسار موازي آمن.")
-            self.bot.infinity_polling(timeout=10, long_polling_timeout=5)
-        except Exception as e:
-            logging.error(f"🚨 خطأ أثناء البولينج الخلفي: {e}")
+        """الدالة المعدلة والمحصنة لمنع خطأ 409 Conflict"""
+        while True:
+            try:
+                logging.info("🧹 تطهير جلسات تليغرام العالقة (409 Handler)...")
+                self.bot.remove_webhook()
+                time.sleep(2)
+                logging.info("🚀 إطلاق البولينج الخلفي الآمن.")
+                self.bot.infinity_polling(timeout=20, long_polling_timeout=5, skip_pending=True)
+            except Exception as e:
+                logging.error(f"🚨 خطأ فادح أثناء البولينج: {e}")
+                time.sleep(10)
 
     def start_polling(self):
         """[تحديث الحسم V11]: بدء الاستقبال اللحظي داخل Thread مستقل تماماً لفك حظر السيرفر نهائياً"""
         bot_thread = threading.Thread(target=self._execute_polling, daemon=True)
         bot_thread.start()
         logging.info("🟢 [تم الحسم] تم ترحيل البوت إلى المسارات الخلفية. السيرفر الآن حر بنسبة 100%.")
-        
+            
