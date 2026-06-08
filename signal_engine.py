@@ -127,7 +127,7 @@ class SignalEngineV4:
             'tp3': round(tp3, 4),
             'confidence_score': calc_confidence,
             'ai_score': smc_data.get('base_ai_score', 88.0),
-            'is_scalping_signal': is_scalp_active,
+            'is_scalping_signal': is_scalping_active,
             'timestamp': datetime.datetime.utcnow().timestamp()
         }
 
