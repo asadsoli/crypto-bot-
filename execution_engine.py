@@ -16,7 +16,7 @@ class ExecutionEngineV1:
         self.risk_manager = risk_manager
         
         # 🛡️ الحالة التشغيلية للمحرك (تمت إضافتها لمنع الخطأ الفادح)
-        self.is_scalp_active = is_scalp_active
+        self.is_scalping_active = is_scalp_active
         
         # 🛡️ سجل الطوارئ اللحظي لمنع تكرار بث نفس العملة دفعة واحدة (Anti-Flood Cache)
         self.last_broadcast_time = {}
