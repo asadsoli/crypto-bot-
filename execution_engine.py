@@ -35,7 +35,7 @@ class ExecutionEngineV1:
         📤 استقبال الإشارة المعتمدة، إرسالها لتيليغرام، وتثبيت إدارتها برمجياً بنمط مؤسسي نظيف
         """
         # 🚨 [إصلاح جذري] التحقق من حالة التفعيل قبل البدء
-        if not self.is_scalp_active:
+        if not self.is_scalping_active:
             logging.info("⏸️ المحرك التنفيذي في وضع الإيقاف (is_scalp_active=False).")
             return False
 
