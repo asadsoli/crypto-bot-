@@ -94,9 +94,14 @@ def trading_radar_loop(control_panel, signal_engine, execution_engine, monitored
     
     while True:
         try:
+            # 🛡️ تصحيح الخطأ الفادح: تعريف المتغير مسبقاً لمنع NameError
+            is_scalp_active = False
+            
             # 🛡️ الربط الديناميكي: سحب الحالة من اللوحة وتحديث المحرك التنفيذي مباشرة
-            is_scalp_active = getattr(control_panel, 'scalp_mode_active', False)
-            execution_engine.is_scalp_active = is_scalp_active
+            try:
+                is_scalp_active = getattr(control_panel, 'scalp_mode_active', False)
+                execution_engine.is_scalp_active = is_scalp_active
+            except: pass
             
             is_active = False
             if hasattr(control_panel, 'bot_status'):
@@ -284,10 +289,14 @@ def main():
     )
     
     def run_polling_isolated():
+        # تنظيف الويب هوك فوراً لضمان عدم حدوث تعارض 409
+        try:
+            if hasattr(control_panel, 'bot'): control_panel.bot.remove_webhook()
+        except: pass
+        
         while True:
             try:
                 logging.info("🔄 جاري محاولة تشغيل الاستماع لتليغرام (Polling) بعناد...")
-                # استدعاء نظيف ومباشر بدون معاملات لمنع الخطأ
                 control_panel.start_polling()
             except Exception as e:
                 logging.error(f"❌ حدث انقطاع في تليغرام، جاري إعادة المحاولة خلال 10 ثوانٍ: {e}")
