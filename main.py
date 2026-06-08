@@ -100,7 +100,7 @@ def trading_radar_loop(control_panel, signal_engine, execution_engine, monitored
             # تحديث المتغير من اللوحة مع التأكد من وجود قيمة افتراضية
             try:
                 is_scalp_active = getattr(control_panel, 'scalp_mode_active', False)
-                execution_engine.is_scalp_active = is_scalp_active
+                execution_engine.is_scalping_active = is_scalp_active
             except:
                 is_scalp_active = False # تعيين افتراضي في حال فشل الاتصال باللوحة
             
