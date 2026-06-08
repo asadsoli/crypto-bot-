@@ -89,7 +89,7 @@ def trading_radar_loop(control_panel, signal_engine, execution_engine, monitored
     CHANNEL_ID = os.getenv("CHANNEL_ID", "YOUR_CHANNEL_ID_HERE")
     
     last_signal_time = {asset: 0 for asset in monitored_assets}
-    
+    is_scalp_active = False
     logging.info("🚀 تم تشغيل بوابات المراقبة والرادار الخلفي النخبوي لـ V4 حياً في مسار معزول...")
     
     while True:
