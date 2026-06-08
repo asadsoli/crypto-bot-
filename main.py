@@ -85,23 +85,24 @@ def get_real_crypto_price(symbol="BTCUSDT"):
 
 def trading_radar_loop(control_panel, signal_engine, execution_engine, monitored_assets):
     """عزل الحلقة التكرارية اللانهائية للسكالبينج والرادار في Thread منفصل تماماً لحماية البورت"""
+    
+    # [تعديل جراحي لإنهاء الـ NameError]: تعريف المتغير كمتغير محلي آمن في أول سطر
+    is_scalp_active = False
+    
     last_checked_hour = -1
     CHANNEL_ID = os.getenv("CHANNEL_ID", "YOUR_CHANNEL_ID_HERE")
-    
     last_signal_time = {asset: 0 for asset in monitored_assets}
     
     logging.info("🚀 تم تشغيل بوابات المراقبة والرادار الخلفي النخبوي لـ V4 حياً في مسار معزول...")
     
     while True:
         try:
-            # 🛡️ تصحيح الخطأ الفادح: تعريف المتغير مسبقاً لمنع NameError
-            is_scalp_active = False
-            
-            # 🛡️ الربط الديناميكي: سحب الحالة من اللوحة وتحديث المحرك التنفيذي مباشرة
+            # تحديث المتغير من اللوحة مع التأكد من وجود قيمة افتراضية
             try:
                 is_scalp_active = getattr(control_panel, 'scalp_mode_active', False)
                 execution_engine.is_scalp_active = is_scalp_active
-            except: pass
+            except:
+                is_scalp_active = False # تعيين افتراضي في حال فشل الاتصال باللوحة
             
             is_active = False
             if hasattr(control_panel, 'bot_status'):
